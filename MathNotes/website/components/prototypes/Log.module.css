@@ -1,0 +1,113 @@
+.log {
+  display: flex;
+  flex-direction: column;
+}
+
+.entry {
+  display: grid;
+  gap: var(--x8);
+  padding-block: clamp(40px, 6vw, 72px);
+  border-top: 1px solid var(--hairline);
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--x3);
+  min-width: 0;
+}
+
+.leaf {
+  display: flex;
+  flex-direction: column;
+  width: 62px;
+  margin-bottom: var(--x1);
+  background: var(--card-white);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-plate);
+  overflow: hidden;
+  rotate: -2deg;
+  box-shadow: 2px 2px 0 rgb(27 34 48 / 0.14);
+  color: var(--ink);
+  text-align: center;
+}
+
+.label {
+  padding: 3px 0 2px;
+  border-bottom: var(--line) solid var(--ink);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.figure {
+  padding: 5px 0 3px;
+  font-family: var(--font-poster);
+  font-weight: 900;
+  font-stretch: 62%;
+  font-size: 2.3rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  font-size: clamp(1.6rem, 1.4vw + 1.1rem, 2.1rem);
+}
+
+.words {
+  max-width: 34rem;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.words a {
+  font-weight: 500;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--x8);
+  min-width: 0;
+}
+
+.band {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--x8) var(--x5);
+}
+
+/* On a narrow screen the columns dissolve and the prints run two abreast, in the order they are told. */
+.column {
+  display: contents;
+}
+
+@media (min-width: 720px) {
+  .band {
+    grid-template-columns: var(--columns);
+    gap: var(--x6);
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--x8);
+    min-width: 0;
+  }
+}
+
+@media (min-width: 1000px) {
+  .entry {
+    grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+    gap: clamp(32px, 5vw, 72px);
+  }
+
+  .note {
+    position: sticky;
+    top: calc(var(--nav-height) + var(--x8));
+    align-self: start;
+  }
+}

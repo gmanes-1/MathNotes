@@ -1,0 +1,45 @@
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 62vh;
+  padding-block: var(--x16);
+}
+
+.plate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--x3);
+  width: min(100%, 30rem);
+  padding: var(--x8);
+  background: var(--board);
+  border: var(--line) solid var(--outline);
+  border-radius: var(--radius-plate);
+}
+
+.symbol {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--x2);
+  background: var(--well);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-plate);
+  color: var(--accent);
+}
+
+.title {
+  font-size: clamp(1.7rem, 2vw + 1.2rem, 2.3rem);
+}
+
+.line {
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--x2);
+  margin-top: var(--x3);
+}

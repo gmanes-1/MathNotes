@@ -1,0 +1,608 @@
+import SwiftUI
+import SwiftData
+
+/// Where a link to another notebook was followed from, so the notebook it opened can offer the way back.
+struct NotebookReturn: Equatable {
+    let origin: UUID
+    let page: UUID
+    let title: String
+    let destination: UUID
+}
+
+/// What the first pane's editor is closing for: to go back to the library, or only to close its tab.
+enum EditorClosing { case library, tab }
+
+/// What the editors of one window share with the library behind them.
+@MainActor
+@Observable
+final class EditorWindow {
+    static let tabLimit = 12
+
+    var linkReturn: NotebookReturn?
+    /// The notebook open beside the first one, in the same window.
+    var beside: OpenNotebook?
+    /// The notebook of the pane last touched. Keyboard shortcuts go to it.
+    var active: UUID?
+    /// Where the first pane ends, as a fraction of the window.
+    var split: CGFloat = 0.5
+    /// The notebooks open in tabs, in the order of the tab bar. A notebook on its own is one tab, and shows no bar.
+    private(set) var tabs: [OpenNotebook] = []
+    /// The tab on show in the first pane. If the first pane was the one being worked in, it still is.
+    private(set) var selected: UUID? {
+        didSet { if let active, active != beside?.id { self.active = selected } }
+    }
+    /// The editor on show has put its bars away (focus, presenting, find): the tab bar goes with them.
+    var hidesChrome = false
+    var pickingTab = false
+    /// Set while everything is being saved on the way back to the library: tabs can't be changed meanwhile.
+    var isLeaving = false
+    @ObservationIgnored var closing = EditorClosing.library
+    /// The documents of the tabs looked at since the editor opened. They stay open while another tab is on show, so
+    /// a tab comes back with its undo history; all are saved and closed on the way back to the library.
+    @ObservationIgnored private(set) var documents: [UUID: NotebookDocument] = [:]
+    /// Shows another notebook, at a page if one is given: in a tab when there are tabs, and otherwise in place of
+    /// the editor that is open, once that has saved and closed.
+    @ObservationIgnored var openNotebook: ((UUID, UUID?) -> Void)?
+    /// The window's scene, as the registry knows it. Until it is known, no notebook counts as another window's.
+    @ObservationIgnored var scene: String?
+
+    /// Shows a notebook in the first pane: in its own tab if it has one, in a new tab otherwise.
+    func show(_ notebook: OpenNotebook) {
+        guard !isOpenElsewhere(notebook.id) else { return }
+        if notebook.id != selected { leaveTab() }
+        if let index = tabs.firstIndex(where: { $0.id == notebook.id }) {
+            tabs[index].pageID = notebook.pageID
+        } else {
+            tabs.append(notebook)
+            // Past the limit, the first tab that isn't open behind the bar makes room.
+            if tabs.count > Self.tabLimit, let waiting = tabs.firstIndex(where: { $0.id != notebook.id && documents[$0.id] == nil }) {
+                tabs.remove(at: waiting)
+            }
+        }
+        selected = notebook.id
+    }
+
+    func select(_ id: UUID) {
+        guard id != selected, tabs.contains(where: { $0.id == id }), !isOpenElsewhere(id) else { return }
+        leaveTab()
+        selected = id
+    }
+
+    /// One tab along the bar, coming round at the ends.
+    func step(_ delta: Int) {
+        letGoOfTabsOpenElsewhere()
+        guard tabs.count > 1, let index = tabs.firstIndex(where: { $0.id == selected }) else { return }
+        select(tabs[(index + delta + tabs.count) % tabs.count].id)
+    }
+
+    /// A tab that is left comes back at the page it was left on, not the page it was first opened at.
+    private func leaveTab() {
+        if let index = tabs.firstIndex(where: { $0.id == selected }) { tabs[index].pageID = nil }
+    }
+
+    /// Only a tab's document is kept: one that finishes opening after its tab has gone is its next editor's to hold.
+    func keep(_ document: NotebookDocument) {
+        guard tabs.contains(where: { $0.id == document.id }) else { return }
+        documents[document.id] = document
+    }
+
+    /// Lets go of a document its own editor has closed, or hands it over to be closed.
+    @discardableResult
+    func release(_ id: UUID) -> NotebookDocument? {
+        documents.removeValue(forKey: id)
+    }
+
+    /// Takes a tab off the bar. If it was the tab on show, the one that takes its place is shown.
+    func removeTab(_ id: UUID) {
+        if id == selected { letGoOfTabsOpenElsewhere() }
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        tabs.remove(at: index)
+        if selected == id { selected = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)].id }
+    }
+
+    /// Moves a tab to where another stands on the bar, which makes room for it. The tab on show stays on show.
+    @discardableResult
+    func moveTab(_ id: UUID, to index: Int) -> Bool {
+        guard let from = tabs.firstIndex(where: { $0.id == id }), from != index, tabs.indices.contains(index) else { return false }
+        tabs.insert(tabs.remove(at: from), at: index)
+        return true
+    }
+
+    /// Going back to the library: several tabs wait to be shown again, a notebook on its own doesn't.
+    /// Returns the documents still open, to be saved and closed.
+    func park() -> [NotebookDocument] {
+        let open = Array(documents.values)
+        documents = [:]
+        if tabs.count < 2 {
+            tabs = []
+            selected = nil
+        }
+        for index in tabs.indices { tabs[index].pageID = nil }
+        hidesChrome = false
+        pickingTab = false
+        isLeaving = false
+        closing = .library
+        return open
+    }
+
+    /// The tabs this window had when the app last ran.
+    func restore(_ notebooks: [OpenNotebook]) {
+        guard tabs.isEmpty, notebooks.count > 1 else { return }
+        tabs = Array(notebooks.prefix(Self.tabLimit))
+    }
+
+    /// Lets go of the tabs of notebooks that have left the library. The tab on show stays: its editor says what happened.
+    func keepTabs(where isPresent: (UUID) -> Bool) {
+        let kept = tabs.filter { $0.id == selected || isPresent($0.id) }
+        if kept.count != tabs.count { tabs = kept }
+    }
+
+    /// Whether another window has the notebook open. One editor writes each notebook, so it is never shown here.
+    func isOpenElsewhere(_ id: UUID) -> Bool {
+        scene.map { DocumentRegistry.shared.otherWindow(with: id, than: $0) != nil } ?? false
+    }
+
+    /// Lets go of the tabs of notebooks another window has opened since they were on show here: the notebook is that window's now.
+    func letGoOfTabsOpenElsewhere() {
+        keepTabs { !isOpenElsewhere($0) }
+    }
+
+    /// A notebook another window has open is shown there, at the page if one is given: that window comes forward, and this one lets go of the tab that waited for it.
+    func goesToItsWindow(_ id: UUID, page: UUID? = nil) -> Bool {
+        guard let scene, DocumentRegistry.shared.activateExistingEditor(for: id, page: page, from: scene) else { return false }
+        if linkReturn?.destination == id { linkReturn = nil }
+        letGoOfTabsOpenElsewhere()
+        return true
+    }
+}
+
+/// Whether an editor has the window to itself or shares it.
+enum EditorPaneRole { case single, primary, secondary }
+
+extension EnvironmentValues {
+    @Entry var editorPane = EditorPaneRole.single
+}
+
+/// The window's editor, or two side by side (one above the other when the window is taller than it is wide),
+/// under a bar of tabs when several notebooks are open. Going back to the library from the first closes
+/// everything; the second has its own Close, and each tab its own.
+struct EditorPanes: View {
+    let primary: OpenNotebook
+    let sceneID: String?
+    let onClose: () -> Void
+    @Environment(EditorWindow.self) private var window
+    @Environment(LibraryStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var size = CGSize.zero
+    @State private var dragOrigin: CGFloat?
+    @State private var leaving: OpenNotebook?
+
+    static let dividerWidth: CGFloat = 14
+    /// Narrower than this a pane's bar keeps to the essentials, and a window has no room for a second pane.
+    static let narrowWidth: CGFloat = 620
+    /// `-splitSideBySide` lets a test see the narrow panes of a landscape window while the simulator stays upright.
+    private var stacked: Bool {
+        #if DEBUG
+        if LaunchOptions.arguments.contains("-splitSideBySide") { return false }
+        #endif
+        return size.height > size.width
+    }
+
+    /// The tab on show; a notebook on its own is the one the library opened. On the way out it is still the notebook that was on show.
+    private var current: OpenNotebook { leaving ?? window.tabs.first { $0.id == window.selected } ?? primary }
+
+    private var showsTabs: Bool { window.tabs.count > 1 && !window.hidesChrome }
+
+    /// A tab can move beside the first pane wherever the title menu would offer to open a notebook there.
+    private var hasRoomBeside: Bool { window.beside == nil && sizeClass != .compact && size.width >= Self.narrowWidth }
+
+    var body: some View {
+        @Bindable var window = window
+        VStack(spacing: 0) {
+            if showsTabs {
+                TabStrip(select: selectTab, close: closeTab, closeOthers: closeOtherTabs, openBeside: hasRoomBeside ? { openBeside($0) } : nil)
+                    .disabled(window.isLeaving)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            panes
+        }
+        .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: showsTabs)
+        .background(Color.desk.ignoresSafeArea())
+        .sheet(isPresented: $window.pickingTab) {
+            BesidePicker(current: current.id, title: "Open in a Tab", exclude: Set(window.tabs.map(\.id) + (window.beside.map { [$0.id] } ?? [])),
+                         emptyMessage: "Every other notebook is already open.") { id in
+                guard !window.goesToItsWindow(id) else { return }
+                window.show(OpenNotebook(id: id))
+                window.active = id
+            }
+            .presentationCornerRadius(Radius.sheet)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .mathNotesSelectTab)) { note in
+            guard let id = note.object as? UUID, id != window.beside?.id, !window.isLeaving else { return }
+            window.select(id)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)) { note in
+            guard (note.object as? UIScene)?.session.persistentIdentifier == sceneID else { return }
+            let shown = current.id
+            putAway(park().filter { $0.id != shown })
+        }
+    }
+
+    private var panes: some View {
+        let split = window.beside != nil && size != .zero
+        let length = ((stacked ? size.height : size.width) - Self.dividerWidth) * window.split
+        let current = current
+        return (stacked ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))) {
+            EditorScreen(notebookID: current.id, initialPageID: current.pageID, sceneID: sceneID, beforeClose: beforeClose) { closed(current.id) }
+                .id(current.id)
+                .environment(\.editorPane, window.beside == nil ? .single : .primary)
+                .frame(width: split && !stacked ? length : nil, height: split && stacked ? length : nil)
+            if let beside = window.beside {
+                divider
+                EditorScreen(notebookID: beside.id, initialPageID: beside.pageID, sceneID: sceneID) {
+                    window.beside = nil
+                    window.active = self.current.id
+                }
+                .id(beside.id)
+                .environment(\.editorPane, .secondary)
+            }
+        }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
+    }
+
+    // MARK: Tabs
+
+    private func selectTab(_ id: UUID) {
+        if !window.goesToItsWindow(id) { window.select(id) }
+    }
+
+    /// The tab on show is closed by its own editor, which can say so if saving fails; one behind the bar is saved
+    /// and closed here.
+    private func closeTab(_ id: UUID) {
+        guard window.tabs.count > 1, !window.isLeaving else { return }
+        if id == current.id {
+            // With no other tab this window can show, closing the one on show is going back to the library.
+            window.letGoOfTabsOpenElsewhere()
+            window.closing = window.tabs.count > 1 ? .tab : .library
+            NotificationCenter.default.post(name: .mathNotesCloseEditor, object: id)
+        } else {
+            window.removeTab(id)
+            putAway(window.release(id).map { [$0] } ?? [])
+        }
+    }
+
+    /// Every tab but one goes: those behind the bar at once, and the one on show, if it isn't the one staying, by its own editor.
+    private func closeOtherTabs(_ id: UUID) {
+        guard !window.goesToItsWindow(id) else { return }
+        let shown = current.id
+        for tab in window.tabs where tab.id != id && tab.id != shown { closeTab(tab.id) }
+        if shown != id { closeTab(shown) }
+    }
+
+    /// A tab leaves the bar for the pane beside the first. Its document, if it is open, goes with it, undo history and all.
+    private func openBeside(_ id: UUID) {
+        guard !window.goesToItsWindow(id) else { return }
+        window.letGoOfTabsOpenElsewhere()
+        guard window.beside == nil, window.tabs.count > 1, !window.isLeaving else { return }
+        window.removeTab(id)
+        window.beside = OpenNotebook(id: id)
+        window.active = id
+    }
+
+    private func putAway(_ documents: [NotebookDocument]) {
+        for document in documents { Task { await EditorScreen.putAway(document, store: store) } }
+    }
+
+    /// On the way back to the library the notebook beside this one and the tabs behind the bar are saved and closed first.
+    private func beforeClose() async -> Bool {
+        guard window.closing == .library else { return true }
+        window.isLeaving = true
+        guard await closeBeside() else {
+            window.isLeaving = false
+            return false
+        }
+        let shown = current.id
+        for document in window.documents.values where document.id != shown {
+            await EditorScreen.putAway(document, store: store)
+            window.release(document.id)
+        }
+        return true
+    }
+
+    /// The editor on show has saved and closed: its tab goes, or the whole editor does.
+    private func closed(_ id: UUID) {
+        let closing = window.closing
+        window.closing = .library
+        window.release(id)
+        window.letGoOfTabsOpenElsewhere()
+        if closing == .tab, window.tabs.count > 1 { return window.removeTab(id) }
+        // A notebook still beside was never asked to close: the editor is leaving some other way than Back to Library.
+        if let beside = window.beside, let document = DocumentRegistry.shared.document(for: beside.id) { putAway([document]) }
+        putAway(park())
+        onClose()
+    }
+
+    /// Parks the tabs with the pane still on the notebook it showed; with a lone tab forgotten it would turn to the one the library first opened.
+    private func park() -> [NotebookDocument] {
+        leaving = current
+        return window.park()
+    }
+
+    private var divider: some View {
+        Color.desk
+            .frame(width: stacked ? nil : Self.dividerWidth, height: stacked ? Self.dividerWidth : nil)
+            .overlay { Rectangle().fill(Color.hairline).frame(width: stacked ? nil : 1, height: stacked ? 1 : nil) }
+            .overlay { RoundedRectangle(cornerRadius: 1.5).fill(Color.textSecondary).frame(width: stacked ? 40 : 5, height: stacked ? 5 : 40) }
+            .ignoresSafeArea()
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .global)
+                .onChanged { value in
+                    let start = dragOrigin ?? window.split
+                    dragOrigin = start
+                    let total = max(stacked ? size.height : size.width, 1)
+                    window.split = min(max(start + (stacked ? value.translation.height : value.translation.width) / total, 0.3), 0.7)
+                }
+                .onEnded { _ in dragOrigin = nil })
+            .accessibilityHidden(true)
+            // VoiceOver's handle is a full-size target laid over the strip; it takes no touches, so the panes' edges stay theirs.
+            .overlay {
+                Color.clear
+                    .frame(minWidth: 44, minHeight: 44)
+                    .allowsHitTesting(false)
+                    .accessibilityElement()
+                    .accessibilityLabel(Text("Divider between the notebooks"))
+                    .accessibilityValue(Text(window.split, format: .percent.precision(.fractionLength(0))))
+                    .accessibilityAdjustableAction { direction in
+                        window.split = min(max(window.split + (direction == .increment ? 0.05 : -0.05), 0.3), 0.7)
+                    }
+                    .accessibilityIdentifier("editor.split.divider")
+            }
+    }
+
+    /// The first notebook only closes once the one beside it has saved and closed.
+    private func closeBeside() async -> Bool {
+        guard let beside = window.beside else { return true }
+        NotificationCenter.default.post(name: .mathNotesCloseEditor, object: beside.id)
+        for _ in 0..<100 where window.beside != nil { try? await Task.sleep(for: .milliseconds(100)) }
+        return window.beside == nil
+    }
+}
+
+/// Chooses the notebook to open beside the one being written in, or in a tab.
+struct BesidePicker: View {
+    let current: UUID
+    var title: LocalizedStringKey = "Open Beside"
+    /// Notebooks that are already open in this window in some other way.
+    var exclude: Set<UUID> = []
+    var emptyMessage: LocalizedStringKey = "Once you have another notebook, you can open it beside this one."
+    let pick: (UUID) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Query(filter: #Predicate<NotebookRecord> { $0.deletedAt == nil }, sort: \NotebookRecord.title) private var records: [NotebookRecord]
+
+    var body: some View {
+        // A notebook open in another window stays there: one editor writes each notebook.
+        let others = records.filter {
+            $0.id != current && !exclude.contains($0.id) && DocumentRegistry.shared.document(for: $0.id) == nil && !DocumentRegistry.shared.isOpening($0.id)
+        }
+        NavigationStack {
+            Ledger {
+                ForEach(others) { record in
+                    Button {
+                        pick(record.id)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: Space.x4) {
+                            RecordCover(record: record, width: CoverWidth.row, showsShadow: false).frame(width: 40)
+                            VStack(alignment: .leading, spacing: Space.x1) {
+                                Text(record.title).font(.headline).foregroundStyle(Color.ink)
+                                Text("\(record.pageCount) pages")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color.textSecondary)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("beside.notebook.\(record.title)")
+                }
+            }
+            .background(Color.desk)
+            .overlay {
+                if others.isEmpty {
+                    EmptyPlate("No Other Notebooks", systemImage: "books.vertical", message: Text(emptyMessage))
+                }
+            }
+            .navigationTitle(title)
+            .barGround(.desk)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.buttonStyle(.mathNotes(.secondary, inBar: true))
+                }
+                .boardBackground()
+            }
+        }
+    }
+}
+
+/// Opens a notebook's document and hosts the editor. One per notebook across windows: a second gives way.
+struct EditorScreen: View {
+    let notebookID: UUID
+    var initialPageID: UUID?
+    let sceneID: String?
+    /// Asked before closing; returning false leaves the editor open.
+    var beforeClose: (() async -> Bool)?
+    let onClose: () -> Void
+
+    @Environment(LibraryStore.self) private var store
+    @Environment(WritingActivity.self) private var activity
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.editorPane) private var pane
+    @Environment(EditorWindow.self) private var window: EditorWindow?
+    @State private var document: NotebookDocument?
+    @State private var failure: String?
+    @State private var isClosing = false
+    @State private var unsavedReason: String?
+    @State private var lock = NotebookLock.shared
+    @State private var askedToUnlock = false
+    /// The page on show when a sync set the document aside, which the newer version opens at.
+    @State private var reopenAt: UUID?
+
+    /// A locked notebook is covered until it is unlocked, and whenever the app isn't in front, so it never shows in the app switcher.
+    private func isCovered(_ document: NotebookDocument) -> Bool {
+        document.manifest.library.isLocked && (!lock.isUnlocked(notebookID) || scenePhase != .active)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.desk.ignoresSafeArea()
+            if let document {
+                let covered = isCovered(document)
+                EditorView(document: document, initialPageID: reopenAt ?? initialPageID, isCovered: covered, close: close)
+                    .id(ObjectIdentifier(document))
+                    .disabled(covered)
+                    .accessibilityHidden(covered)
+                if covered {
+                    LockedNotebookView(title: document.title, closeTitle: pane == .secondary ? "Close" : "Back to Library", unlock: { unlock(document) }) {
+                        if pane != .secondary { window?.closing = .library }
+                        close()
+                    }
+                        .task(id: scenePhase) {
+                            guard scenePhase == .active, !askedToUnlock, !lock.isUnlocked(notebookID) else { return }
+                            askedToUnlock = true
+                            unlock(document)
+                        }
+                }
+            } else if let failure {
+                EmptyShelf(title: String(localized: "This notebook couldn't be opened"), message: failure) {
+                    Button("Back to Library", action: onClose).buttonStyle(.mathNotes(.primary))
+                }
+            } else {
+                ProgressView().controlSize(.large)
+            }
+        }
+        .task(id: notebookID) { await open() }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .background else { return }
+            // Nothing is recorded behind another app, or behind a notebook's lock.
+            document?.recorder?.stopRecording()
+            lock.lock(notebookID)
+            askedToUnlock = false
+        }
+        .onDisappear { lock.lock(notebookID) }
+        .onReceive(NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)) { note in
+            guard (note.object as? UIScene)?.session.persistentIdentifier == sceneID else { return }
+            closeWithWindow()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .mathNotesCloseEditor)) { note in
+            guard (note.object as? UUID) == notebookID else { return }
+            guard let document else { return onClose() }
+            document.recorder?.shutdown()
+            close()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .mathNotesReopenNotebook)) { note in
+            guard (note.object as? UUID) == notebookID, let document, document.isSetAside, !isClosing else { return }
+            let page = document.manifest.library.currentPage
+            reopenAt = document.pages.indices.contains(page) ? document.pages[page].id : nil
+            self.document = nil
+            Task { await open() }
+        }
+        .notice("Your latest changes aren't saved yet", isPresented: Binding(get: { unsavedReason != nil }, set: { if !$0 { unsavedReason = nil } }),
+                message: Text("MathNotes couldn't write to this device: \(unsavedReason ?? ""). If you close now, it keeps trying in the background, but changes that haven't been saved are lost if the app quits first.")) {
+            Button("Keep Editing", role: .cancel) {}
+            Button("Close Anyway", role: .destructive) { closeWhileSaving() }
+            Button("Try Again") { close() }
+        }
+    }
+
+    private func unlock(_ document: NotebookDocument) {
+        Task { await lock.unlock(notebookID, title: document.title) }
+    }
+
+    private func open() async {
+        // One editor writes each notebook: a pane that would be a second gives way, and the window that has the notebook comes forward.
+        if let window, window.isOpenElsewhere(notebookID) {
+            // A pane the window has already turned from closes nothing.
+            guard (pane == .secondary ? window.beside?.id : window.selected) == notebookID else { return }
+            _ = window.goesToItsWindow(notebookID, page: initialPageID)
+            if pane != .secondary { window.closing = .tab }
+            return onClose()
+        }
+        do {
+            let opened = try await DocumentRegistry.shared.open(notebookID, root: store.root, scene: sceneID) { [weak store, weak activity] document in
+                let id = document.id
+                document.onSaved = { manifest in store?.index(manifest) }
+                document.onInkSaved = { pages, date in activity?.record(notebook: id, pages: pages, at: date) }
+                store?.reapplyChangesInFlight(to: document)
+            }
+            opened.noteOpened()
+            document = opened
+            // A tab's document stays open behind the bar; one that came with a tab moved beside is this pane's to hold from here.
+            if pane == .secondary { window?.release(notebookID) } else { window?.keep(opened) }
+        } catch {
+            failure = error.localizedDescription
+        }
+    }
+
+    /// Waits for imports, then saves. The editor only goes away once everything is on disk, or the user
+    /// chooses to close while saving keeps failing.
+    private func close() {
+        guard let document, !isClosing else { return }
+        isClosing = true
+        Task {
+            if let beforeClose, !(await beforeClose()) {
+                isClosing = false
+                return
+            }
+            await document.finishPendingWork()
+            guard await document.flush() else {
+                isClosing = false
+                if pane != .secondary { window?.isLeaving = false }
+                unsavedReason = document.saveFailureReason ?? String(localized: "the save didn't finish")
+                return
+            }
+            await document.collectGarbage()
+            store.index(document.manifest)
+            DocumentRegistry.shared.unregister(notebookID, document: document)
+            onClose()
+            store.indexHandwriting(package: document.package, pages: document.pages)
+        }
+    }
+
+    /// The window went away with the editor still open: no UI to ask with, so save, and keep retrying if that fails.
+    private func closeWithWindow() {
+        guard let document, !isClosing else { return }
+        isClosing = true
+        Task { await Self.putAway(document, store: store) }
+    }
+
+    /// Saves and closes a document without an editor to ask with: a tab behind the bar, or a window that went away.
+    /// One that can't be saved is kept, and retried, until it can.
+    static func putAway(_ document: NotebookDocument, store: LibraryStore) async {
+        // One a sync set aside has nothing to save, and the files are the newer version's now.
+        guard !document.isSetAside else { return }
+        document.recorder?.shutdown()
+        await document.finishPendingWork()
+        if await document.flush() {
+            await document.collectGarbage()
+            store.index(document.manifest)
+            store.indexHandwriting(package: document.package, pages: document.pages)
+            DocumentRegistry.shared.unregister(document.id, document: document)
+        } else {
+            DocumentRegistry.shared.keepUntilSaved(document) { [weak store] in
+                store?.index(document.manifest)
+                store?.indexHandwriting(package: document.package, pages: document.pages)
+                Task { await document.collectGarbage() }
+            }
+        }
+    }
+
+    private func closeWhileSaving() {
+        guard let document else { return onClose() }
+        DocumentRegistry.shared.keepUntilSaved(document) { [weak store] in
+            store?.index(document.manifest)
+            store?.indexHandwriting(package: document.package, pages: document.pages)
+            Task { await document.collectGarbage() }
+        }
+        onClose()
+    }
+}

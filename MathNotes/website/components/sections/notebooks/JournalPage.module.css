@@ -1,0 +1,98 @@
+.page {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+.paper {
+  --pitch: 5.2cqw;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--pitch) * 1.1);
+  height: 100%;
+  padding: calc(var(--pitch) * 1.5) calc(var(--pitch) * 1.5) 0 calc(var(--pitch) * 2);
+  background-color: #fdf9ec;
+  background-image: radial-gradient(circle at center, rgb(104 142 194 / 0.95) 0 1px, transparent 1.5px);
+  background-size: var(--pitch) var(--pitch);
+  background-position: calc(var(--pitch) / 2) calc(var(--pitch) / 2);
+}
+
+.masthead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6cqw;
+  margin-inline: calc(var(--pitch) * -0.5);
+  padding: calc(var(--pitch) * 0.5);
+  background: #fdf9ec;
+  color: rgb(27 34 48 / 0.8);
+}
+
+.first {
+  display: flex;
+  align-items: center;
+  gap: 3cqw;
+}
+
+.weekday,
+.count {
+  flex: none;
+  font-size: clamp(9px, 3.9cqw, 12px);
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.weekday {
+  font-weight: 700;
+}
+
+.count {
+  font-weight: 500;
+  color: rgb(27 34 48 / 0.7);
+}
+
+.rule {
+  flex: 1;
+  height: 1px;
+  background: rgb(27 34 48 / 0.26);
+}
+
+.riser {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.12em;
+}
+
+.date {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-optical-sizing: auto;
+  font-variation-settings: 'SOFT' 50, 'WONK' 1;
+  font-size: clamp(17px, 9.6cqw, 30px);
+  line-height: 1.12;
+  letter-spacing: -0.008em;
+  white-space: nowrap;
+}
+
+.ink {
+  flex: none;
+  width: 100%;
+  overflow: visible;
+}
+
+.ink path {
+  fill: none;
+  stroke: #1b2230;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (prefers-contrast: more) {
+  .paper {
+    background-image: none;
+  }
+}

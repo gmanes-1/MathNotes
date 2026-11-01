@@ -1,0 +1,190 @@
+.svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.label {
+  font-family: var(--font-text);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  fill: var(--ink);
+}
+
+.labelPaper {
+  fill: var(--paper);
+}
+
+.labelOnTomato {
+  fill: var(--on-tomato);
+}
+
+.pen {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hand {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.page {
+  fill: var(--card-white);
+}
+
+.axis {
+  fill: none;
+  stroke: var(--rule);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.curve {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.laser {
+  fill: none;
+  stroke: var(--tomato);
+  stroke-linecap: round;
+  stroke-dasharray: calc(var(--len) * 1px) calc(100px - var(--len) * 1px);
+  stroke-dashoffset: calc(var(--len) * 1px);
+  animation: lap 2.5s linear 2;
+}
+
+.svg[data-waiting] .laser {
+  animation: none;
+}
+
+:global(html[data-still]) .laser {
+  animation-play-state: paused;
+}
+
+.laserCore {
+  stroke: #ffffff;
+}
+
+@keyframes lap {
+  to {
+    stroke-dashoffset: calc(var(--len) * 1px - 100px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .laser {
+    animation: none;
+    stroke-dashoffset: calc(var(--len) * 1px - 12px);
+  }
+}
+
+.sheet {
+  fill: var(--card-white);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.ledge {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3;
+}
+
+.day {
+  font-family: var(--font-text);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--ink);
+  opacity: 0.72;
+}
+
+.today {
+  font-weight: 900;
+  opacity: 1;
+}
+
+.todayRule {
+  fill: var(--ink);
+}
+
+.widget {
+  fill: var(--board);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.leafHead {
+  fill: var(--ink);
+}
+
+.leafWeekday {
+  font-family: var(--font-text);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  fill: var(--paper);
+}
+
+.leafDay {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 600;
+  font-variant-numeric: lining-nums tabular-nums;
+  fill: var(--ink);
+}
+
+.leafMonth {
+  font-family: var(--font-text);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  fill: var(--ink-secondary);
+}
+
+.leafDone {
+  font-family: var(--font-text);
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.tick {
+  fill: none;
+  stroke: var(--tomato);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.glyph {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.glyphPencil {
+  fill: var(--board);
+}
+
+.widgetName {
+  font-family: var(--font-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--ink);
+}

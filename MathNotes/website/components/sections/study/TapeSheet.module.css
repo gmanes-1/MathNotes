@@ -1,0 +1,109 @@
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--x3);
+}
+
+.title,
+.row {
+  display: flex;
+  align-items: flex-end;
+  height: var(--pitch);
+}
+
+.row {
+  gap: 0.62em;
+}
+
+.title {
+  font-size: 1.24em;
+}
+
+.heading {
+  position: relative;
+  display: inline-flex;
+}
+
+.underline {
+  position: absolute;
+  left: 0;
+  bottom: -0.06em;
+  color: var(--tomato);
+}
+
+.doodle {
+  position: absolute;
+  right: calc(var(--cap) * 1.1);
+  top: calc(var(--head) + var(--pitch) * 0.16);
+  width: calc(var(--cap) * 3.1);
+  height: auto;
+}
+
+.star {
+  color: var(--tomato);
+}
+
+@container (min-width: 480px) {
+  .doodle {
+    top: calc(var(--head) + var(--pitch) * 0.2);
+    width: calc(var(--cap) * 3.6);
+  }
+}
+
+.cover {
+  position: relative;
+  display: inline-flex;
+}
+
+.strip {
+  position: absolute;
+  left: -0.34em;
+  right: -0.34em;
+  top: 50%;
+  height: var(--pitch);
+  margin: calc(var(--pitch) / -2) 0 0;
+  padding: 0;
+  display: grid;
+  align-items: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.strip:focus-visible {
+  outline: none;
+}
+
+.band {
+  position: relative;
+  display: block;
+  height: 1.56em;
+  border-radius: var(--radius-thumb);
+}
+
+.strip:focus-visible .band {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.strip .fill {
+  width: 100%;
+  height: 100%;
+}
+
+.phases {
+  width: calc(142em / 21);
+  height: calc(22em / 21);
+  margin: 0 0 0.26em 0.1em;
+}
+
+.caption {
+  padding-left: var(--x1);
+}

@@ -1,0 +1,47 @@
+.stamp {
+  display: flex;
+  background: var(--board);
+  border: var(--line) solid var(--outline);
+  border-radius: var(--radius-plate);
+  overflow: hidden;
+}
+
+.edge {
+  flex: none;
+  width: 10px;
+  border-right: var(--line) solid var(--outline);
+}
+
+.mustard {
+  background-color: var(--mustard);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--x4) var(--x5);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.16rem;
+  line-height: 1.25;
+}
+
+.message {
+  margin-top: var(--x1);
+  color: var(--text-secondary);
+}
+
+.message a {
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--x2);
+  margin-top: var(--x4);
+}

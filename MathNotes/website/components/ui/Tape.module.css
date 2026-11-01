@@ -1,0 +1,39 @@
+.tape {
+  --tape: #e8b023;
+  --tape-deep: #b8860f;
+  display: block;
+  width: 200px;
+  height: 30px;
+  background-color: var(--tape);
+  background-image:
+    linear-gradient(to bottom, transparent 82%, rgb(0 0 0 / 0.12) 82%),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.28) 0 6px, transparent 6px 14px);
+  clip-path: polygon(
+    0 0, 100% 0,
+    calc(100% - 4px) 12.5%, 100% 25%, calc(100% - 4px) 37.5%, 100% 50%, calc(100% - 4px) 62.5%, 100% 75%, calc(100% - 4px) 87.5%, 100% 100%,
+    0 100%,
+    4px 87.5%, 0 75%, 4px 62.5%, 0 50%, 4px 37.5%, 0 25%, 4px 12.5%
+  );
+}
+
+.rose {
+  --tape: #e3a6a1;
+  --tape-deep: #b86f69;
+}
+
+.sage {
+  --tape: #a9bf9f;
+  --tape-deep: #6f8a64;
+}
+
+.sky {
+  --tape: #a4c4e0;
+  --tape-deep: #5f8db5;
+}
+
+.lifted {
+  background: color-mix(in srgb, var(--tape) 14%, transparent);
+  clip-path: none;
+  border: 1.5px dashed var(--tape-deep);
+  border-radius: 2px;
+}

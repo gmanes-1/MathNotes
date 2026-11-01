@@ -1,0 +1,94 @@
+.desk {
+  position: relative;
+  aspect-ratio: 4 / 10;
+  background-color: var(--desk);
+  background-image: radial-gradient(circle, var(--hairline) 1px, transparent 1.4px);
+  background-size: 18px 18px;
+  border: var(--line) solid var(--outline);
+  border-radius: var(--radius-plate);
+  overflow: hidden;
+}
+
+.spot {
+  position: absolute;
+  left: var(--nx);
+  top: var(--ny);
+  width: var(--nw);
+}
+
+.print {
+  padding: 3px;
+  background: var(--card-white);
+  border: 1px solid rgb(27 34 48 / 0.36);
+  border-radius: var(--radius-thumb);
+  box-shadow: 2px 2px 0 rgb(27 34 48 / 0.16);
+  cursor: zoom-in;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.image {
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.hint {
+  padding-top: var(--x3);
+  font-size: 0.9rem;
+  color: var(--ink-secondary);
+}
+
+.byMouse {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .print {
+    cursor: grab;
+  }
+
+  .print:active {
+    cursor: grabbing;
+  }
+
+  .byMouse {
+    display: inline;
+  }
+
+  .byTouch {
+    display: none;
+  }
+}
+
+@media (min-width: 560px) {
+  .desk {
+    aspect-ratio: 6 / 7;
+  }
+
+  .spot {
+    left: var(--mx);
+    top: var(--my);
+    width: var(--mw);
+  }
+
+  .print {
+    padding: 4px;
+  }
+}
+
+@media (min-width: 900px) {
+  .desk {
+    aspect-ratio: 8 / 5;
+  }
+
+  .spot {
+    left: var(--x);
+    top: var(--y);
+    width: var(--w);
+  }
+
+  .print {
+    padding: 5px;
+  }
+}

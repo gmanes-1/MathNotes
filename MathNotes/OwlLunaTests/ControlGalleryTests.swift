@@ -1,0 +1,175 @@
+import XCTest
+import SwiftUI
+@testable import OwlLuna
+
+private struct ControlGallery: View {
+    @State private var goTo = ""
+    @State private var search = ""
+    @State private var typed = "Physics"
+    @State private var tab = 0
+    @State private var style = 1
+    @State private var switchOn = true
+    @State private var switchOff = false
+    @FocusState private var goFocus: Bool
+    @FocusState private var searchFocus: Bool
+    @FocusState private var typedFocus: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            caption("Page navigator, on Desk")
+            HStack(spacing: Space.x3) {
+                MathNotesSearchField("Go to page", text: $goTo, systemImage: "number", focus: $goFocus).frame(width: 170)
+                Spacer()
+                MathNotesSegmentedPicker("Show", selection: $tab, options: [0, 1], inBar: true) { Text($0 == 0 ? "Pages" : "Outline") }.fixedSize()
+                Spacer()
+                Button { } label: { Label("Add Page", systemImage: "plus") }.buttonStyle(.plateIcon)
+                Button("Done") { }.buttonStyle(.mathNotes(.primary, inBar: true))
+            }
+            .padding(Space.x4)
+            .background(Color.desk)
+
+            caption("Library toolbar, on Paper")
+            HStack(spacing: Space.x3) {
+                Spacer()
+                HStack(spacing: Space.x2) {
+                    Button { } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                    Button("Select") { }
+                    Button { } label: { Label("New", systemImage: "plus") }.buttonStyle(.mathNotes(.primary, inBar: true))
+                }
+                .buttonStyle(.mathNotes(.secondary, inBar: true))
+                .labelStyle(.titleAndIcon)
+                MathNotesSearchField("Search", text: $search, focus: $searchFocus).frame(width: 260)
+            }
+            .padding(Space.x4)
+            .background(Color.paper)
+
+            caption("Editor bar, on Desk")
+            HStack(spacing: Space.x3) {
+                Button { } label: { Label("Library", systemImage: "chevron.backward") }.buttonStyle(.plateIcon)
+                Spacer()
+                Text("Physics II 3").font(.headline).foregroundStyle(Color.ink)
+                Spacer()
+                BarGroup {
+                    Button { } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                    Button { } label: { Label("Redo", systemImage: "arrow.uturn.forward") }.disabled(true)
+                }
+                BarGroup {
+                    Button { } label: { Label("Add", systemImage: "plus") }
+                    Button { } label: { Label("Record", systemImage: "mic") }
+                    Button { } label: { Label("Recordings", systemImage: "waveform") }
+                    Button { } label: { Label("Tools", systemImage: "pencil.tip.crop.circle") }
+                    Button { } label: { Label("More", systemImage: "ellipsis.circle") }
+                }
+            }
+            .padding(Space.x4)
+            .background(Color.desk)
+
+            caption("Sheet, on Surface")
+            VStack(alignment: .leading, spacing: Space.x4) {
+                HStack {
+                    Button("Cancel") { }.buttonStyle(.mathNotes(.secondary, inBar: true))
+                    Spacer()
+                    Text("New Notebook").font(.headline).foregroundStyle(Color.ink)
+                    Spacer()
+                    Button("Create") { }.buttonStyle(.mathNotes(.primary, inBar: true))
+                }
+                TextField("Title", text: $typed).mathNotesField(focused: true)
+                TextField("Name", text: .constant(""), prompt: Text("Optional").foregroundStyle(Color.textSecondary)).mathNotesField()
+                MathNotesSegmentedPicker("Cover", selection: $style, options: [0, 1, 2]) { Text(["Cloth", "Print", "First Page"][$0]) }
+                HStack(spacing: Space.x3) {
+                    Button("New Notebook") { }.buttonStyle(.mathNotes(.primary))
+                    Button("Import PDF") { }.buttonStyle(.mathNotes)
+                    Button { } label: { Label("Stop", systemImage: "stop.fill") }.buttonStyle(.mathNotes(.destructive))
+                    Button("Disabled") { }.buttonStyle(.mathNotes(.primary)).disabled(true)
+                    Button("Disabled") { }.buttonStyle(.mathNotes).disabled(true)
+                }
+                HStack(spacing: Space.x8) {
+                    Toggle("On", isOn: $switchOn)
+                    Toggle("Off", isOn: $switchOff)
+                    Toggle("Disabled", isOn: .constant(true)).disabled(true)
+                    Toggle("Disabled", isOn: .constant(false)).disabled(true)
+                }
+                .toggleStyle(.mathNotes)
+            }
+            .padding(Space.x4)
+            .background(Color.surface)
+
+            caption("Ledger, progress and nothing here, on Surface")
+            HStack(alignment: .top, spacing: Space.x4) {
+                Ledger {
+                    Section("Recordings") {
+                        Text("Recording 1").foregroundStyle(Color.ink)
+                        Button { } label: { Text("Recording 2").foregroundStyle(Color.ink) }
+                            .ledgerSwipe { Button(role: .destructive) { } label: { Label("Delete", systemImage: "trash") } }
+                    }
+                }
+                .frame(width: 260, height: 150)
+                VStack(alignment: .leading, spacing: Space.x5) {
+                    ProgressView(value: 0.62) { Text("Exporting…").foregroundStyle(Color.ink) } currentValueLabel: {
+                        Text("62%").foregroundStyle(Color.textSecondary)
+                    }
+                    ProgressView { Text("Reading your handwriting…").foregroundStyle(Color.ink) }
+                    ProgressView()
+                }
+                .progressViewStyle(.thread)
+                .frame(width: 220)
+                .padding(.top, Space.x4)
+                EmptyPlate("No Recordings", systemImage: "waveform", message: Text("Tap the microphone to record alongside your notes."))
+            }
+            .background(Color.surface)
+
+            caption("Floating find bar, over paper")
+            HStack(spacing: 0) {
+                MathNotesSearchField("Find in Notebook", text: .constant("mitosis"), focus: $typedFocus).frame(width: 240)
+                Text("3 of 12").font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(Color.ink).padding(.horizontal, Space.x3)
+                Button { } label: { Label("Previous", systemImage: "chevron.up") }
+                Button { } label: { Label("Next", systemImage: "chevron.down") }
+                Button("Done") { }.buttonStyle(.mathNotes(.primary, compact: true, inBar: true)).padding(.leading, Space.x2)
+            }
+            .buttonStyle(.barIcon)
+            .padding(.horizontal, Space.x2)
+            .padding(.vertical, Space.x1)
+            .board(in: RoundedRectangle.bar)
+            .frame(maxWidth: .infinity)
+            .padding(Space.x6)
+            .background(Color.white)
+        }
+        .frame(width: 900)
+    }
+
+    private func caption(_ text: String) -> some View {
+        Text(text).font(.caption.weight(.semibold)).foregroundStyle(Color.textSecondary)
+            .padding(.horizontal, Space.x4).padding(.vertical, Space.x2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(white: 0.5).opacity(0.25))
+    }
+}
+
+@MainActor
+final class ControlGalleryTests: XCTestCase {
+    func testRenderGallery() async throws {
+        guard let out = ProcessInfo.processInfo.environment["GALLERY_OUT"] else { throw XCTSkip("Set GALLERY_OUT to render the control gallery") }
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        for (name, style, contrast) in [("light", UIUserInterfaceStyle.light, UIAccessibilityContrast.normal), ("dark", .dark, .normal),
+                                        ("light-hc", .light, .high), ("dark-hc", .dark, .high)] {
+            let host = UIHostingController(rootView: ControlGallery())
+            host.traitOverrides.userInterfaceStyle = style
+            host.traitOverrides.accessibilityContrast = contrast
+            let size = host.sizeThatFits(in: CGSize(width: 900, height: 2000))
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(origin: .zero, size: size)
+            window.rootViewController = host
+            window.isHidden = false
+            window.layoutIfNeeded()
+            CATransaction.flush()
+            try await Task.sleep(for: .milliseconds(600))
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 2
+            let image = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }
+            try image.pngData()?.write(to: URL(fileURLWithPath: out).appendingPathComponent("gallery-\(name).png"))
+            window.isHidden = true
+        }
+    }
+}

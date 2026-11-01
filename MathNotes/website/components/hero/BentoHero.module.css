@@ -1,0 +1,522 @@
+.stage {
+  --gap: clamp(8px, 1.1vw, 16px);
+  --edge: clamp(2px, 0.26vw, 3.5px);
+  --corner: clamp(5px, 0.7vw, 10px);
+  --label-size: clamp(9.5px, 0.95vw, 13.5px);
+  --ground: var(--paper);
+  container-type: inline-size;
+  max-width: 1760px;
+  margin-inline: auto;
+  padding: var(--gap);
+  overflow-x: clip;
+}
+
+/* Without scripts after three seconds, the finished scene is shown still. */
+.stage:not([data-ready]) [data-tile],
+.stage:not([data-ready]) [data-tile] [style] {
+  animation: still 0.01s 3s forwards;
+}
+
+@keyframes still {
+  to {
+    transform: none;
+    opacity: 1;
+    stroke-dasharray: none;
+    clip-path: none;
+  }
+}
+
+.board {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(12, minmax(0, 1fr));
+  height: clamp(720px, calc(100svh - var(--nav-height) - var(--gap) * 2), 900px);
+}
+
+.cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.owlCell {
+  grid-column: 1 / 5;
+  grid-row: 1 / 9;
+}
+
+.pitchCell {
+  grid-column: 5 / 10;
+  grid-row: 1 / 7;
+}
+
+.moonCell {
+  grid-column: 10 / 13;
+  grid-row: 1 / 3;
+}
+
+.cardsCell {
+  grid-column: 10 / 13;
+  grid-row: 3 / 7;
+}
+
+.volumeCell {
+  grid-column: 5 / 7;
+  grid-row: 7 / 9;
+  z-index: 2;
+}
+
+.pitchCell,
+.owlCell,
+.wordCell {
+  z-index: 1;
+}
+
+.tickerCell {
+  grid-column: 7 / 13;
+  grid-row: 7 / 9;
+}
+
+.wordCell {
+  grid-column: 1 / 9;
+  grid-row: 9 / 13;
+}
+
+.noteCell {
+  grid-column: 9 / 13;
+  grid-row: 9 / 13;
+}
+
+.peel {
+  width: 100%;
+  height: 100%;
+}
+
+.tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  container-type: size;
+  overflow: hidden;
+  border: var(--edge) solid var(--outline);
+  border-radius: var(--corner);
+}
+
+.pitchTile {
+  container-type: inline-size;
+}
+
+.moonFill {
+  background: #f4de3c;
+}
+
+.boardFill {
+  background: #faf7f0;
+}
+
+.inkFill {
+  background: #1b2230;
+}
+
+.tomatoFill {
+  background: #c9452f;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.label {
+  position: absolute;
+  font-size: var(--label-size);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #1b2230;
+}
+
+.labelLead {
+  left: calc(var(--label-size) * 1.45);
+  top: calc(var(--label-size) * 1.45);
+}
+
+.riser {
+  display: inline-block;
+  overflow: hidden;
+  padding-top: 0.1em;
+  margin-top: -0.1em;
+}
+
+.riser > span {
+  display: inline-block;
+}
+
+/* Owl */
+
+.owl {
+  position: absolute;
+  inset: 0;
+}
+
+.perch {
+  --scale: min(calc(100cqw / 360), calc(100cqh / 400));
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--scale) * 20);
+  height: calc(var(--scale) * 8);
+  background: #1b2230;
+}
+
+/* Note page */
+
+.note {
+  --pitch: min(11.6cqh, 11.3cqw);
+  position: absolute;
+  inset: 0;
+}
+
+.noteRules {
+  position: absolute;
+  inset: calc(var(--pitch) * 1.9) 0 0;
+  background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--pitch) - 1.5px), #d6cfbe calc(var(--pitch) - 1.5px) var(--pitch));
+}
+
+.noteHeader {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--pitch) * 1.9 - var(--edge) * 1.2);
+  height: calc(var(--edge) * 1.2);
+  background: #1b2230;
+}
+
+.noteMargin {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--pitch) * 1.5);
+  width: calc(var(--edge) * 0.9);
+  background: #c9452f;
+}
+
+.noteHole {
+  position: absolute;
+  left: calc(var(--pitch) * 0.47);
+  width: calc(var(--pitch) * 0.56);
+  height: calc(var(--pitch) * 0.56);
+  margin-top: calc(var(--pitch) * -0.28);
+  border: calc(var(--edge) * 0.85) solid #1b2230;
+  border-radius: 50%;
+  background: var(--ground);
+}
+
+.noteHole0 {
+  top: calc(var(--pitch) * 0.95);
+}
+
+.noteHole1 {
+  top: 50%;
+}
+
+.noteHole2 {
+  top: calc(100% - var(--pitch) * 0.95);
+}
+
+.noteLabelLead {
+  left: calc(var(--pitch) * 1.95);
+  top: calc(var(--pitch) * 0.95 - var(--label-size) / 2);
+}
+
+.noteLabelTrail {
+  right: calc(var(--label-size) * 1.3);
+  top: calc(var(--pitch) * 0.95 - var(--label-size) / 2);
+}
+
+.noteInk {
+  position: absolute;
+  left: calc(var(--pitch) * 1.95);
+  top: calc(var(--pitch) * 1.9);
+  width: calc(var(--pitch) * 6.6);
+  height: calc(var(--pitch) * 6);
+  overflow: visible;
+}
+
+/* Cards */
+
+.stampWord {
+  font-family: var(--font-poster);
+  font-weight: 900;
+  font-stretch: 62%;
+  font-size: 34.5px;
+}
+
+/* Volume */
+
+.volume {
+  position: absolute;
+  inset: 0;
+}
+
+.volumeLabel {
+  left: calc(var(--label-size) * 1.2);
+  top: calc(var(--label-size) * 1.2);
+}
+
+.volumeDigits {
+  --em: min(56cqw, 74cqh);
+  position: absolute;
+  right: 6cqw;
+  bottom: 6cqh;
+  display: flex;
+  font-family: var(--font-poster);
+  font-weight: 900;
+  font-stretch: 62%;
+  font-size: calc(var(--em) * 1.15);
+  line-height: 0.76;
+  letter-spacing: -0.01em;
+  color: #1b2230;
+}
+
+/* Ticker */
+
+.ticker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.tickerBand {
+  display: flex;
+  width: max-content;
+  animation: ticker 23s linear infinite;
+  will-change: transform;
+}
+
+.tickerTurn {
+  display: flex;
+  flex: none;
+}
+
+.tickerWord {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-poster);
+  font-weight: 900;
+  font-stretch: 95%;
+  font-size: 52cqh;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  color: #f1ede4;
+}
+
+.diamond {
+  display: inline-block;
+  width: 0.29em;
+  height: 0.29em;
+  margin: 0 0.42em;
+  background: #1b2230;
+  transform: rotate(45deg);
+}
+
+:global(html[data-still]) .tickerBand {
+  animation-play-state: paused;
+}
+
+.pause {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.pause svg {
+  box-sizing: content-box;
+  padding: 5px;
+  background: #faf7f0;
+  border: 1.5px solid #1b2230;
+  border-radius: var(--radius-plate);
+  fill: #1b2230;
+}
+
+.pause:focus-visible {
+  outline-color: #faf7f0;
+  outline-offset: -4px;
+}
+
+@keyframes ticker {
+  to {
+    transform: translateX(-25%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tickerBand {
+    animation: none;
+  }
+
+  .pause {
+    display: none;
+  }
+}
+
+/* Wordmark */
+
+.word {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.wordColumn {
+  --size: min(calc(94cqw / 3.64), 96cqh);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--size) * 0.06);
+}
+
+.wordLine {
+  display: flex;
+  font-family: var(--font-poster);
+  font-weight: 900;
+  font-stretch: 62%;
+  font-size: var(--size);
+  line-height: 0.76;
+  letter-spacing: -0.012em;
+  white-space: nowrap;
+}
+
+.wordRule {
+  height: max(2px, calc(var(--size) * 0.024));
+  background: #f1ede4;
+}
+
+/* Pitch */
+
+.pitch {
+  --outline: var(--ink);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--x4);
+  height: 100%;
+  padding: clamp(14px, 4.4cqw, 28px);
+}
+
+.pitchLabels {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--x3);
+}
+
+.pitchLabel {
+  font-size: calc(var(--label-size) * 1.08);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  color: #1b2230;
+}
+
+.pitchWords {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 2.2cqw, 14px);
+}
+
+.pitchTitle {
+  font-size: clamp(1.75rem, 7.6cqw, 3.2rem);
+}
+
+.pitchLede {
+  max-width: 34em;
+  font-size: clamp(0.96rem, 2.9cqw, 1.12rem);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.pitchActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--x2);
+}
+
+.pitchSoon {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-secondary);
+}
+
+@media (max-width: 900px), (max-aspect-ratio: 1 / 1) {
+  .stage {
+    --label-size: clamp(8.5px, 1.7vw, 13.5px);
+  }
+
+  .board {
+    height: auto;
+    grid-template-rows: auto repeat(14, 9cqw);
+  }
+
+  .pitchCell {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .owlCell {
+    grid-column: 1 / -1;
+    grid-row: 2 / 8;
+  }
+
+  .noteCell {
+    grid-column: 1 / 7;
+    grid-row: 8 / 12;
+  }
+
+  .moonCell {
+    grid-column: 7 / 13;
+    grid-row: 8 / 10;
+  }
+
+  .volumeCell {
+    grid-column: 7 / 9;
+    grid-row: 10 / 12;
+  }
+
+  .cardsCell {
+    grid-column: 9 / 13;
+    grid-row: 10 / 12;
+  }
+
+  .tickerCell {
+    grid-column: 1 / -1;
+    grid-row: 12 / 13;
+  }
+
+  .wordCell {
+    grid-column: 1 / -1;
+    grid-row: 13 / 16;
+  }
+
+  .pitch {
+    gap: var(--x5);
+  }
+}

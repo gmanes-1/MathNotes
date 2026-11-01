@@ -1,0 +1,16 @@
+.head {
+  display: grid;
+  gap: 0;
+}
+
+.action {
+  padding-bottom: var(--x8);
+}
+
+@media (min-width: 900px) {
+  .head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--x8);
+  }
+}

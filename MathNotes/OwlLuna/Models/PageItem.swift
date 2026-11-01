@@ -1,0 +1,434 @@
+import Foundation
+import CoreGraphics
+
+/// Typed text on a page. The box's width is the item's; its height follows the text.
+struct TextBox: Sendable, Hashable {
+    enum Tint: String, Sendable, CaseIterable, Identifiable {
+        case ink, tomato, cobalt, moss, plum
+        var id: String { rawValue }
+    }
+
+    enum Alignment: String, Sendable, CaseIterable, Identifiable {
+        case leading, center, trailing
+        var id: String { rawValue }
+    }
+
+    enum Face: String, Sendable, CaseIterable, Identifiable {
+        case system, serif, mono, fraunces
+        var id: String { rawValue }
+    }
+
+    /// Every line of a box that is a list is an item of it.
+    enum List: String, Sendable, CaseIterable, Identifiable {
+        case bullet, number, check
+        var id: String { rawValue }
+    }
+
+    /// The highlighter's tints, laid behind the words.
+    enum Highlight: String, Sendable, CaseIterable, Identifiable {
+        case yellow, green, pink, blue
+        var id: String { rawValue }
+    }
+
+    static let fontSizes: ClosedRange<CGFloat> = 8...200
+
+    var string: String
+    var fontSize: CGFloat = 17
+    var isBold = false
+    var tint = Tint.ink
+    var alignment = Alignment.leading
+    var face = Face.system
+    var isItalic = false
+    var isUnderlined = false
+    var list: List?
+    var highlight: Highlight?
+    /// The lines of a checklist that are ticked, counted from 0. Kept while the box is another kind of list.
+    var checked: Set<Int> = []
+}
+
+extension TextBox {
+    var lines: [String] { (string as NSString).components(separatedBy: "\n") }
+
+    /// A line with nothing written on it is passed over by a list: it has no bullet, number or box.
+    static func isItem(_ line: String) -> Bool {
+        !line.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Each line's number in a numbered list; one that is passed over has none.
+    var numbers: [Int?] { Self.numbers(of: lines) }
+
+    static func numbers(of lines: [String]) -> [Int?] {
+        var next = 0
+        return lines.map { line in
+            guard isItem(line) else { return nil }
+            next += 1
+            return next
+        }
+    }
+
+    mutating func toggleCheck(line: Int) {
+        if checked.remove(line) == nil { checked.insert(line) }
+    }
+
+    /// Replaces part of the text, each tick staying with the line it was on. New lines have none.
+    mutating func replaceCharacters(in range: NSRange, with text: String) {
+        let old = string as NSString, new = text as NSString
+        checked = Self.carried(checked, in: old, range: range, with: new, NSRange(location: 0, length: new.length))
+        string = old.replacingCharacters(in: range, with: text)
+    }
+
+    /// The same, for text that was changed somewhere: what the old and new share at either end is what was kept.
+    mutating func carryChecks(to newString: String) {
+        let old = string as NSString, new = newString as NSString
+        var start = 0
+        while start < old.length, start < new.length, old.character(at: start) == new.character(at: start) { start += 1 }
+        var end = 0
+        while end < old.length - start, end < new.length - start,
+              old.character(at: old.length - 1 - end) == new.character(at: new.length - 1 - end) { end += 1 }
+        checked = Self.carried(checked, in: old, range: NSRange(location: start, length: old.length - start - end), with: new,
+                               NSRange(location: start, length: new.length - start - end))
+        string = newString
+    }
+
+    private static func newlines(in text: NSString, _ range: NSRange) -> Int {
+        var count = 0
+        for index in range.location..<NSMaxRange(range) where text.character(at: index) == 10 { count += 1 }
+        return count
+    }
+
+    /// A tick goes with the start of its line. A line loses it when its start is cut away along with its end, or when
+    /// it is left joined onto the end of another line.
+    private static func carried(_ checked: Set<Int>, in old: NSString, range: NSRange, with new: NSString, _ inserted: NSRange) -> Set<Int> {
+        guard !checked.isEmpty else { return checked }
+        let line = newlines(in: old, NSRange(location: 0, length: range.location)), removed = newlines(in: old, range), added = newlines(in: new, inserted)
+        let atStart = range.location == 0 || old.character(at: range.location - 1) == 10
+        let breaks = atStart || inserted.length > 0 && new.character(at: NSMaxRange(inserted) - 1) == 10
+        let lastStartsAtEnd = removed > 0 && old.character(at: NSMaxRange(range) - 1) == 10
+        return Set(checked.compactMap { ticked in
+            if ticked < line || ticked == line && !atStart { return ticked }
+            if ticked == line { return removed == 0 ? line + added : nil }
+            if ticked < line + removed { return nil }
+            if ticked == line + removed { return lastStartsAtEnd && breaks ? ticked + added - removed : nil }
+            return ticked + added - removed
+        })
+    }
+}
+
+/// A tab on a page that opens another page, a page of another notebook, or a web address.
+struct PageLink: Sendable, Hashable {
+    enum Destination: Sendable, Hashable {
+        case page(UUID)
+        /// `name` is the notebook's title when the link was made, for when the notebook can't be looked up.
+        case notebook(UUID, page: UUID?, name: String)
+        case web(URL)
+    }
+
+    var destination: Destination
+    /// Empty while the link is named after what it opens.
+    var label = ""
+
+    init(_ destination: Destination, label: String = "") {
+        self.destination = destination
+        self.label = label
+    }
+
+    init(target: UUID, label: String = "") {
+        self.init(.page(target), label: label)
+    }
+
+    /// The page of this notebook the link opens, if that is what it opens.
+    var target: UUID? {
+        if case .page(let id) = destination { return id }
+        return nil
+    }
+}
+
+/// Reading a web address the way someone types it.
+enum WebAddress {
+    static func url(from text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.contains(" ") else { return nil }
+        let full = trimmed.contains("://") ? trimmed : "https://" + trimmed
+        guard let url = URL(string: full), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme),
+              let host = url.host(), host.contains(".") || host == "localhost" else { return nil }
+        return url
+    }
+
+    /// "example.com/guide" for "https://www.example.com/guide".
+    static func display(_ url: URL) -> String {
+        var host = url.host() ?? url.absoluteString
+        if host.hasPrefix("www.") { host.removeFirst(4) }
+        let path = url.path()
+        return path.count > 1 && path.count <= 24 ? host + path : host
+    }
+}
+
+/// The colours study tape comes in. Raw values are stored in notebooks.
+enum TapeColor: String, Sendable, CaseIterable, Identifiable {
+    case mustard, rose, sage, sky
+    var id: String { rawValue }
+}
+
+/// A picture, sticker, text box or link placed on a page, under the ink, or a strip of study tape over it.
+/// Geometry is in page points.
+struct PageItem: Sendable, Hashable, Identifiable {
+    enum Content: Sendable, Hashable {
+        case image(file: String)
+        case sticker(String)
+        case text(TextBox)
+        case link(PageLink)
+        /// Covers what is under it, ink included, until it is tapped.
+        case tape(TapeColor)
+        /// Made by a newer version; kept as read and not drawn.
+        case unknown
+    }
+
+    var id: UUID
+    var content: Content
+    var center: CGPoint
+    var size: CGSize
+    var rotation: CGFloat = 0
+    var raw: [String: JSONValue] = [:]
+
+    init(id: UUID = UUID(), content: Content, center: CGPoint, size: CGSize, rotation: CGFloat = 0) {
+        self.id = id
+        self.content = content
+        self.center = center
+        self.size = size
+        self.rotation = rotation
+    }
+
+    static let minimumSide: CGFloat = 24
+
+    var sticker: Sticker? {
+        if case .sticker(let name) = content { return Sticker(rawValue: name) }
+        return nil
+    }
+
+    var assetFile: String? {
+        if case .image(let file) = content { return file }
+        return nil
+    }
+
+    var text: TextBox? {
+        if case .text(let box) = content { return box }
+        return nil
+    }
+
+    var link: PageLink? {
+        if case .link(let link) = content { return link }
+        return nil
+    }
+
+    var tape: TapeColor? {
+        if case .tape(let color) = content { return color }
+        return nil
+    }
+
+    /// Study tape lies over the ink; everything else lies under it.
+    var isOverInk: Bool { tape != nil }
+
+    /// The sticker of your own this picture was placed from, so placing it again reuses the same file.
+    var source: String? {
+        get { raw["source"]?.stringValue }
+        set { raw["source"] = newValue.map(JSONValue.string) }
+    }
+
+    static let wholePicture = CGRect(x: 0, y: 0, width: 1, height: 1)
+
+    /// The part of a picture that shows, in its unit square from the top left. Nil shows all of it; the file is never cut.
+    var crop: CGRect? {
+        get {
+            guard let values = raw["crop"]?.arrayValue?.compactMap(\.doubleValue), values.count == 4, values.allSatisfy(\.isFinite) else { return nil }
+            let rect = Self.inPicture(CGRect(x: values[0], y: values[1], width: values[2], height: values[3]))
+            return rect.isNull || rect.width <= 0 || rect.height <= 0 || Self.isWhole(rect) ? nil : rect
+        }
+        set { raw["crop"] = newValue.flatMap { Self.isWhole($0) ? nil : .array([$0.minX, $0.minY, $0.width, $0.height].map { .number(Double($0)) }) } }
+    }
+
+    static func isWhole(_ crop: CGRect) -> Bool {
+        abs(crop.minX) < 1e-4 && abs(crop.minY) < 1e-4 && abs(crop.maxX - 1) < 1e-4 && abs(crop.maxY - 1) < 1e-4
+    }
+
+    /// Cut to the picture, and left exactly as it is when it is already inside it.
+    private static func inPicture(_ crop: CGRect) -> CGRect {
+        wholePicture.contains(crop) ? crop : crop.intersection(wholePicture)
+    }
+
+    /// Shows `newCrop` of the picture, or all of it for nil. What still shows stays where it was on the page, turned or not.
+    func cropped(to newCrop: CGRect?) -> PageItem {
+        let old = crop ?? Self.wholePicture, new = Self.inPicture(newCrop ?? Self.wholePicture)
+        guard !new.isNull, new.width > 0, new.height > 0 else { return self }
+        let whole = CGSize(width: size.width / old.width, height: size.height / old.height)
+        let dx = (new.midX - old.midX) * whole.width, dy = (new.midY - old.midY) * whole.height
+        var copy = self
+        copy.size = CGSize(width: new.width * whole.width, height: new.height * whole.height)
+        copy.center = CGPoint(x: center.x + dx * cos(rotation) - dy * sin(rotation), y: center.y + dx * sin(rotation) + dy * cos(rotation))
+        copy.crop = new
+        return copy
+    }
+
+    /// Whether a point on the page falls on the item, allowing for its rotation.
+    func contains(_ point: CGPoint, slop: CGFloat = 0) -> Bool {
+        let dx = point.x - center.x, dy = point.y - center.y
+        let x = dx * cos(-rotation) - dy * sin(-rotation), y = dx * sin(-rotation) + dy * cos(-rotation)
+        return abs(x) <= size.width / 2 + slop && abs(y) <= size.height / 2 + slop
+    }
+
+    /// Scaled about its centre, never smaller than a fingertip can grab or larger than `limit` on its long side.
+    func scaled(by factor: CGFloat, limit: CGFloat) -> PageItem {
+        let long = max(size.width, size.height), short = max(min(size.width, size.height), 1)
+        let clamped = min(max(factor, Self.minimumSide / short), max(limit / long, Self.minimumSide / short))
+        var copy = self
+        copy.size = CGSize(width: size.width * clamped, height: size.height * clamped)
+        if case .text(var box) = content {
+            box.fontSize = min(max(box.fontSize * clamped, TextBox.fontSizes.lowerBound), TextBox.fontSizes.upperBound)
+            copy.content = .text(box)
+            copy.size = CGSize(width: copy.size.width, height: box.height(width: copy.size.width))
+        }
+        return copy
+    }
+
+    /// A new size with one point of the box held still: (0, 0) is its top leading corner, (0.5, 0.5) its centre.
+    func resized(to newSize: CGSize, holding unit: CGPoint = .zero) -> PageItem {
+        let dx = (newSize.width - size.width) * (0.5 - unit.x), dy = (newSize.height - size.height) * (0.5 - unit.y)
+        var copy = self
+        copy.size = newSize
+        copy.center = CGPoint(x: center.x + dx * cos(rotation) - dy * sin(rotation), y: center.y + dx * sin(rotation) + dy * cos(rotation))
+        return copy
+    }
+
+    /// A text box as tall as its text needs at its width, growing downwards.
+    func fittedToText() -> PageItem {
+        guard let text else { return self }
+        return resized(to: CGSize(width: size.width, height: text.height(width: size.width)))
+    }
+
+    init?(json: JSONValue) {
+        guard let object = json.objectValue, let id = object["id"]?.stringValue.flatMap(UUID.init(uuidString:)),
+              let x = object["x"]?.doubleValue, let y = object["y"]?.doubleValue,
+              let w = object["w"]?.doubleValue, let h = object["h"]?.doubleValue,
+              [x, y, w, h].allSatisfy(\.isFinite), w > 0, h > 0 else { return nil }
+        self.id = id
+        center = CGPoint(x: x, y: y)
+        size = CGSize(width: w, height: h)
+        rotation = object["r"]?.doubleValue.flatMap { $0.isFinite ? CGFloat($0) : nil } ?? 0
+        switch (object["kind"]?.stringValue, object["file"]?.stringValue, object["name"]?.stringValue) {
+        case ("image", let file?, _): content = .image(file: file)
+        case ("sticker", _, let name?): content = .sticker(name)
+        case ("text", _, _):
+            guard let string = object["text"]?.stringValue else { content = .unknown; break }
+            var box = TextBox(string: string)
+            if let size = object["fs"]?.doubleValue, size.isFinite, size > 0 {
+                box.fontSize = min(max(CGFloat(size), TextBox.fontSizes.lowerBound), TextBox.fontSizes.upperBound)
+            }
+            box.isBold = object["bold"]?.boolValue ?? false
+            box.tint = object["color"]?.stringValue.flatMap(TextBox.Tint.init(rawValue:)) ?? .ink
+            box.alignment = object["align"]?.stringValue.flatMap(TextBox.Alignment.init(rawValue:)) ?? .leading
+            box.face = object["face"]?.stringValue.flatMap(TextBox.Face.init(rawValue:)) ?? .system
+            box.isItalic = object["italic"]?.boolValue ?? false
+            box.isUnderlined = object["underline"]?.boolValue ?? false
+            box.list = object["list"]?.stringValue.flatMap(TextBox.List.init(rawValue:))
+            box.highlight = object["highlight"]?.stringValue.flatMap(TextBox.Highlight.init(rawValue:))
+            box.checked = Set(object["checked"]?.arrayValue?.compactMap { $0.intValue.flatMap { (0..<100_000).contains($0) ? $0 : nil } } ?? [])
+            content = .text(box)
+        case ("link", _, _):
+            let label = object["label"]?.stringValue ?? ""
+            if let url = object["url"]?.stringValue.flatMap(WebAddress.url(from:)) {
+                content = .link(PageLink(.web(url), label: label))
+            } else if let notebook = object["notebook"]?.stringValue.flatMap(UUID.init(uuidString:)) {
+                let page = object["page"]?.stringValue.flatMap(UUID.init(uuidString:))
+                content = .link(PageLink(.notebook(notebook, page: page, name: object["name"]?.stringValue ?? ""), label: label))
+            } else if let target = object["target"]?.stringValue.flatMap(UUID.init(uuidString:)) {
+                content = .link(PageLink(target: target, label: label))
+            } else {
+                content = .unknown
+            }
+        case ("tape", _, _):
+            content = object["tint"]?.stringValue.flatMap(TapeColor.init(rawValue:)).map(Content.tape) ?? .unknown
+        default: content = .unknown
+        }
+        raw = object
+    }
+
+    var json: JSONValue {
+        var object = raw
+        object["id"] = .string(id.uuidString)
+        object["x"] = .number(Double(center.x))
+        object["y"] = .number(Double(center.y))
+        object["w"] = .number(Double(size.width))
+        object["h"] = .number(Double(size.height))
+        object["r"] = .number(Double(rotation))
+        switch content {
+        case .image(let file):
+            object["kind"] = .string("image")
+            object["file"] = .string(file)
+        case .sticker(let name):
+            object["kind"] = .string("sticker")
+            object["name"] = .string(name)
+        case .text(let box):
+            object["kind"] = .string("text")
+            object["text"] = .string(box.string)
+            object["fs"] = .number(Double(box.fontSize))
+            object["bold"] = .bool(box.isBold)
+            object["color"] = .string(box.tint.rawValue)
+            object["align"] = .string(box.alignment.rawValue)
+            object["face"] = Self.optional(box.face == .system ? nil : box.face, was: object["face"])
+            object["italic"] = box.isItalic ? .bool(true) : nil
+            object["underline"] = box.isUnderlined ? .bool(true) : nil
+            object["list"] = Self.optional(box.list, was: object["list"])
+            object["highlight"] = Self.optional(box.highlight, was: object["highlight"])
+            object["checked"] = box.checked.isEmpty ? nil : .array(box.checked.sorted().map { .number(Double($0)) })
+        case .link(let link):
+            object["kind"] = .string("link")
+            object["label"] = .string(link.label)
+            for key in ["target", "notebook", "page", "name", "url"] { object[key] = nil }
+            switch link.destination {
+            case .page(let target):
+                object["target"] = .string(target.uuidString)
+            case .notebook(let notebook, let page, let name):
+                object["notebook"] = .string(notebook.uuidString)
+                object["page"] = page.map { .string($0.uuidString) }
+                object["name"] = .string(name)
+            case .web(let url):
+                object["url"] = .string(url.absoluteString)
+            }
+        case .tape(let color):
+            object["kind"] = .string("tape")
+            object["tint"] = .string(color.rawValue)
+        case .unknown:
+            break
+        }
+        return .object(object)
+    }
+
+    /// A key left out at its default, so a box made before it existed is stored as it was, unless it holds a value from
+    /// a newer version that this one can't read.
+    private static func optional<Value: RawRepresentable<String>>(_ value: Value?, was old: JSONValue?) -> JSONValue? {
+        if let value { return .string(value.rawValue) }
+        guard let old, old.stringValue.flatMap(Value.init(rawValue:)) == nil else { return nil }
+        return old
+    }
+}
+
+extension NotebookPage {
+    /// Back to front. Entries this version can't read stay in the manifest untouched, behind the rest.
+    var items: [PageItem] {
+        get { extra["items"]?.arrayValue?.compactMap(PageItem.init(json:)) ?? [] }
+        set {
+            let unreadable = extra["items"]?.arrayValue?.filter { PageItem(json: $0) == nil } ?? []
+            let all = unreadable + newValue.map(\.json)
+            extra["items"] = all.isEmpty ? nil : .array(all)
+        }
+    }
+
+    var hasItems: Bool { extra["items"] != nil }
+
+    /// Everything typed on the page or in its presenter notes, for search.
+    var typedText: String {
+        let notes = notes
+        guard hasItems else { return notes }
+        let boxes = items.compactMap { $0.text?.string.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        return (boxes + (notes.isEmpty ? [] : [notes])).joined(separator: "\n")
+    }
+}

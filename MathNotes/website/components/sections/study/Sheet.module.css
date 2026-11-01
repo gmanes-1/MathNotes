@@ -1,0 +1,78 @@
+.frame {
+  --ground: var(--paper);
+  container-type: inline-size;
+}
+
+.sheet {
+  --cap: clamp(15px, 5.2cqw, 28px);
+  --pitch: max(44px, calc(var(--cap) * 2.4));
+  --head: calc(var(--cap) * 2.5);
+  --gutter: calc(var(--cap) * 2.6);
+  --indent: calc(var(--gutter) + var(--cap) * 0.9);
+  position: relative;
+  overflow: hidden;
+  background: var(--card-white);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-plate);
+  color: var(--ink);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--x3);
+  height: var(--head);
+  padding: 0 var(--cap) 0 var(--indent);
+  border-bottom: 2px solid var(--ink);
+  font-size: clamp(9.5px, calc(var(--cap) * 0.5), 12.5px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.lines {
+  padding: 0 var(--cap) calc(var(--pitch) * 0.5) var(--indent);
+  font-size: var(--cap);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--pitch) - 1.5px), var(--rule) calc(var(--pitch) - 1.5px) var(--pitch));
+}
+
+.margin {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--gutter);
+  width: 1.5px;
+  background: var(--tomato);
+}
+
+.hole {
+  position: absolute;
+  left: calc(var(--gutter) / 2 - var(--cap) * 0.42);
+  width: calc(var(--cap) * 0.84);
+  height: calc(var(--cap) * 0.84);
+  margin-top: calc(var(--cap) * -0.42);
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--ground);
+}
+
+.hole0 {
+  top: calc(var(--head) / 2);
+}
+
+.hole1 {
+  top: 50%;
+}
+
+.hole2 {
+  top: calc(100% - var(--head) / 2);
+}
+
+@media (prefers-contrast: more) {
+  .lines {
+    background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--pitch) - 1.5px), var(--ink-secondary) calc(var(--pitch) - 1.5px) var(--pitch));
+  }
+}

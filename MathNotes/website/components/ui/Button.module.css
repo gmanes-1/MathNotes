@@ -1,0 +1,97 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--x2);
+  min-height: 44px;
+  padding: 0 var(--x5);
+  border-radius: var(--radius-plate);
+  font-family: var(--font-text);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.18s var(--ease-standard),
+    box-shadow 0.18s var(--ease-standard),
+    background-color 0.18s var(--ease-standard);
+}
+
+.plate {
+  background: var(--board);
+  color: var(--ink);
+  border: var(--line) solid var(--outline);
+  box-shadow: 0 0 0 var(--outline);
+}
+
+.cloth {
+  font-weight: 600;
+  border: var(--line) solid var(--outline);
+  box-shadow:
+    inset 1px 1px 0 rgb(255 255 255 / 0.18),
+    inset -1px -1px 0 rgb(0 0 0 / 0.2),
+    0 0 0 var(--outline);
+}
+
+@media (hover: hover) {
+  .button:hover {
+    transform: translate(-2px, -2px);
+  }
+
+  .plate:hover {
+    box-shadow: 2px 2px 0 var(--outline);
+  }
+
+  .cloth:hover {
+    box-shadow:
+      inset 1px 1px 0 rgb(255 255 255 / 0.18),
+      inset -1px -1px 0 rgb(0 0 0 / 0.2),
+      2px 2px 0 var(--outline);
+  }
+}
+
+.button:active {
+  transform: translate(0, 0);
+  transition-duration: 0.06s;
+}
+
+.plate:active {
+  background: color-mix(in srgb, var(--board) 88%, var(--ink));
+  box-shadow: 0 0 0 var(--outline);
+}
+
+.cloth:active {
+  box-shadow:
+    inset 1px 1px 0 rgb(0 0 0 / 0.22),
+    inset -1px -1px 0 rgb(255 255 255 / 0.1),
+    0 0 0 var(--outline);
+}
+
+.compact {
+  min-height: 36px;
+  padding: 0 var(--x3);
+  font-size: 0.94rem;
+}
+
+.large {
+  min-height: 52px;
+  padding: 0 var(--x6);
+  font-size: 1.06rem;
+}
+
+.away {
+  flex: none;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:hover {
+    transform: none;
+  }
+}

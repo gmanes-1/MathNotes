@@ -1,0 +1,327 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "OwlLuna"
+          }
+        }
+      }
+    },
+    "MathNotes backup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes-Backup"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes backup"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia de seguridad de MathNotes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sauvegarde MathNotes"
+          }
+        }
+      }
+    },
+    "MathNotes notebook" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes-Notizbuch"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes notebook"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuaderno de MathNotes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carnet MathNotes"
+          }
+        }
+      }
+    },
+    "MathNotes page" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes-Seite"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes page"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página de MathNotes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page MathNotes"
+          }
+        }
+      }
+    },
+    "NSCalendarsFullAccessUsageDescription" : {
+      "comment" : "Privacy - Calendars Full Access Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes liest die heutigen Termine, um sie auf eine Seite zu drucken, wenn du darum bittest. Sie werden auf diesem iPad gelesen und gehören nach dem Drucken zum Notizbuch."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes reads today's events to print them on a page when you ask it to. They are read on this iPad, and once printed they are part of the notebook."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes lee los eventos de hoy para imprimirlos en una página cuando se lo pides. Se leen en este iPad y, una vez impresos, forman parte del cuaderno."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes lit les événements du jour pour les imprimer sur une page lorsque vous le demandez. Ils sont lus sur cet iPad et, une fois imprimés, font partie du carnet."
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "Privacy - Camera Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes verwendet die Kamera, um Papier in deine Notizbücher zu scannen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes uses the camera to scan paper into your notebooks."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes usa la cámara para escanear papel en tus cuadernos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes utilise l’appareil photo pour numériser du papier dans vos carnets."
+          }
+        }
+      }
+    },
+    "NSFaceIDUsageDescription" : {
+      "comment" : "Privacy - Face ID Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes verwendet Face ID, um die Notizbücher zu öffnen, die du gesperrt hast."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes uses Face ID to open the notebooks you have locked."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes usa Face ID para abrir los cuadernos que has bloqueado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes utilise Face ID pour ouvrir les carnets que vous avez verrouillés."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Privacy - Microphone Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes nimmt Audio parallel zu deinen Notizen auf, wenn du auf die Aufnahmetaste tippst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes records audio alongside your notes when you tap the record button."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes graba audio junto con tus notas cuando tocas el botón de grabar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes enregistre l’audio en même temps que vos notes lorsque vous touchez le bouton d’enregistrement."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Privacy - Photo Library Additions Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes sichert die von dir exportierten Bilder und Videos in deiner Fotomediathek, wenn du das auswählst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes saves the pictures and videos you export to your photo library when you choose to."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes guarda en tu fototeca las imágenes y los vídeos que exportas cuando tú lo eliges."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes enregistre dans votre photothèque les images et les vidéos que vous exportez lorsque vous le choisissez."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "comment" : "Privacy - Photo Library Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes fügt von dir ausgewählte Fotos als Seiten oder Bilder in deine Notizbücher ein."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes adds photos you pick as pages or pictures in your notebooks."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes añade las fotos que eliges como páginas o imágenes en tus cuadernos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes ajoute les photos que vous choisissez comme pages ou images dans vos carnets."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "comment" : "Privacy - Speech Recognition Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes schreibt auf, was in einer Aufnahme gesagt wurde, wenn du darum bittest. Die Aufnahme wird auf diesem iPad transkribiert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MathNotes writes down what was said in a recording when you ask it to. The recording is transcribed on this iPad."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes pone por escrito lo que se dijo en una grabación cuando se lo pides. La grabación se transcribe en este iPad."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MathNotes met par écrit ce qui a été dit dans un enregistrement lorsque vous le demandez. L’enregistrement est transcrit sur cet iPad."
+          }
+        }
+      }
+    },
+    "OwlLuna tab" : {
+
+    }
+  },
+  "version" : "1.0"
+}

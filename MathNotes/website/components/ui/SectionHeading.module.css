@@ -1,0 +1,15 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--x3);
+  max-width: 46rem;
+  padding-bottom: var(--x6);
+}
+
+.title {
+  font-size: clamp(2rem, 3.4vw + 1rem, 3.5rem);
+}
+
+.lede {
+  max-width: 40rem;
+}

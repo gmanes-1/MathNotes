@@ -1,0 +1,141 @@
+.shelf {
+  --gap: 16px;
+  --overhang: 8px;
+  margin: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--gap);
+  row-gap: var(--x8);
+  padding-inline: var(--overhang);
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stand {
+  padding-inline: 3%;
+  transform-origin: 50% 100%;
+}
+
+.book {
+  position: relative;
+  transform-origin: 50% 100%;
+}
+
+.hit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: var(--radius-plate);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hit:focus-visible {
+  outline-offset: 4px;
+}
+
+.ribbonSlot {
+  position: absolute;
+  top: 0;
+  right: 14.46%;
+  width: 8.75%;
+  height: 28%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ribbon {
+  display: block;
+  width: 100%;
+  height: 77.5%;
+  background: #c9452f;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+}
+
+.plank {
+  display: block;
+  height: 12px;
+  margin-inline: calc(var(--gap) / -2 - 0.5px);
+  background: var(--board);
+  border-block: var(--line) solid var(--outline);
+  border-top-width: 4px;
+}
+
+.kind {
+  margin-top: var(--x3);
+  padding-inline: 3%;
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--x2) var(--x4);
+  margin-bottom: var(--x8);
+}
+
+.line {
+  flex: 1 1 40px;
+  height: 1px;
+  background: var(--hairline);
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: var(--x2);
+}
+
+.hint svg {
+  flex: none;
+  fill: var(--tomato);
+}
+
+@media (max-width: 699px) {
+  .slot:nth-child(3n + 1) .plank {
+    margin-left: calc(var(--overhang) * -1);
+    border-left: var(--line) solid var(--outline);
+  }
+
+  .slot:nth-child(3n) .plank {
+    margin-right: calc(var(--overhang) * -1);
+    border-right: var(--line) solid var(--outline);
+  }
+}
+
+@media (min-width: 700px) {
+  .shelf {
+    --gap: clamp(16px, 2.6vw, 36px);
+  }
+
+  .row {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .slot:first-child .plank {
+    margin-left: calc(var(--overhang) * -1);
+    border-left: var(--line) solid var(--outline);
+  }
+
+  .slot:last-child .plank {
+    margin-right: calc(var(--overhang) * -1);
+    border-right: var(--line) solid var(--outline);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .ribbon {
+    outline: 1px solid var(--outline);
+  }
+}

@@ -1,0 +1,182 @@
+import UIKit
+import PencilKit
+import os
+
+/// A small least-recently-used cache that is safe to use from any thread. A memory warning empties it.
+final class LRUCache<Value: Sendable>: Sendable {
+    private struct State {
+        var values: [String: Value] = [:]
+        var order: [String] = []
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
+    private let capacity: Int
+    nonisolated(unsafe) private var relief: (any NSObjectProtocol)?
+
+    init(capacity: Int) {
+        self.capacity = capacity
+        relief = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: nil) { [weak self] _ in
+            self?.removeAll()
+        }
+    }
+
+    deinit {
+        if let relief { NotificationCenter.default.removeObserver(relief) }
+    }
+
+    func value(_ key: String, create: () -> Value?) -> Value? {
+        if let hit = state.withLock({ state -> Value? in
+            guard let value = state.values[key] else { return nil }
+            state.order.removeAll { $0 == key }
+            state.order.append(key)
+            return value
+        }) { return hit }
+        guard let created = create() else { return nil }
+        state.withLock { state in
+            state.values[key] = created
+            state.order.removeAll { $0 == key }
+            state.order.append(key)
+            while state.order.count > capacity {
+                state.values.removeValue(forKey: state.order.removeFirst())
+            }
+        }
+        return created
+    }
+
+    var count: Int { state.withLock { $0.values.count } }
+
+    func removeAll() { state.withLock { $0 = State() } }
+}
+
+/// `CGPDFDocument` is immutable once opened and safe to read from the tiling threads.
+struct SharedPDF: @unchecked Sendable {
+    let document: CGPDFDocument
+}
+
+struct SharedImage: @unchecked Sendable {
+    let image: CGImage
+}
+
+/// Draws page backgrounds (paper templates, PDF pages, photos) in page-local points. Thread-safe.
+enum PageRenderer {
+    static let pdfs = LRUCache<SharedPDF>(capacity: 6)
+    static let images = LRUCache<SharedImage>(capacity: 12)
+
+    static func paperColor(_ color: PaperColor, night: Bool = false) -> UIColor {
+        let (r, g, b) = night ? color.nightRGB : color.rgb
+        return UIColor(red: r, green: g, blue: b, alpha: 1)
+    }
+
+    /// Fills `rect` (whose size is the page size scaled by `rect.width / page.size.width`) with the page background.
+    /// The editor passes `items: false`: there, pictures and stickers are live views that can be moved.
+    /// At `night` light paper is drawn dark, as the screen shows it in Dark Mode. What is exported leaves it out.
+    static func drawBackground(_ page: NotebookPage, assets: URL, in ctx: CGContext, size: CGSize, items: Bool = true, links: LinkTitles? = nil,
+                               night: Bool = false) {
+        let night = page.turnsDark(night)
+        ctx.setFillColor(paperColor(page.effectivePaperColor, night: night).cgColor)
+        ctx.fill(CGRect(origin: .zero, size: size))
+        drawPaper(page, assets: assets, in: ctx, size: size, night: night)
+        if items, page.hasItems {
+            PageItemRenderer.draw(page.items, pageSize: page.size, assets: assets, in: ctx, size: size, onDark: page.isDark(night: night), links: links)
+        }
+    }
+
+    /// The study tape on a page, which goes on after the ink. Tape that is lifted isn't drawn.
+    static func drawOverInk(_ page: NotebookPage, assets: URL, in ctx: CGContext, size: CGSize, lifted: Set<UUID> = []) {
+        guard page.hasItems else { return }
+        PageItemRenderer.draw(page.items, pageSize: page.size, assets: assets, in: ctx, size: size, overInk: true, lifted: lifted)
+    }
+
+    private static func drawPaper(_ page: NotebookPage, assets: URL, in ctx: CGContext, size: CGSize, night: Bool) {
+        switch page.background {
+        case .template where page.isBoard:
+            drawBoardPaper(page.template ?? .blank, color: page.paperColor, origin: page.cut ?? .zero, scale: size.width / max(page.size.width, 1), in: ctx,
+                           night: night)
+        case .template:
+            drawTemplate(page.template ?? .blank, color: page.paperColor, in: ctx, size: size, night: night, ruling: page.ruling)
+            if let day = page.day {
+                PageMasthead.draw(day: day, template: page.template ?? .blank, paper: page.paperColor, in: ctx, size: size, night: night)
+            }
+        case .pdf(let file, let index):
+            let url = assets.appending(path: file)
+            guard let pdf = pdfs.value(url.path(percentEncoded: false), create: {
+                CGPDFDocument(url as CFURL).map(SharedPDF.init)
+            }), let pdfPage = pdf.document.page(at: index + 1) else { return }
+            drawPDFPage(pdfPage, in: ctx, size: size)
+        case .image(let file):
+            let url = assets.appending(path: file)
+            guard let image = images.value(url.path(percentEncoded: false), create: {
+                UIImage(contentsOfFile: url.path(percentEncoded: false))?.cgImage.map(SharedImage.init)
+            }) else { return }
+            ctx.saveGState()
+            ctx.translateBy(x: 0, y: size.height)
+            ctx.scaleBy(x: 1, y: -1)
+            ctx.interpolationQuality = .high
+            ctx.draw(image.image, in: CGRect(origin: .zero, size: size))
+            ctx.restoreGState()
+        case .unknown:
+            break
+        }
+    }
+
+    static func displaySize(of page: CGPDFPage) -> CGSize {
+        let box = page.getBoxRect(.cropBox)
+        let rotation = ((page.rotationAngle % 360) + 360) % 360
+        return rotation == 90 || rotation == 270 ? CGSize(width: box.height, height: box.width) : box.size
+    }
+
+    static func drawPDFPage(_ page: CGPDFPage, in ctx: CGContext, size: CGSize) {
+        let box = page.getBoxRect(.cropBox)
+        let display = displaySize(of: page)
+        let rotation = ((page.rotationAngle % 360) + 360) % 360
+        ctx.saveGState()
+        ctx.translateBy(x: 0, y: size.height)
+        ctx.scaleBy(x: size.width / display.width, y: -size.height / display.height)
+        switch rotation {
+        case 90:
+            ctx.translateBy(x: 0, y: display.height)
+            ctx.rotate(by: -.pi / 2)
+        case 180:
+            ctx.translateBy(x: display.width, y: display.height)
+            ctx.rotate(by: .pi)
+        case 270:
+            ctx.translateBy(x: display.width, y: 0)
+            ctx.rotate(by: .pi / 2)
+        default:
+            break
+        }
+        ctx.translateBy(x: -box.minX, y: -box.minY)
+        ctx.clip(to: box)
+        ctx.interpolationQuality = .high
+        ctx.drawPDFPage(page)
+        ctx.restoreGState()
+    }
+
+    /// Renders a page (background plus ink clipped to the page) to an image `width` points wide. Thread-safe.
+    /// A whiteboard is drawn as the part of it that has something on it.
+    static func image(of page: NotebookPage, ink: PKDrawing, assets: URL, width: CGFloat, scale: CGFloat = 1,
+                      includeBackground: Bool = true, links: LinkTitles? = nil, lifted: Set<UUID> = [], night: Bool = false) -> UIImage {
+        let page = Whiteboard.whole(page, ink: ink)
+        let factor = width / max(page.size.width, 1)
+        let size = CGSize(width: width, height: (page.size.height * factor).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        var inkImage: UIImage?
+        if !ink.strokes.isEmpty {
+            UITraitCollection(userInterfaceStyle: includeBackground ? page.inkAppearance(night: night) : .light).performAsCurrent {
+                inkImage = ink.image(from: page.inkRect, scale: factor * scale)
+            }
+        }
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            if includeBackground {
+                drawBackground(page, assets: assets, in: context.cgContext, size: size, links: links, night: night)
+            } else {
+                UIColor.white.setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+            }
+            inkImage?.draw(in: CGRect(origin: .zero, size: size))
+            if includeBackground { drawOverInk(page, assets: assets, in: context.cgContext, size: size, lifted: lifted) }
+        }
+    }
+}

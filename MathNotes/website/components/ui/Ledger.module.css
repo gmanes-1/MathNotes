@@ -1,0 +1,69 @@
+.ledger {
+  background: var(--board);
+  border: var(--line) solid var(--outline);
+  border-radius: var(--radius-plate);
+  overflow: hidden;
+}
+
+.band {
+  padding: var(--x2) var(--x4);
+  background: var(--well);
+  border-bottom: var(--line) solid var(--outline);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.rows {
+  margin: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+  gap: var(--x4);
+  align-items: baseline;
+  padding: var(--x3) var(--x4);
+  border-top: 1px solid var(--outline);
+}
+
+.row:first-child {
+  border-top: 0;
+}
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--x2);
+  font-weight: 600;
+}
+
+.value {
+  color: var(--text-secondary);
+}
+
+.mark {
+  flex: none;
+  align-self: center;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check {
+  stroke: var(--accent);
+}
+
+.cross {
+  stroke: var(--tomato);
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: var(--x1);
+  }
+}

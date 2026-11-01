@@ -1,0 +1,256 @@
+.story {
+  --ground: var(--desk);
+  background: var(--desk);
+  border-block: 1px solid var(--hairline);
+}
+
+.layout {
+  display: grid;
+  gap: var(--x16);
+  padding-top: var(--x4);
+}
+
+.letter {
+  min-width: 0;
+}
+
+.sheet {
+  --pitch: 28px;
+  --size: 17px;
+  --margin: 42px;
+  --inset: 14px;
+  --edge: 18px;
+  --drop: calc((var(--pitch) - var(--size) * 1.233) / 2 + var(--size) * 1.19);
+  --hole: 12px;
+  position: relative;
+  max-width: 760px;
+  background: var(--card-white);
+  border: var(--line) solid var(--outline);
+  border-radius: var(--radius-plate);
+}
+
+.sheet .tape {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  width: 132px;
+  transform: translateX(-50%) rotate(-2.5deg);
+}
+
+.rule {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--margin);
+  width: 1.5px;
+  background: var(--tomato);
+}
+
+.hole {
+  position: absolute;
+  left: calc(var(--margin) * 0.38 - var(--hole) / 2);
+  width: var(--hole);
+  height: var(--hole);
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+  background: var(--ground);
+}
+
+.holeHead {
+  top: calc(var(--pitch) * 0.85 - var(--hole) / 2);
+}
+
+.holeMiddle {
+  top: calc(50% - var(--hole) / 2);
+}
+
+.holeFoot {
+  bottom: calc(var(--pitch) * 1.4 - var(--hole) / 2);
+}
+
+.head {
+  height: calc(var(--pitch) * 1.7);
+  border-bottom: 2px solid var(--ink);
+}
+
+.body {
+  padding: var(--pitch) var(--edge) calc(var(--pitch) * 2) calc(var(--margin) + var(--inset));
+  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), var(--rule) calc(100% - 1px));
+  background-size: 100% var(--pitch);
+  background-position: 0 calc(var(--drop) - var(--pitch));
+  border-radius: 0 0 var(--radius-thumb) var(--radius-thumb);
+  font-size: var(--size);
+  line-height: var(--pitch);
+  color: var(--ink);
+}
+
+.body p {
+  text-wrap: pretty;
+}
+
+.body p + p {
+  margin-top: var(--pitch);
+}
+
+.noted {
+  position: relative;
+}
+
+.doodle {
+  position: absolute;
+  left: calc(-1 * var(--inset) - var(--margin) * 0.5);
+  width: calc(var(--margin) * 0.44);
+  height: auto;
+  overflow: visible;
+}
+
+.doodleFirst {
+  top: calc(var(--drop) - var(--margin) * 0.44);
+}
+
+.doodleLast {
+  bottom: calc(var(--pitch) - var(--drop) - 1px);
+}
+
+.slot {
+  position: relative;
+  margin-block: calc(var(--pitch) * 2 - 39px);
+  margin-inline: calc(var(--x3) - var(--margin) - var(--inset)) calc(var(--x2) - var(--edge));
+}
+
+.slot .card {
+  --pitch: inherit;
+  transform: rotate(-0.9deg);
+  will-change: transform;
+  box-shadow: 3px 3px 0 rgb(27 34 48 / 0.14);
+}
+
+.slot .slotTape {
+  position: absolute;
+  z-index: 1;
+  top: -10px;
+  right: 9%;
+  width: 84px;
+  height: 22px;
+  transform: rotate(3deg);
+}
+
+.principles {
+  position: relative;
+  top: calc(var(--pitch) - var(--x4) - var(--drop));
+  font-size: var(--size);
+  text-align: left;
+}
+
+.principles li {
+  display: grid;
+  grid-template-columns: 1.5em minmax(0, 1fr);
+}
+
+.principles strong {
+  font-weight: 600;
+}
+
+.numeral {
+  font-weight: 600;
+  color: var(--tomato);
+  font-variant-numeric: tabular-nums;
+}
+
+.signed {
+  height: calc(var(--pitch) * 2);
+}
+
+.signature {
+  --cap: calc(var(--pitch) * 0.76);
+  display: block;
+  height: calc(var(--cap) * 44 / 21);
+  width: auto;
+  overflow: visible;
+  transform: translateY(calc(var(--pitch) + var(--drop) - var(--cap) * 27 / 21 - 2px));
+}
+
+.aside {
+  min-width: 0;
+}
+
+.receipt {
+  max-width: 460px;
+}
+
+.stamped {
+  position: relative;
+}
+
+.stampSpot {
+  position: absolute;
+  right: 10px;
+  bottom: -22px;
+  pointer-events: none;
+}
+
+.stamp {
+  display: block;
+  padding: 0.1em 0.3em 0.04em;
+  border: 3.5px solid var(--tomato);
+  border-radius: var(--radius-thumb);
+  font-family: var(--font-poster);
+  font-weight: 900;
+  font-stretch: 62%;
+  font-size: 2.7rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--tomato);
+}
+
+@media (min-width: 720px) {
+  .sheet {
+    --pitch: 32px;
+    --size: 19.5px;
+    --margin: 72px;
+    --inset: 24px;
+    --edge: 44px;
+    --hole: 16px;
+  }
+
+  .sheet .tape {
+    width: 168px;
+  }
+
+  .slot {
+    margin-inline: 0;
+  }
+
+  .doodle {
+    left: calc(-1 * var(--inset) - var(--margin) * 0.46);
+    width: calc(var(--margin) * 0.34);
+  }
+
+  .doodleFirst {
+    top: calc(var(--drop) - var(--margin) * 0.34);
+  }
+
+  .stamp {
+    font-size: 3.1rem;
+  }
+}
+
+@media (min-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: clamp(40px, 5vw, 72px);
+  }
+
+  .receipt {
+    position: sticky;
+    top: calc(var(--nav-height) + var(--x8));
+    max-width: none;
+  }
+}
+
+@media (min-width: 1000px) and (max-width: 1099px) {
+  .stampSpot {
+    right: -14px;
+  }
+}

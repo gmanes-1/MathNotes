@@ -1,0 +1,44 @@
+.panel {
+  background: var(--board);
+  border: var(--line) solid var(--outline);
+  border-radius: var(--radius-plate);
+  overflow: hidden;
+}
+
+.band {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--x3);
+  padding: var(--x2) var(--x4);
+  border-bottom: var(--line) solid var(--outline);
+}
+
+.title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.note {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  padding: var(--x3) var(--x4);
+  border-top: 1px solid var(--hairline);
+}
+
+.row:first-child {
+  border-top: 0;
+}
