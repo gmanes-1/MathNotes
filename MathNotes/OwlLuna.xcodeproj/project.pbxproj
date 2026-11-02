@@ -286,7 +286,6 @@
 				App/WidgetBridge.swift,
 				Canvas/CanvasUndoProxy.swift,
 				Canvas/InkLasso.swift,
-				Canvas/InkRestyle.swift,
 				Canvas/InkTyping.swift,
 				Canvas/LaserPointer.swift,
 				Canvas/PageItemViews.swift,

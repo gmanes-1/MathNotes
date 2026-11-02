@@ -29,9 +29,21 @@ final class ToolPresetTests: XCTestCase {
         let range = ToolPreset.widthRange(of: .monoline)
         let valid = PKInkingTool.InkType.monoline.validWidthRange
         let tool = try XCTUnwrap(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).tool)
-        XCTAssertEqual(Double(tool.width), min(max(range.upperBound, Double(valid.lowerBound)), Double(valid.upperBound)), accuracy: 0.01)
+        let written = range.upperBound * Double(ToolPreset.writingScale(of: .monoline))
+        XCTAssertEqual(Double(tool.width), min(max(written, Double(valid.lowerBound)), Double(valid.upperBound)), accuracy: 0.01)
         XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).widthFraction, 1)
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0x0000_00FF, width: 1).widthFraction, 0)
+    }
+
+    func testTheFinelinerWritesThinnerThanPencilKitsMonolineButEveryOtherInkIsAsSet() throws {
+        XCTAssertLessThan(ToolPreset.writingScale(of: .monoline), 1)
+        let fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 2)
+        let tool = try XCTUnwrap(fineliner.tool)
+        XCTAssertEqual(Double(tool.width), 2 * Double(ToolPreset.writingScale(of: .monoline)), accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(ToolPreset(tool)).width, 2, accuracy: 0.01, "the pen reads back as it was set")
+        for kind in [PKInkingTool.InkType.pen, .pencil, .marker, .fountainPen] {
+            XCTAssertEqual(ToolPreset.writingScale(of: kind), 1)
+        }
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {

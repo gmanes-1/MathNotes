@@ -30,6 +30,7 @@ protocol EditorCanvasControlling: AnyObject {
     func cutInkSelection()
     func copyInkSelection()
     func pasteInk()
+    func pasteInkAtHeldSpot()
     func restyleInkSelection(to preset: ToolPreset)
     func commitRestyle()
     func selectedInkStyle() -> ToolPreset?
@@ -67,16 +68,13 @@ final class EditorSession {
     var currentPage: Int
     /// Whether the tools are out. The tray itself also waits on the mode, see `showsToolTray`.
     var showsTools = true
-    /// The edge the tool tray stands at; it is dragged to another by its grip, and kept for every notebook.
-    var toolTrayEdge = TrayEdge.saved {
-        didSet {
-            guard toolTrayEdge != oldValue else { return }
-            UserDefaults.standard.set(toolTrayEdge.rawValue, forKey: TrayEdge.key)
-            canvas?.toolTrayDidChange()
-        }
-    }
-    /// Counts the times the selected ink's Style sheet was asked for from the menu over the selection.
-    private(set) var restyleRequests = 0
+    /// Where the lasso's selection is on the page view, in its points. Nil while nothing is selected, while a lasso is
+    /// being drawn, and while the selection is being dragged: the menu over the selection waits on it.
+    var inkSelectionFrame: CGRect?
+    /// Counts the times a new set of ink has been selected, so the menu over it reads that ink's style afresh.
+    var inkSelectionToken = 0
+    /// Where a hold on empty paper asked to paste ink, in the page view's points; nil when it hasn't.
+    var inkPasteSpot: CGPoint?
     var canUndo = false
     var canRedo = false
     /// The picture, sticker, text box or link being arranged. The canvas owns it; it's mirrored here for the chrome.
@@ -519,10 +517,6 @@ final class EditorSession {
     }
 
     /// The menu over selected ink asks for its Style sheet; the editor opens it.
-    func requestRestyle() {
-        restyleRequests += 1
-    }
-
     func refreshUndoState() {
         canUndo = document.undoManager.canUndo
         canRedo = document.undoManager.canRedo
@@ -615,11 +609,9 @@ fileprivate struct EditorContent: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var restyle = ToolPreset(ink: .pen, color: 0x1B22_30FF, width: 2.7)
-    @State private var restyling = false
     @State private var paneWidth: CGFloat = 1024
     @State private var stackSize = CGSize(width: 1024, height: 768)
-    @State private var trayDrag = CGSize.zero
+    @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
     @State private var pickingBeside = false
     @State private var showingRecordingsSheet = false
@@ -786,7 +778,6 @@ fileprivate struct EditorContent: View {
             }
             .overlay(alignment: .top) { banners }
             .overlay(alignment: .top) {
-                Group {
                 if session.mode == .finding {
                     findBar
                 } else if session.mode == .selectingText {
@@ -795,16 +786,12 @@ fileprivate struct EditorContent: View {
                     AnyView(cropBar)
                 } else if session.selection != nil, session.mode != .presenting {
                     arrangeBar
-                } else if session.mode == .selecting {
-                    inkBar
                 } else {
                     VStack(spacing: 0) {
                         returnBar
                         if session.mode == .writing, session.openBoard != nil, !boardTipSeen { boardTip }
                     }
                 }
-                }
-                .padding(.top, trayAtTop ? ToolTray.height + ToolTray.gap : 0)
             }
             .overlay(alignment: .bottom) {
                 if session.mode == .presenting {
@@ -816,11 +803,16 @@ fileprivate struct EditorContent: View {
                         .floatingBar()
                         .padding(.bottom, Space.x5)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if session.showsToolTray, !isCovered {
+                    ToolTray(session: session, room: paneWidth, use: use)
+                        .padding(.bottom, ToolTray.gap + session.zoomPanelLift)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                        .ignoresSafeArea(.keyboard, edges: .bottom)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .overlay { if session.showsToolTray, !isCovered, session.mode != .presenting, session.mode != .replaying { toolTray } }
-            .coordinateSpace(.named(ToolTray.space))
             .onGeometryChange(for: CGSize.self) { $0.size } action: { stackSize = $0 }
+            .overlay(alignment: .topLeading) { inkSelectionOverlay }
             .overlay {
                 if let point = session.dish, session.mode == .writing || session.mode == .focus, !isCovered {
                     InkDish(session: session, point: point)
@@ -828,41 +820,81 @@ fileprivate struct EditorContent: View {
             }
             .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: session.showsToolTray)
             .onChange(of: session.showsToolTray) { session.canvas?.toolTrayDidChange() }
-            .onChange(of: session.restyleRequests) { openRestyle() }
             .onChange(of: session.mode) { session.dish = nil }
     }
 
-    private var trayAtTop: Bool { session.showsToolTray && session.toolTrayEdge == .top && !isCovered }
-
-    private var toolTray: some View {
-        let edge = session.toolTrayEdge
-        let sideMargin: CGFloat = 96
-        let room = edge.isVertical ? stackSize.height - sideMargin * 2 : stackSize.width
-        return ToolTray(session: session, room: max(room, 200), edge: edge, use: use,
-                        moved: { trayDrag = $0 },
-                        dropped: { point in
-                            let next = TrayEdge.nearest(to: point, in: stackSize)
-                            withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) {
-                                trayDrag = .zero
-                                session.toolTrayEdge = next
-                            }
-                            UISelectionFeedbackGenerator().selectionChanged()
-                            announce(String(localized: "Tools moved"))
-                        })
-            .offset(trayDrag)
-            .padding(.bottom, edge == .bottom ? ToolTray.gap + session.zoomPanelLift : 0)
-            .padding(.top, edge == .top ? ToolTray.gap : 0)
-            .padding(.horizontal, edge.isVertical ? ToolTray.gap : 0)
-            .padding(.vertical, edge.isVertical ? sideMargin : 0)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: edge.alignment)
-            .ignoresSafeArea(.keyboard, edges: .bottom)
-            .transition(.move(edge: edge.edge).combined(with: .opacity))
+    /// The menu over the lasso's selection, and the Paste chip where ink was held to paste. They sit on the page
+    /// beside the ink they act on, and nowhere else, so nothing is added to the bar at the top.
+    @ViewBuilder
+    private var inkSelectionOverlay: some View {
+        if session.mode == .selecting, !isCovered {
+            let visible = inkMenuVisibleArea
+            if session.inkSelectionCount > 0, let frame = session.inkSelectionFrame, frame.intersects(visible) {
+                let origin = inkMenuOrigin(for: frame, in: visible)
+                InkSelectionMenu(
+                    initialStyle: { session.canvas?.selectedInkStyle() },
+                    selectionToken: session.inkSelectionToken,
+                    canPaste: !InkClipboard.shared.isEmpty && !document.isReadOnly,
+                    canMakeCard: flashcards.canChange(document.id),
+                    onTurnIntoText: {
+                        if let ink = session.canvas?.selectedInk(), !ink.isEmpty { readingInk = InkToRead(ink: ink) }
+                    },
+                    onMakeCard: makeCardFromInk,
+                    onCopy: { session.canvas?.copyInkSelection() },
+                    onCut: { session.canvas?.cutInkSelection() },
+                    onPaste: { session.canvas?.pasteInk() },
+                    onDuplicate: { session.canvas?.duplicateInkSelection() },
+                    onDelete: { session.canvas?.deleteInkSelection() },
+                    onRestyle: { session.canvas?.restyleInkSelection(to: $0) },
+                    onSettle: { session.canvas?.commitRestyle() }
+                )
+                .fixedSize()
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { inkMenuSize = $0 }
+                .offset(x: origin.x, y: origin.y)
+                .transition(.opacity)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(Text("Selected Ink"))
+                .accessibilityIdentifier("editor.ink.menu")
+            } else if let spot = session.inkPasteSpot, !InkClipboard.shared.isEmpty, !document.isReadOnly {
+                Button {
+                    session.canvas?.pasteInkAtHeldSpot()
+                } label: {
+                    Label("Paste", systemImage: "doc.on.clipboard")
+                }
+                .buttonStyle(.mathNotes(.secondary, compact: true))
+                .fixedSize()
+                .padding(Space.x1)
+                .floatingBar()
+                .offset(x: min(max(spot.x - 44, 8), max(stackSize.width - 100, 8)), y: max(spot.y - 64, 8))
+                .transition(.opacity)
+                .accessibilityIdentifier("editor.ink.paste")
+            }
+        }
     }
 
-    private func openRestyle() {
-        guard session.mode == .selecting, session.inkSelectionCount > 0 else { return }
-        if let style = session.canvas?.selectedInkStyle() { restyle = style }
-        restyling = true
+    /// The part of the page view the menu may stand in: clear of the tool tray at the foot of it.
+    private var inkMenuVisibleArea: CGRect {
+        let tray = session.showsToolTray ? ToolTray.height + ToolTray.gap * 2 + session.zoomPanelLift : 0
+        return CGRect(x: 0, y: 0, width: stackSize.width, height: max(stackSize.height - tray, 0))
+    }
+
+    /// Above the selection when there is room, below it when there is not, and over its middle when there is neither,
+    /// kept inside `area` either way.
+    private func inkMenuOrigin(for selection: CGRect, in area: CGRect) -> CGPoint {
+        let size = inkMenuSize, gap: CGFloat = 12, margin: CGFloat = 8
+        let shown = selection.intersection(area)
+        let x = min(max(shown.midX - size.width / 2, area.minX + margin), max(area.maxX - size.width - margin, area.minX + margin))
+        let above = selection.minY - gap - size.height
+        let below = selection.maxY + gap
+        let y: CGFloat
+        if above >= area.minY + margin {
+            y = above
+        } else if below + size.height <= area.maxY - margin {
+            y = below
+        } else {
+            y = min(max(shown.midY - size.height / 2, area.minY + margin), max(area.maxY - size.height - margin, area.minY + margin))
+        }
+        return CGPoint(x: x, y: y)
     }
 
     private func use(_ extra: ToolExtra) {
@@ -1452,56 +1484,6 @@ fileprivate struct EditorContent: View {
         }
         .accessibilityValue(Text(current.displayName))
         .accessibilityIdentifier("editor.arrange.tape")
-    }
-
-    private var inkBar: some View {
-        let count = session.inkSelectionCount
-        let says = count == 0 || !(isCompact || dynamicTypeSize.isAccessibilitySize)
-        return HStack(spacing: 0) {
-            // Text removed. The bar now only shows actions.
-            if count > 0 {
-                arrangeButton("Turn into Text", "text.viewfinder") {
-                    if let ink = session.canvas?.selectedInk(), !ink.isEmpty { readingInk = InkToRead(ink: ink) }
-                }
-                .accessibilityIdentifier("editor.ink.text")
-                if flashcards.canChange(document.id) {
-                    arrangeButton("Make Flashcard", "rectangle.on.rectangle.angled", action: makeCardFromInk)
-                        .accessibilityIdentifier("editor.ink.card")
-                }
-                arrangeButton("Cut", "scissors") { session.canvas?.cutInkSelection() }
-                    .accessibilityIdentifier("editor.ink.cut")
-                arrangeButton("Copy", "doc.on.doc") { session.canvas?.copyInkSelection() }
-                    .accessibilityIdentifier("editor.ink.copy")
-                arrangeButton("Duplicate", "plus.square.on.square") { session.canvas?.duplicateInkSelection() }
-                    .accessibilityIdentifier("editor.ink.duplicate")
-                arrangeButton("Delete", "trash", role: .destructive) { session.canvas?.deleteInkSelection() }
-                    .accessibilityIdentifier("editor.ink.delete")
-                arrangeButton("Style", "paintbrush.pointed", action: openRestyle)
-                    .accessibilityIdentifier("editor.ink.style")
-            }
-            if !InkClipboard.shared.isEmpty {
-                arrangeButton("Paste", "doc.on.clipboard") { session.canvas?.pasteInk() }
-                    .accessibilityIdentifier("editor.ink.paste")
-            }
-            arrangeButton("Undo", "arrow.uturn.backward") { document.undoManager.undo() }
-                .disabled(!session.canUndo)
-                .accessibilityIdentifier("editor.ink.undo")
-            barRule
-            barDone { enter(.writing) }
-                .accessibilityIdentifier("editor.ink.done")
-        }
-        .floatingBar(leading: says ? Space.x5 : Space.x1)
-        .padding(.top, Space.x2)
-        .transition(.move(edge: .top).combined(with: .opacity))
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Select Ink"))
-        .accessibilityIdentifier("editor.ink.bar")
-        .sheet(isPresented: $restyling, onDismiss: { session.canvas?.commitRestyle() }) {
-            InkRestyleSheet(preset: $restyle) { newPreset in
-                restyle = newPreset
-                session.canvas?.restyleInkSelection(to: newPreset)
-            }
-        }
     }
 
     private var findBar: some View {

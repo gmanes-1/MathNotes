@@ -11,6 +11,28 @@ final class InkLassoTests: XCTestCase {
         stroke(from: CGPoint(x: 100, y: y), to: CGPoint(x: 300, y: y))
     }
 
+    func testRestylingScalesTheWidthFromWhatItIsAndLeavesWhatWasNotAskedFor() {
+        let pen = line(y: 10)
+        let before = InkCalibration.middleSize(of: pen) ?? 0
+        XCTAssertGreaterThan(before, 0)
+        let drawing = PKDrawing(strokes: [pen, pen])
+
+        let thick = drawing.restyled([0], widthScale: 2, tint: nil, opacity: nil)
+        XCTAssertEqual(InkCalibration.middleSize(of: thick.strokes[0]) ?? 0, before * 2, accuracy: 0.01)
+        XCTAssertEqual(InkCalibration.middleSize(of: thick.strokes[1]) ?? 0, before, accuracy: 0.001, "ink that was not selected is left alone")
+        XCTAssertEqual(thick.strokes[0].ink.inkType, pen.ink.inkType, "the kind of ink is kept")
+        XCTAssertEqual(thick.strokes[0].path.count, pen.path.count)
+        XCTAssertEqual(InkCalibration.bytes(of: thick.strokes[0].ink.color), InkCalibration.bytes(of: pen.ink.color), "the colour is not touched")
+
+        let tinted = drawing.restyled([1], widthScale: 1, tint: 0xC945_2FFF, opacity: 0.5)
+        let bytes = InkCalibration.bytes(of: tinted.strokes[1].ink.color)
+        XCTAssertEqual(bytes >> 8, 0xC945_2F)
+        XCTAssertEqual(Double(bytes & 0xFF), 127.5, accuracy: 1)
+        XCTAssertEqual(InkCalibration.middleSize(of: tinted.strokes[1]) ?? 0, before, accuracy: 0.001)
+
+        XCTAssertEqual(drawing.restyled([], widthScale: 3, tint: nil, opacity: nil).strokes.count, 2)
+    }
+
     func testALoopCatchesTheInkInsideItAndAStraightDragIsABox() {
         let drawing = PKDrawing(strokes: [line(y: 100), line(y: 200), line(y: 400)])
         let loop = [CGPoint(x: 60, y: 60), CGPoint(x: 340, y: 60), CGPoint(x: 360, y: 250), CGPoint(x: 50, y: 240)]

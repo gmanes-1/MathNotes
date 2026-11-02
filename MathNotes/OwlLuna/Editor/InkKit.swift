@@ -4,7 +4,7 @@ import Observation
 
 @MainActor
 enum InkCalibration {
-    private static let key = "inkPointsPerWidth"
+    private static let key = "inkPointsPerWidth.v2"
     private static var factors: [String: Double] = UserDefaults.standard.dictionary(forKey: key) as? [String: Double] ?? [:]
     private static var saved: [String: Double] = factors
 
@@ -45,11 +45,21 @@ enum InkCalibration {
         return sizes.isEmpty ? nil : sizes[sizes.count / 2]
     }
 
+    /// A colour as the pen stores it: a byte each for red, green, blue and alpha, as it is on light paper. A colour
+    /// that can't be read as red, green and blue is left black rather than clear, so ink is never made invisible.
+    static func bytes(of color: UIColor) -> UInt32 {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        let light = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+        guard light.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return ToolPreset.bytes(of: .black) }
+        func byte(_ value: CGFloat) -> UInt32 { UInt32((min(max(value, 0), 1) * 255).rounded()) }
+        return byte(red) << 24 | byte(green) << 16 | byte(blue) << 8 | byte(alpha)
+    }
+
     static func learn(from stroke: PKStroke, writtenWith tool: PKInkingTool) {
         guard stroke.path.count >= 4, tool.width > 0,
               stroke.ink.inkType.rawValue == tool.inkType.rawValue,
               let middle = middleSize(of: stroke) else { return }
-        let sample = Double(middle / tool.width)
+        let sample = Double(middle) / (Double(tool.width) / Double(ToolPreset.writingScale(of: tool.inkType)))
         guard (0.2...6).contains(sample) else { return }
         let name = tool.inkType.rawValue
         let next = factors[name].map { $0 * 0.7 + sample * 0.3 } ?? sample
@@ -91,42 +101,42 @@ final class PageScrollView: UIScrollView {
 }
 
 extension PKDrawing {
+    /// The strokes at `indices`, made thicker or thinner by `widthScale`, and given a new colour and opacity if those
+    /// are asked for. Each stroke keeps its own kind of ink and the way its width swells along it; whatever is not
+    /// asked for stays as it was.
     @MainActor
-    func restyled(_ indices: Set<Int>, to preset: ToolPreset) -> PKDrawing {
-        guard !indices.isEmpty, let kind = preset.inkType else { return self }
-        let width = ToolPreset.clamped(preset.width, to: ToolPreset.widthRange(of: kind))
-        let target = InkCalibration.pointSize(forWidth: width, of: kind)
-        let least = InkCalibration.leastPoint(for: kind)
-        let newInk = PKInk(kind, color: preset.uiColor)
+    func restyled(_ indices: Set<Int>, widthScale: CGFloat, tint: UInt32?, opacity: Double?) -> PKDrawing {
+        guard !indices.isEmpty else { return self }
         var strokes = self.strokes
         for i in indices where strokes.indices.contains(i) {
-            strokes[i] = Self.restyledStroke(strokes[i], to: newInk, kind: kind, target: target, least: least)
+            strokes[i] = Self.restyledStroke(strokes[i], widthScale: widthScale, tint: tint, opacity: opacity)
         }
         return PKDrawing(strokes: strokes)
     }
 
     @MainActor
-    private static func restyledStroke(_ stroke: PKStroke, to ink: PKInk, kind: PKInkingTool.InkType,
-                                       target: CGFloat, least: CGFloat) -> PKStroke {
-        let old = Array(stroke.path)
-        guard !old.isEmpty, let middle = InkCalibration.middleSize(of: stroke) else { return stroke }
-        let sameKind = stroke.ink.inkType.rawValue == kind.rawValue
-        let swells = kind == .pen || kind == .fountainPen || kind == .pencil || kind == .crayon || kind == .watercolor
-        let points = old.map { p -> PKStrokePoint in
-            let ratio: CGFloat = middle > 0.01 ? p.size.width / middle : 1
-            let kept: CGFloat = sameKind ? ratio : (swells ? min(max(ratio, 0.6), 1.4) : 1)
-            let side = max(target * kept, least)
-            let height = sameKind && p.size.width > 0.01 ? side * p.size.height / p.size.width : side
-            if sameKind {
-                return PKStrokePoint(location: p.location, timeOffset: p.timeOffset, size: CGSize(width: side, height: height),
+    private static func restyledStroke(_ stroke: PKStroke, widthScale: CGFloat, tint: UInt32?, opacity: Double?) -> PKStroke {
+        var path = stroke.path
+        if abs(widthScale - 1) > 0.001, stroke.path.count > 0 {
+            let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue) ?? .pen
+            let least = InkCalibration.leastPoint(for: kind)
+            let points = stroke.path.map { p -> PKStrokePoint in
+                // Never thinner than is still seen, and never thicker than it was if it was already finer than that.
+                let width = max(p.size.width * widthScale, min(p.size.width, least))
+                let height = max(p.size.height * widthScale, min(p.size.height, least))
+                return PKStrokePoint(location: p.location, timeOffset: p.timeOffset, size: CGSize(width: width, height: height),
                                      opacity: p.opacity, force: p.force, azimuth: p.azimuth, altitude: p.altitude,
                                      secondaryScale: p.secondaryScale)
             }
-            return PKStrokePoint(location: p.location, timeOffset: p.timeOffset, size: CGSize(width: side, height: side),
-                                 opacity: 1, force: max(p.force, 0.5), azimuth: p.azimuth, altitude: p.altitude)
+            path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
         }
-        let path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
-        let finalInk = PKInk(kind, color: ink.color)
-        return PKStroke(ink: finalInk, path: path, transform: stroke.transform, mask: stroke.mask, randomSeed: stroke.randomSeed)
+        var ink = stroke.ink
+        if tint != nil || opacity != nil {
+            let current = InkCalibration.bytes(of: stroke.ink.color)
+            let rgb = (tint ?? current) & 0xFFFF_FF00
+            let alpha = opacity.map { UInt32((min(max($0, ToolPreset.leastOpacity), 1) * 255).rounded()) } ?? (current & 0xFF)
+            ink = PKInk(stroke.ink.inkType, color: ToolPreset.uiColor(rgb | alpha))
+        }
+        return PKStroke(ink: ink, path: path, transform: stroke.transform, mask: stroke.mask, randomSeed: stroke.randomSeed)
     }
 }

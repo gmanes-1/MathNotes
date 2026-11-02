@@ -1,56 +1,14 @@
 import SwiftUI
 import PencilKit
 
-enum TrayEdge: String, CaseIterable, Sendable {
-    case top, bottom, leading, trailing
-
-    static let key = "toolTrayEdge"
-
-    static var saved: TrayEdge { UserDefaults.standard.string(forKey: key).flatMap(TrayEdge.init(rawValue:)) ?? .bottom }
-
-    var isVertical: Bool { self == .leading || self == .trailing }
-
-    var alignment: Alignment {
-        switch self {
-        case .top: .top
-        case .bottom: .bottom
-        case .leading: .leading
-        case .trailing: .trailing
-        }
-    }
-
-    var edge: Edge {
-        switch self {
-        case .top: .top
-        case .bottom: .bottom
-        case .leading: .leading
-        case .trailing: .trailing
-        }
-    }
-
-    var title: LocalizedStringKey {
-        switch self {
-        case .top: "Move Tools to Top"
-        case .bottom: "Move Tools to Bottom"
-        case .leading: "Move Tools to Left"
-        case .trailing: "Move Tools to Right"
-        }
-    }
-
-    static func nearest(to point: CGPoint, in size: CGSize) -> TrayEdge {
-        let distances: [(TrayEdge, CGFloat)] = [(.top, point.y), (.bottom, size.height - point.y),
-                                                (.leading, point.x), (.trailing, size.width - point.x)]
-        return distances.min { $0.1 < $1.1 }?.0 ?? .bottom
-    }
-}
-
+/// The tools, on one board at the foot of the editor: the pens with their inks, the eraser, the lasso, and the
+/// shortcuts chosen to stand beside them. It floats over the desk and takes nothing from the page's width; the page
+/// stack leaves room under the last page for it.
 struct ToolTray: View {
     let session: EditorSession
+    /// The width of the pane the tray stands in.
     let room: CGFloat
-    var edge = TrayEdge.bottom
     let use: (ToolExtra) -> Void
-    var moved: (CGSize) -> Void = { _ in }
-    var dropped: (CGPoint) -> Void = { _ in }
     @State private var toolbox = Toolbox.shared
     @State private var hidden: Edge.Set = []
     @State private var editing: UUID?
@@ -59,6 +17,7 @@ struct ToolTray: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let height: CGFloat = 48
+    /// What is left under the tray, above the home indicator's margin or the zoom window.
     static let gap = Space.x2
     static let slot: CGFloat = 38
     static let button: CGFloat = 44
@@ -66,17 +25,17 @@ struct ToolTray: View {
     private static let rule: CGFloat = 17
     private static let margin = Space.x4
     private static let fade: CGFloat = 20
-    private static let grip: CGFloat = 28
-    static let space = "editor.pane"
 
+    /// How a tray is shared out: the width its pens get, in which they scroll if it is short, and how many shortcuts show.
     struct Plan: Equatable {
         var pens: CGFloat
         var extras: Int
     }
 
+    /// The eraser, the lasso and the customise menu always show. Shortcuts give way, the last first, until three pens fit.
     static func plan(pens: Int, extras: Int, room: CGFloat) -> Plan {
         let need: CGFloat = CGFloat(pens + (pens < ToolShelf.limit ? 1 : 0)) * slot
-        let fixed: CGFloat = button * 3 + rule * 2 + inset * 2 + grip
+        let fixed: CGFloat = button * 3 + rule * 2 + inset * 2
         let space: CGFloat = room - margin * 2 - fixed
         var shown = extras
         while shown > 0, space - CGFloat(shown) * button < min(need, slot * 3) { shown -= 1 }
@@ -87,22 +46,19 @@ struct ToolTray: View {
         let pens = toolbox.shelf.usable
         let extras = ToolExtra.allCases.filter(toolbox.extras.contains)
         let plan = Self.plan(pens: pens.count, extras: extras.count, room: room)
+        // Pens that all fit have no edge to fade at, whatever the scroll view last said: its word on a first
+        // layout, when the tray has no width yet, isn't always taken back.
         let scrolls = plan.pens < CGFloat(pens.count + (toolbox.shelf.isFull ? 0 : 1)) * Self.slot - 0.5
-        let vertical = edge.isVertical
-        let stack = vertical ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
-        stack {
-            gripHandle
+        HStack(spacing: 0) {
             penRow(pens)
-                .frame(width: vertical ? Self.button : plan.pens, height: vertical ? plan.pens : Self.button)
+                .frame(width: plan.pens, height: Self.button)
                 .mask {
-                    stack {
-                        LinearGradient(colors: [.black.opacity(scrolls && hidden.contains(.leading) ? 0 : 1), .black],
-                                       startPoint: vertical ? .top : .leading, endPoint: vertical ? .bottom : .trailing)
-                            .frame(width: vertical ? nil : Self.fade, height: vertical ? Self.fade : nil)
+                    HStack(spacing: 0) {
+                        LinearGradient(colors: [.black.opacity(scrolls && hidden.contains(.leading) ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: Self.fade)
                         Color.black
-                        LinearGradient(colors: [.black, .black.opacity(scrolls && hidden.contains(.trailing) ? 0 : 1)],
-                                       startPoint: vertical ? .top : .leading, endPoint: vertical ? .bottom : .trailing)
-                            .frame(width: vertical ? nil : Self.fade, height: vertical ? Self.fade : nil)
+                        LinearGradient(colors: [.black, .black.opacity(scrolls && hidden.contains(.trailing) ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: Self.fade)
                     }
                 }
             rule
@@ -112,66 +68,41 @@ struct ToolTray: View {
             ForEach(extras.prefix(plan.extras)) { extraButton($0) }
             customiseButton
         }
-        .padding(vertical ? .vertical : .horizontal, Self.inset)
-        .frame(width: vertical ? Self.height : nil, height: vertical ? nil : Self.height)
+        .padding(.horizontal, Self.inset)
+        .frame(height: Self.height)
         .board(in: RoundedRectangle.bar)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Tools"))
         .accessibilityIdentifier("editor.tools.tray")
     }
 
-    private var gripHandle: some View {
-        Image(systemName: "line.3.horizontal")
-            .rotationEffect(.degrees(edge.isVertical ? 0 : 90))
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(Color.textSecondary)
-            .frame(width: edge.isVertical ? Self.button : Self.grip, height: edge.isVertical ? Self.grip : Self.button)
-            .contentShape(Rectangle())
-            .hoverEffect(.highlight)
-            .gesture(DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.space))
-                .onChanged { moved($0.translation) }
-                .onEnded { dropped($0.location) })
-            .accessibilityLabel(Text("Move Tools"))
-            .accessibilityHint(Text("Drag to another edge of the screen"))
-            .accessibilityActions {
-                ForEach(TrayEdge.allCases.filter { $0 != edge }, id: \.self) { other in
-                    Button(other.title) { session.toolTrayEdge = other }
-                }
-            }
-            .accessibilityIdentifier("editor.tools.grip")
-    }
-
     private var rule: some View {
-        let vertical = edge.isVertical
-        return Rectangle().fill(Color.hairline)
-            .frame(width: vertical ? 24 : 1, height: vertical ? 1 : 24)
-            .padding(vertical ? .vertical : .horizontal, Space.x2)
+        Rectangle().fill(Color.hairline).frame(width: 1, height: 24).padding(.horizontal, Space.x2)
     }
 
     // MARK: Pens
 
     private func penRow(_ pens: [ToolPreset]) -> some View {
-        let vertical = edge.isVertical
-        return ScrollViewReader { proxy in
-            ScrollView(vertical ? .vertical : .horizontal) {
-                (vertical ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))) {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: 0) {
                     ForEach(Array(pens.enumerated()), id: \.element.id) { index, pen in
                         penButton(pen, at: index, of: pens.count).id(pen.id)
                     }
                     if !toolbox.shelf.isFull {
                         Button(action: addPen) { Label("New Pen", systemImage: "plus") }
-                            .buttonStyle(NewPenButtonStyle(vertical: vertical))
+                            .buttonStyle(NewPenButtonStyle())
                             .accessibilityHint(Text("Adds a pen like the one in hand, in another colour"))
                             .accessibilityIdentifier("editor.tools.add")
                     }
                 }
             }
-            .scrollBounceBehavior(.basedOnSize, axes: vertical ? .vertical : .horizontal)
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .scrollIndicators(.hidden)
             .onScrollGeometryChange(for: Edge.Set.self) { geometry in
+                // A tray with no width yet has no edges to report.
                 guard room > 0 else { return [] }
-                let x = vertical ? geometry.contentOffset.y : geometry.contentOffset.x
-                let end = vertical ? geometry.contentSize.height - geometry.containerSize.height : geometry.contentSize.width - geometry.containerSize.width
+                let x = geometry.contentOffset.x, end = geometry.contentSize.width - geometry.containerSize.width
                 return (x > 1 ? Edge.Set.leading : []).union(x < end - 1 ? .trailing : [])
             } action: { _, edges in hidden = edges }
             .onChange(of: toolbox.choice) { _, choice in
@@ -187,19 +118,19 @@ struct ToolTray: View {
 
     private func penButton(_ pen: ToolPreset, at index: Int, of count: Int) -> some View {
         let inHand = toolbox.choice == .pen(pen.id)
-        return Button { if inHand { editing = pen.id } else { take(.pen(pen.id), named: pen.name) } } label: {
+        // The pen in hand opens; any other is taken up.
+        return Button { if inHand, session.mode != .selecting { editing = pen.id } else { take(.pen(pen.id), named: pen.name) } } label: {
             ToolSwatch(preset: pen, inUse: inHand, onDark: session.inkIsLight, turned: session.paperIsNight)
         }
-        .buttonStyle(ToolSwatchButtonStyle(vertical: edge.isVertical))
+        .buttonStyle(ToolSwatchButtonStyle())
         .panel("Pen Options", isPresented: Binding(get: { editing == pen.id }, set: { if !$0, editing == pen.id { editing = nil } })) {
             ScrollView { PenOptions(id: pen.id, toolbox: toolbox, onDark: session.inkIsLight, turned: session.paperIsNight) { remove(pen) } }
                 .scrollBounceBehavior(.basedOnSize)
         }
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in change(pen) })
         .accessibilityLabel(Text(pen.name))
-        .accessibilityValue(pen.opacity < 1
-                            ? Text("Width \(pen.width.formatted(.number.precision(.fractionLength(0...1)))), opacity \(pen.opacityName)")
-                            : Text("Width \(pen.width.formatted(.number.precision(.fractionLength(0...1))))"))
+        .accessibilityValue(pen.opacity < 1 ? Text("Width \(pen.width.formatted(.number.precision(.fractionLength(0...1)))), opacity \(pen.opacityName)")
+                                            : Text("Width \(pen.width.formatted(.number.precision(.fractionLength(0...1))))"))
         .accessibilityAddTraits(inHand ? .isSelected : [])
         .accessibilityActions {
             Button("Change Pen") { change(pen) }
@@ -213,11 +144,13 @@ struct ToolTray: View {
 
     private func take(_ choice: ToolChoice, named name: String) {
         toolbox.take(choice)
+        // Picking any other tool puts the ink lasso away.
         if choice != .lasso, session.mode == .selecting { session.enter(.writing) }
         UISelectionFeedbackGenerator().selectionChanged()
         AccessibilityNotification.Announcement(name).post()
     }
 
+    /// Takes a pen up and opens its options, where it is also moved along the tray or taken off it.
     private func change(_ pen: ToolPreset) {
         guard editing != pen.id else { return }
         toolbox.take(.pen(pen.id))
@@ -225,6 +158,7 @@ struct ToolTray: View {
         editing = pen.id
     }
 
+    /// The new pen opens, so its colour can be chosen straight away.
     private func addPen() {
         guard let id = toolbox.addPen() else { return }
         UISelectionFeedbackGenerator().selectionChanged()
@@ -258,25 +192,27 @@ struct ToolTray: View {
     }
 
     private var lassoButton: some View {
-        let inHand = toolbox.choice == .lasso
+        let inHand = toolbox.choice == .lasso || session.mode == .selecting
         return Button {
-            take(.lasso, named: String(localized: "Lasso"))
-            session.enter(.selecting)
-        } label: {
-            Label("Lasso", systemImage: "lasso")
-        }
-        .buttonStyle(TrayIconStyle(isOn: inHand))
-        .accessibilityAddTraits(inHand ? .isSelected : [])
-        .accessibilityIdentifier("editor.tools.lasso")
+            // The lasso selects whole strokes, so they can be restyled, moved, copied or deleted. Tapping it again puts it away.
+            if session.mode == .selecting {
+                session.enter(.writing)
+            } else {
+                take(.lasso, named: String(localized: "Lasso"))
+                session.enter(.selecting)
+            }
+        } label: { Label("Lasso", systemImage: "lasso") }
+            .buttonStyle(TrayIconStyle(isOn: inHand))
+            .accessibilityAddTraits(inHand ? .isSelected : [])
+            .accessibilityIdentifier("editor.tools.lasso")
     }
 
     private func extraButton(_ extra: ToolExtra) -> some View {
-        let isOn: Bool
-        switch extra {
-        case .ruler: isOn = toolbox.isRulerActive
-        case .zoomWindow: isOn = session.isZoomWindowOpen
-        case .typing: isOn = toolbox.typesHandwriting
-        default: isOn = false
+        let isOn = switch extra {
+        case .ruler: toolbox.isRulerActive
+        case .zoomWindow: session.isZoomWindowOpen
+        case .typing: toolbox.typesHandwriting
+        default: false
         }
         return Button { use(extra) } label: { Label(extra.title, systemImage: extra.symbol) }
             .buttonStyle(TrayIconStyle(isOn: isOn))
@@ -295,11 +231,14 @@ struct ToolTray: View {
     }
 }
 
+/// Which shortcuts stand in the tray, as tags: one that is tied on is mustard, with a check mark.
 private struct ShortcutOptions: View {
     let toolbox: Toolbox
     @Environment(\.dynamicTypeSize) private var textSize
 
     var body: some View {
+        // At the largest text sizes the tags are a list, each the whole width, so no name is cut short.
+        // At the very largest the card is wider too, or a word as short as "Imagen" is split over two lines.
         let list = textSize.isAccessibilitySize
         let width: CGFloat = textSize > .accessibility2 ? 440 : 328
         let layout = list ? AnyLayout(VStackLayout(alignment: .leading, spacing: Space.x2)) : AnyLayout(FlowLayout(spacing: Space.x2))
@@ -323,9 +262,12 @@ private struct ShortcutOptions: View {
     }
 }
 
+/// A shortcut as a tag: mustard with a check mark while it stands in the tray, plain with a plus while it doesn't.
+/// A plain tag is paper by day and a well at night.
 private struct ShortcutTag: View {
     let extra: ToolExtra
     let isShown: Bool
+    /// The whole width, with the name on as many lines as it needs.
     let fills: Bool
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
@@ -360,12 +302,14 @@ private struct ShortcutTag: View {
     }
 }
 
+/// A pen's kind, colour, width and opacity, changed where it stands in the tray.
 private struct PenOptions: View {
     let id: UUID
     let toolbox: Toolbox
     let onDark: Bool
     let turned: Bool
     let remove: () -> Void
+    @State private var mixing = false
     @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.colorScheme) private var scheme
 
@@ -382,39 +326,48 @@ private struct PenOptions: View {
     private func content(_ pen: ToolPreset, _ ink: PKInkingTool.InkType) -> some View {
         let width = pen.width.formatted(.number.precision(.fractionLength(0...1)))
         let night = scheme == .dark && !onDark
-        let solid = Color(uiColor: ToolPreset.uiColor(pen.tint))
-        let paper = ToolSwatch.paper(onDark: onDark, night: night)
+        // The label shows the ink as faint as it is set; the tools of the roll and the bars are drawn at full strength.
+        let colour = ToolSwatch.ink(pen, onDark: onDark, night: night, turned: turned)
+        let solid = ToolSwatch.ink(pen, onDark: onDark, solid: true, turned: turned)
+        let paper = ToolSwatch.paper(onDark: onDark, night: night), faintest = ToolPreset.leastOpacity
+        // At the largest text sizes the name goes under the label, where it has the whole width.
+        let stacked = textSize.isAccessibilitySize
+        let header = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: Space.x2)) : AnyLayout(HStackLayout(spacing: Space.x3))
         return VStack(alignment: .leading, spacing: Space.x3) {
-            HStack(spacing: Space.x3) {
-                Text(pen.kindName).font(.headline).foregroundStyle(Color.ink)
-                Text(pen.opacity < 1 ? "\(pen.colorName), \(pen.opacityName)" : pen.colorName)
-                    .font(.footnote).foregroundStyle(Color.textSecondary)
-                Spacer(minLength: 0)
+            header {
+                InkLabel(kind: ink, breadth: pen.widthTravel, ink: colour, paper: paper, night: night)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(pen.kindName).font(.headline).foregroundStyle(Color.ink)
+                    Text(pen.opacity < 1 ? "\(pen.colorName), \(pen.opacityName)" : pen.colorName).font(.footnote).foregroundStyle(Color.textSecondary)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-
+            PenRoll(kind: Binding(get: { ink }, set: { kind in
+                toolbox.changePen(id) { $0.ink = kind.rawValue; $0.width = Double(kind.defaultWidth) }
+            }), ink: solid, paper: paper, night: night)
+                .accessibilityIdentifier("editor.tools.pen.kind")
             LazyVGrid(columns: Self.columns, spacing: 0) {
-                ForEach(ToolPreset.palette(for: ink), id: \.self) { color in
-                    colourButton(color, chosen: pen.tint == color)
-                }
+                ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color, chosen: pen.tint == color) }
+                mixButton(pen)
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text("Colour"))
-
             WidthBar(travel: Binding(get: { pen.widthTravel }, set: { travel in
                 toolbox.changePen(id) { $0.width = ToolPreset.width(at: travel, of: ink) }
             }), ink: solid, paper: paper, night: night, value: width, identifier: "editor.tools.pen.width")
-
-            WidthBar(measure: .opacity, travel: Binding(get: { (pen.opacity - ToolPreset.leastOpacity) / (1 - ToolPreset.leastOpacity) }, set: { travel in
-                toolbox.changePen(id) { $0.opacity = ((ToolPreset.leastOpacity + (1 - ToolPreset.leastOpacity) * travel) * 20).rounded() / 20 }
+            // Opacity moves in steps of a twentieth, so the figure beside it is a round one.
+            WidthBar(measure: .opacity, travel: Binding(get: { (pen.opacity - faintest) / (1 - faintest) }, set: { travel in
+                toolbox.changePen(id) { $0.opacity = ((faintest + (1 - faintest) * travel) * 20).rounded() / 20 }
             }), ink: solid, paper: paper, night: night, turned: turned, value: pen.opacityName, identifier: "editor.tools.pen.opacity")
-
             place(pen)
         }
         .padding(Space.x4)
     }
 
+    /// Where the pen stands among the others, and the way off the tray.
     private func place(_ pen: ToolPreset) -> some View {
         let pens = toolbox.shelf.usable, index = pens.firstIndex { $0.id == id } ?? 0
         return HStack(spacing: 0) {
@@ -434,6 +387,28 @@ private struct PenOptions: View {
         .overlay(alignment: .top) { Rectangle().fill(Color.hairline).frame(height: 1) }
     }
 
+    /// The last blot of the palette is a colour of your own: it opens the strips it is mixed on.
+    private func mixButton(_ pen: ToolPreset) -> some View {
+        let own = !ToolPreset.palette(for: pen.inkType ?? .pen).contains(pen.tint)
+        return Button { mixing = true } label: {
+            Circle()
+                .fill(own ? Color(uiColor: ToolPreset.uiColor(pen.tint)) : Color.board)
+                .overlay { Circle().strokeBorder(AngularGradient(colors: InkMixer.hues, center: .center), lineWidth: 4) }
+                .frame(width: 28, height: 28)
+                .padding(4)
+                .overlay { if own { Circle().strokeBorder(Color.accentColor, lineWidth: 2) } }
+                .frame(maxWidth: .infinity, minHeight: Self.cell)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .panel("Custom Colour", isPresented: $mixing) {
+            InkMixer(color: ToolPreset.uiColor(pen.tint)) { color in toolbox.changePen(id) { $0.setTint(ToolPreset.bytes(of: color)) } }
+        }
+        .accessibilityLabel(Text("Custom Colour"))
+        .accessibilityAddTraits(own ? .isSelected : [])
+        .accessibilityIdentifier("editor.tools.pen.custom")
+    }
+
     private func colourButton(_ color: UInt32, chosen: Bool) -> some View {
         Button { toolbox.changePen(id) { $0.setTint(color) } } label: {
             Circle()
@@ -451,6 +426,82 @@ private struct PenOptions: View {
     }
 }
 
+/// A colour mixed on two strips: its hue on one, and on the other how far it is let down to white or deepened to black.
+private struct InkMixer: View {
+    let mix: (UIColor) -> Void
+    @State private var hue: Double
+    @State private var shade: Double
+
+    static let hues: [Color] = stride(from: 0.0, through: 1.0, by: 1.0 / 12).map { Color(hue: $0, saturation: 0.85, brightness: 0.95) }
+
+    init(color: UIColor, mix: @escaping (UIColor) -> Void) {
+        self.mix = mix
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        _hue = State(initialValue: h)
+        _shade = State(initialValue: b < 0.99 ? 0.5 + (1 - b) / 2 : s / 2)
+    }
+
+    /// Half way along the shade strip the hue is at its fullest; before it there is white in it, after it black.
+    private static func color(hue: Double, shade: Double) -> UIColor {
+        UIColor(hue: hue, saturation: min(1, shade * 2), brightness: min(1, (1 - shade) * 2), alpha: 1)
+    }
+
+    var body: some View {
+        let color = Self.color(hue: hue, shade: shade)
+        HStack(spacing: Space.x4) {
+            RoundedRectangle.plate
+                .fill(Color(uiColor: color))
+                .frame(width: 44, height: 44)
+                .plate(in: RoundedRectangle.plate)
+                .accessibilityHidden(true)
+            VStack(spacing: 0) {
+                MixStrip(title: "Hue", value: $hue, colors: Self.hues)
+                MixStrip(title: "Shade", value: $shade, colors: [.white, Color(uiColor: Self.color(hue: hue, shade: 0.5)), .black])
+            }
+        }
+        .padding(Space.x4)
+        .frame(width: 304 + Space.x4 * 2)
+        .onChange(of: hue) { _, _ in mix(Self.color(hue: hue, shade: shade)) }
+        .onChange(of: shade) { _, _ in mix(Self.color(hue: hue, shade: shade)) }
+    }
+}
+
+/// A strip of colour with a square knob on it. It is read the same way in every language, so it never turns round.
+private struct MixStrip: View {
+    let title: LocalizedStringKey
+    @Binding var value: Double
+    let colors: [Color]
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    private static let knob = CGSize(width: 14, height: 28)
+
+    var body: some View {
+        GeometryReader { proxy in
+            let travel = max(proxy.size.width - Self.knob.width, 1)
+            ZStack(alignment: .leading) {
+                RoundedRectangle.thumb
+                    .fill(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing))
+                    .overlay { RoundedRectangle.thumb.strokeBorder(plateEdge(contrast), lineWidth: 1) }
+                    .frame(height: 16)
+                RoundedRectangle.thumb
+                    .fill(Color.board)
+                    .overlay { RoundedRectangle.thumb.strokeBorder(Color.ink, lineWidth: 1.5) }
+                    .frame(width: Self.knob.width, height: Self.knob.height)
+                    .shadow(color: .black.opacity(0.22), radius: 1.5, y: 1)
+                    .offset(x: travel * value)
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0).onChanged { value = min(max(($0.location.x - Self.knob.width / 2) / travel, 0), 1) })
+        }
+        .frame(height: 44)
+        .environment(\.layoutDirection, .leftToRight)
+        .accessibilityRepresentation { Slider(value: $value) { Text(title) } }
+    }
+}
+
+/// What the eraser takes, and how wide it is when it takes part of a stroke.
 private struct EraserOptions: View {
     let toolbox: Toolbox
     @Environment(\.colorScheme) private var scheme
@@ -470,8 +521,7 @@ private struct EraserOptions: View {
                     var changed = eraser
                     changed.width = widths.lowerBound + span * travel
                     toolbox.setEraser(changed)
-                }), ink: night ? Color.textSecondary : Color.labelInkSecondary,
-                         paper: ToolSwatch.paper(onDark: false, night: night), night: night,
+                }), ink: night ? Color.textSecondary : Color.labelInkSecondary, paper: ToolSwatch.paper(onDark: false, night: night), night: night,
                          value: width, identifier: "editor.tools.eraser.width")
             }
         }
@@ -480,17 +530,25 @@ private struct EraserOptions: View {
     }
 }
 
+/// A width, as a stroke that swells along a strip of paper with a knob to slide on it; the knob holds a blot as
+/// large as the stroke is where it stands. An opacity is a wash over ruled lines that covers more of them as it
+/// goes, and the knob's blot is as faint as the ink is set.
 struct WidthBar: View {
     enum Measure { case width, opacity }
 
     var measure = Measure.width
+    /// How far along the knob is, from 0 to 1.
     @Binding var travel: Double
     let ink: Color
     let paper: Color
+    /// At night the strip is a well, and the stroke and the blot wear a light rim.
     var night = false
+    /// The page is dark as well, so a faint ink is faint over the dark.
     var turned = false
     let value: String
     let identifier: String
+    /// Called when the knob is let go.
+    var onSettle: () -> Void = {}
     @State private var isDragging = false
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -502,6 +560,7 @@ struct WidthBar: View {
         let name = title.font(.subheadline.weight(.semibold)).foregroundStyle(Color.ink)
         let figure = Text(value).font(.subheadline.monospacedDigit()).foregroundStyle(Color.textSecondary)
         return VStack(spacing: Space.x2) {
+            // At the largest text sizes "Opacity" and its figure don't fit side by side; the figure goes under it.
             ViewThatFits(in: .horizontal) {
                 HStack {
                     name.lineLimit(1)
@@ -547,7 +606,10 @@ struct WidthBar: View {
                     isDragging = true
                     travel = min(max((drag.location.x - Space.x2 - Self.knob / 2) / run, 0), 1)
                 }
-                .onEnded { _ in isDragging = false })
+                .onEnded { _ in
+                    isDragging = false
+                    onSettle()
+                })
         }
         .frame(height: Self.height)
         .accessibilityRepresentation {
@@ -558,10 +620,13 @@ struct WidthBar: View {
         }
     }
 
+    /// The ink at `strength`. At night it isn't paper it lies on, so it is as pale as it would be on a page.
     private func faint(_ strength: Double) -> Color {
         night && !turned ? ToolSwatch.onPaper(UIColor(ink), at: strength) : ink.opacity(strength)
     }
 
+    /// The lines of a page with the ink washed over them, from as faint as a pen can be to full strength: the
+    /// stronger the ink, the less of the lines shows through.
     private var wash: some View {
         let band = RoundedRectangle.thumb
         let lines = VStack(spacing: 5) {
@@ -597,6 +662,7 @@ struct WidthBar: View {
             .animation(Motion.quick, value: isDragging)
     }
 
+    /// A stroke that begins as a hairline and ends as broad as the strip allows, round at both ends.
     private struct Swell: Shape {
         func path(in rect: CGRect) -> Path {
             let thin: CGFloat = 1, broad = rect.height / 2
@@ -612,10 +678,14 @@ struct WidthBar: View {
     }
 }
 
+/// One pen: its ink as a blot on a paper label, as large as the pen is wide, under the mark of its kind.
+/// Like a cover's label, the paper stays cream at night, so the ink is seen as it is on a page.
 struct ToolSwatch: View {
     let preset: ToolPreset
     var inUse = false
+    /// On Chalkboard the label is the board's green, and the ink as light as it is written there.
     var onDark = false
+    /// On paper that Dark Mode shows dark the ink is as light as it is there, on the well.
     var turned = false
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.colorScheme) private var scheme
@@ -624,16 +694,22 @@ struct ToolSwatch: View {
     static let shape = RoundedRectangle.plate
     private static let chalkboard = Color(red: PaperColor.chalkboard.rgb.0, green: PaperColor.chalkboard.rgb.1, blue: PaperColor.chalkboard.rgb.2)
 
+    /// What a pen's ink is shown on: paper by day, a well as dark as the tray at night, Chalkboard's green on a Chalkboard page.
     static func paper(onDark: Bool, night: Bool = false) -> Color { onDark ? chalkboard : night ? Color.well : Color.labelCream }
 
+    /// The light rim that tells ink from the dark it is shown on at night.
     static func rim(_ contrast: ColorSchemeContrast) -> Color { Color.ink.opacity(contrast == .increased ? 0.9 : 0.55) }
 
+    /// The ink as it is on the page, as faint as the pen is set unless `solid` asks for it at full strength. At
+    /// `night` a faint ink lies on a dark well, not on paper, so it is shown as pale as a page would make it. Where
+    /// the page has `turned` dark, the well is what it is written on.
     static func ink(_ preset: ToolPreset, onDark: Bool, solid: Bool = false, night: Bool = false, turned: Bool = false) -> Color {
         if night, !onDark, !turned, !solid, preset.opacity < 1 { return onPaper(ToolPreset.uiColor(preset.tint), at: preset.opacity) }
         let color = solid ? ToolPreset.uiColor(preset.tint) : preset.uiColor
         return Color(uiColor: onDark || turned ? PKInkingTool.convertColor(color, from: .light, to: .dark) : color)
     }
 
+    /// A colour as it shows on white paper at `opacity`, with nothing left to show through it.
     static func onPaper(_ color: UIColor, at opacity: Double) -> Color {
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
         color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
@@ -644,6 +720,7 @@ struct ToolSwatch: View {
     var body: some View {
         let shape = Self.shape
         let blot = 9 + 11 * preset.widthFraction
+        // At night the label is a well in the tray, as dark as the rest of it, and the ink is told from it by its rim.
         let night = scheme == .dark && !onDark
         let rim = night ? Self.rim(contrast) : (onDark ? Color.white : Color.labelInk).opacity(contrast == .increased ? 0.6 : 0.22)
         ZStack {
@@ -675,19 +752,18 @@ struct ToolSwatch: View {
     }
 }
 
-struct ToolSwatchButtonStyle: ButtonStyle {
-    var vertical = false
-
+private struct ToolSwatchButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.92 : 1)
-            .frame(width: vertical ? ToolTray.button : ToolTray.slot, height: vertical ? ToolTray.slot : ToolTray.button)
+            .frame(width: ToolTray.slot, height: ToolTray.button)
             .contentShape(Rectangle())
             .contentShape(.hoverEffect, RoundedRectangle.plate.inset(by: 1))
             .hoverEffect(.highlight)
     }
 }
 
+/// An icon in the tray. The tool in hand, and a helper that is on, wears the frame the pen in hand does.
 struct TrayIconStyle: ButtonStyle {
     var isOn = false
 
@@ -715,24 +791,23 @@ struct TrayIconStyle: ButtonStyle {
                 .contentShape(Rectangle())
                 .contentShape(.hoverEffect, RoundedRectangle.plate.inset(by: 1))
                 .hoverEffect(.highlight)
+                // The tray stays one height; its options, opened from here, grow with the text size.
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .accessibilityShowsLargeContentViewer { configuration.label.labelStyle(.titleAndIcon) }
         }
     }
 }
 
-struct NewPenButtonStyle: ButtonStyle {
-    var vertical = false
-
+private struct NewPenButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        Icon(configuration: configuration, vertical: vertical)
+        Icon(configuration: configuration)
     }
 
     private struct Icon: View {
         let configuration: Configuration
-        let vertical: Bool
         @Environment(\.accessibilityShowBorders) private var showBorders
 
+        /// An empty label waiting for a pen, so it isn't taken for the bar's Add.
         var body: some View {
             configuration.label
                 .labelStyle(.iconOnly)
@@ -743,7 +818,7 @@ struct NewPenButtonStyle: ButtonStyle {
                 .overlay {
                     ToolSwatch.shape.strokeBorder(Color.ink.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
                 }
-                .frame(width: vertical ? ToolTray.button : ToolTray.slot, height: vertical ? ToolTray.slot : ToolTray.button)
+                .frame(width: ToolTray.slot, height: ToolTray.button)
                 .contentShape(Rectangle())
                 .contentShape(.hoverEffect, RoundedRectangle.plate.inset(by: 1))
                 .hoverEffect(.highlight)

@@ -296,7 +296,7 @@ final class PageSlotView: UIView {
 @MainActor
 final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanvasViewDelegate,
                                  InkObserver, EditorCanvasControlling, UIGestureRecognizerDelegate, UIDropInteractionDelegate, UITextViewDelegate,
-                                 UIPencilInteractionDelegate, UIPopoverPresentationControllerDelegate, @preconcurrency UIEditMenuInteractionDelegate {
+                                 UIPencilInteractionDelegate {
     private let session: EditorSession
     private var document: NotebookDocument { session.document }
     private let scrollView = PageScrollView()
@@ -335,17 +335,17 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var replayPages: [UUID: ReplayInk.Page] = [:]
     private var inkLasso: InkLassoOverlay?
     private var inkSelection: InkSelection = [:]
-    private var lassoFloor: CGFloat?
     private var lassoMoveOrigin: CGPoint?
     private var isMovingInk = false
     private var restyleTask: Task<Void, Never>?
     private var previewTask: Task<Void, Never>?
-    private var pendingRestyle: ToolPreset?
+    private var pendingRestyle: InkRestyleChange?
+    private var pendingRestyleStyle: ToolPreset?
+    private var restyleBaseline: ToolPreset?
+    private var inkMenuSuspended = false
+    private var inkPasteStackPoint: CGPoint?
     private lazy var lassoPan = UIPanGestureRecognizer(target: self, action: #selector(lassoPanned))
     private lazy var pasteHold = UILongPressGestureRecognizer(target: self, action: #selector(heldForPaste))
-    private var inkPopover: UIHostingController<InkSelectionMenu>?
-    private var inkMenuPoint: CGPoint?
-    private var inkMenuForSelection = false
     private var isFinding = false
     private var findRects: [UUID: [CGRect]] = [:]
     private var findCurrent: FindMatch?
@@ -548,6 +548,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        defer { if inkLasso != nil { publishInkSelection() } }
         let bounds = view.bounds
         guard bounds.width > 0, bounds.height > 0, bounds.size != lastBounds.size else { return }
         let isFirst = lastBounds == .zero
@@ -674,6 +675,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         showSelection()
         inkLasso?.scale = bakedScale
+        if inkLasso != nil { publishInkSelection() }
         textOverlay?.scale = bakedScale
         layoutZoomTarget()
         updateInsets()
@@ -691,18 +693,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let vertical = max(0, (scrollView.bounds.height - scrollView.contentSize.height) / 2)
         let slack = isPresenting ? scrollView.bounds.height / 2 : 0
         let panel = zoomPanel.map { view.bounds.maxY - $0.frame.minY } ?? 0
-        
-        // The fix: If the lasso is active, ignore the top safe area and toolbars
-        // so the page doesn't shift downwards when the selection starts.
-        let topInset = inkLasso != nil ? vertical : max(vertical + view.safeAreaInsets.top + toolsAbove, slack)
-        
         let next = UIEdgeInsets(
-            top: topInset,
+            top: max(vertical + view.safeAreaInsets.top, slack),
             left: horizontal,
-            bottom: max(vertical, inkLasso != nil ? lassoFloor ?? toolsObscured : toolsObscured, slack, panel, textView == nil && !isFinding ? 0 : keyboardOverlap),
+            bottom: max(vertical, toolsObscured, slack, panel, textView == nil && !isFinding ? 0 : keyboardOverlap),
             right: horizontal
         )
-        
+
         guard next != was else { return }
         scrollView.contentInset = next
         let offset = scrollView.contentOffset
@@ -760,13 +757,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private var toolsObscured: CGFloat {
-        guard session.showsToolTray, session.toolTrayEdge == .bottom else { return 0 }
+        guard session.showsToolTray else { return 0 }
         return ToolTray.height + ToolTray.gap + max(view.safeAreaInsets.bottom, zoomPanel.map { view.bounds.maxY - $0.frame.minY } ?? 0)
-    }
-
-    private var toolsAbove: CGFloat {
-        guard session.showsToolTray, session.toolTrayEdge == .top else { return 0 }
-        return ToolTray.height + ToolTray.gap * 2
     }
 
     func fitZoom(_ fit: PageFit, page index: Int) -> CGFloat {
@@ -989,12 +981,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func syncTool(_ canvas: PageCanvasView) {
-        var tool = toolbox.tool
-        if let ink = tool as? PKInkingTool, bakedScale > 0 {
-            let width = CGFloat(ink.width) / bakedScale
-            tool = PKInkingTool(ink.inkType, color: ink.color, width: width)
-        }
-        canvas.tool = tool
+        canvas.tool = toolbox.tool
         canvas.isRulerActive = toolbox.isRulerActive
     }
 
@@ -2005,7 +1992,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         guard selecting != (inkLasso != nil), isViewLoaded else { return }
         if selecting {
             select(nil)
-            lassoFloor = scrollView.contentInset.bottom
+            inkMenuSuspended = false
             let overlay = InkLassoOverlay(frame: contentView.bounds)
             overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             overlay.scale = bakedScale
@@ -2014,10 +2001,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             inkLasso = overlay
         } else {
             restoreLiftedInk()
-            dismissInkPopover()
+            clearPasteSpot()
+            inkMenuSuspended = false
             inkLasso?.removeFromSuperview()
             inkLasso = nil
-            lassoFloor = nil
             setInkSelection([:])
         }
         for canvas in canvases.values where canvas.isLoaded { setDrawingEnabled(!document.isReadOnly && !isLocked, canvas) }
@@ -2027,12 +2014,34 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     private func setInkSelection(_ selection: InkSelection) {
         let kept = selection.filter { !$0.value.isEmpty }
+        let isNew = kept != inkSelection
+        // A style that was set but not yet written belongs to the ink it was set for: write it before that changes.
+        if isNew, pendingRestyle != nil { commitRestyle() }
         inkSelection = kept
+        if isNew {
+            restyleBaseline = nil
+            if !kept.isEmpty { session.inkSelectionToken &+= 1 }
+        }
+        if !kept.isEmpty { clearPasteSpot() }
         inkLasso?.showSelection(InkLasso.bounds(of: inkSelection, drawings: liveInk, frames: stackFrames))
         let count = inkSelection.values.reduce(0) { $0 + $1.count }
         if session.inkSelectionCount != count {
             session.inkSelectionCount = count
         }
+        publishInkSelection()
+    }
+
+    /// Tells the editor where the selection is on the page view, so the menu can stand beside the ink it acts on.
+    /// Nothing is published while a lasso is being drawn or the selection is being dragged.
+    private func publishInkSelection() {
+        var frame: CGRect?
+        if let overlay = inkLasso, !inkMenuSuspended, !inkSelection.isEmpty, bakedScale > 0, let bounds = overlay.selectionBounds {
+            let inContent = CGRect(x: bounds.minX * bakedScale, y: bounds.minY * bakedScale,
+                                   width: bounds.width * bakedScale, height: bounds.height * bakedScale)
+                .insetBy(dx: -8, dy: -8)
+            frame = view.convert(inContent, from: contentView)
+        }
+        if session.inkSelectionFrame != frame { session.inkSelectionFrame = frame }
     }
 
     private func stackPoint(_ gesture: UIGestureRecognizer) -> CGPoint {
@@ -2045,8 +2054,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let point = stackPoint(gesture)
         switch gesture.state {
         case .began:
+            inkMenuSuspended = true
+            clearPasteSpot()
             if let bounds = overlay.selectionBounds, bounds.insetBy(dx: -14, dy: -14).contains(point) {
                 lassoMoveOrigin = point
+                publishInkSelection()
                 liftInk()
             } else {
                 lassoMoveOrigin = nil
@@ -2060,6 +2072,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 overlay.add(point)
             }
         case .ended:
+            inkMenuSuspended = false
             if let origin = lassoMoveOrigin {
                 lassoMoveOrigin = nil
                 moveInkSelection(by: CGSize(width: point.x - origin.x, height: point.y - origin.y), copying: false)
@@ -2067,9 +2080,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 catchInk(inside: InkLasso.outline(from: overlay.end()))
             }
         default:
+            inkMenuSuspended = false
             lassoMoveOrigin = nil
             _ = overlay.end()
             restoreLiftedInk()
+            publishInkSelection()
         }
     }
 
@@ -2084,7 +2099,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         setInkSelection(caught)
         let count = session.inkSelectionCount
-        if count > 0 { showInkMenuOverSelection() }
         AccessibilityNotification.Announcement(count == 0 ? String(localized: "No ink selected") : String(localized: "\(count) strokes selected")).post()
     }
 
@@ -2118,6 +2132,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         for id in inkSelection.keys {
             if let canvas = canvases[id], let ink = document.loadedInk(id) { show(ink, in: canvas) }
         }
+        publishInkSelection()
     }
 
     private func moveInkSelection(by delta: CGSize, copying: Bool) {
@@ -2149,57 +2164,89 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         setInkSelection([:])
     }
 
+    // MARK: Restyling the selected ink
+
+    /// What a restyle changes in the selected ink, measured against how it stood when its style was first touched, so
+    /// the ink never jumps to a width worked out from a guess: it grows and shrinks from what it is.
+    private struct InkRestyleChange: Equatable {
+        var widthScale: CGFloat
+        var tint: UInt32?
+        var opacity: Double?
+
+        var isIdentity: Bool { abs(widthScale - 1) < 0.001 && tint == nil && opacity == nil }
+    }
+
     func restyleInkSelection(to preset: ToolPreset) {
-        guard !inkSelection.isEmpty, preset != pendingRestyle else { return }
-        pendingRestyle = preset
+        guard !inkSelection.isEmpty, !document.isReadOnly else { return }
+        if restyleBaseline == nil { restyleBaseline = selectedInkStyle() }
+        guard let baseline = restyleBaseline else { return }
+        let change = InkRestyleChange(
+            widthScale: baseline.width > 0.001 ? CGFloat(preset.width / baseline.width) : 1,
+            tint: preset.tint == baseline.tint ? nil : preset.tint,
+            opacity: abs(preset.opacity - baseline.opacity) < 0.001 ? nil : preset.opacity)
+        guard change != pendingRestyle else { return }
+        pendingRestyle = change
+        pendingRestyleStyle = preset
 
         previewTask?.cancel()
         previewTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(60))
+            try? await Task.sleep(for: .milliseconds(40))
             guard !Task.isCancelled else { return }
-            self?.showRestylePreview(preset)
+            self?.showRestylePreview()
         }
 
         restyleTask?.cancel()
         restyleTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(500))
+            try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
             self?.commitRestyle()
         }
     }
 
-    private func showRestylePreview(_ preset: ToolPreset) {
+    private func showRestylePreview() {
+        guard let change = pendingRestyle else { return }
         for (id, indices) in inkSelection {
             guard let base = document.loadedInk(id), let canvas = canvases[id] else { continue }
             isApplyingDrawing = true
-            canvas.drawing = base.restyled(Set(indices), to: preset)
+            canvas.drawing = base.restyled(Set(indices), widthScale: change.widthScale, tint: change.tint, opacity: change.opacity)
             canvas.strokeCount = nil
             isApplyingDrawing = false
         }
     }
 
+    /// Puts the document's own ink back on the canvases, where a preview of a style that wasn't kept is showing.
+    private func revertRestylePreview() {
+        for id in inkSelection.keys {
+            if let canvas = canvases[id], let ink = document.loadedInk(id) { show(ink, in: canvas) }
+        }
+    }
+
+    /// Writes the style that is being previewed into the notebook, as one undo step. Called as soon as the slider is
+    /// let go, after a short rest, and always before the selection changes or goes.
     func commitRestyle() {
         previewTask?.cancel()
         previewTask = nil
         restyleTask?.cancel()
         restyleTask = nil
-        guard let preset = pendingRestyle, !inkSelection.isEmpty else {
-            pendingRestyle = nil
-            return
-        }
+        guard let change = pendingRestyle else { return }
+        let style = pendingRestyleStyle
         pendingRestyle = nil
+        pendingRestyleStyle = nil
+        guard !change.isIdentity, !inkSelection.isEmpty else { return revertRestylePreview() }
         var changed: [UUID: PKDrawing] = [:]
         for (id, indices) in inkSelection {
             guard let ink = document.loadedInk(id) else { continue }
-            changed[id] = ink.restyled(Set(indices), to: preset)
+            changed[id] = ink.restyled(Set(indices), widthScale: change.widthScale, tint: change.tint, opacity: change.opacity)
         }
-        guard !changed.isEmpty else { return }
+        guard !changed.isEmpty else { return revertRestylePreview() }
         isMovingInk = true
-        document.updateInk(changed, actionName: String(localized: "Change Ink Style"))
+        let done = document.updateInk(changed, actionName: String(localized: "Change Ink Style"))
         isMovingInk = false
+        if done { restyleBaseline = style } else { revertRestylePreview() }
         setInkSelection(inkSelection)
     }
 
+    /// The style of the first selected stroke, as the menu over the selection shows it.
     func selectedInkStyle() -> ToolPreset? {
         for page in pages {
             guard let indices = inkSelection[page.id], let ink = document.loadedInk(page.id) else { continue }
@@ -2208,7 +2255,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 guard let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue),
                       let size = InkCalibration.middleSize(of: stroke) else { continue }
                 let width = InkCalibration.width(forPointSize: size, of: kind)
-                return ToolPreset(ink: kind, color: ToolPreset.bytes(of: stroke.ink.color), width: width)
+                return ToolPreset(ink: kind, color: InkCalibration.bytes(of: stroke.ink.color), width: width)
             }
         }
         return nil
@@ -2288,110 +2335,37 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func lassoTapped(at point: CGPoint) {
-        if let bounds = inkLasso?.selectionBounds, bounds.insetBy(dx: -14, dy: -14).contains(point) {
-            return showInkMenuOverSelection()
-        }
+        // A tap on the selection leaves it as it is: the menu is already beside it.
+        if let bounds = inkLasso?.selectionBounds, bounds.insetBy(dx: -14, dy: -14).contains(point) { return }
         setInkSelection([:])
-        dismissInkPopover()
-        if !InkClipboard.shared.isEmpty { showInkMenu(at: point, forSelection: false) }
+        offerPaste(at: point)
     }
 
     @objc private func heldForPaste(_ gesture: UILongPressGestureRecognizer) {
         guard gesture.state == .began, inkLasso != nil, bakedScale > 0 else { return }
         let point = stackPoint(gesture)
-        if let bounds = inkLasso?.selectionBounds, bounds.insetBy(dx: -14, dy: -14).contains(point) {
-            return showInkMenuOverSelection()
-        }
+        if let bounds = inkLasso?.selectionBounds, bounds.insetBy(dx: -14, dy: -14).contains(point) { return }
         guard !InkClipboard.shared.isEmpty else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        showInkMenu(at: point, forSelection: false)
+        offerPaste(at: point)
     }
 
-    private func showInkMenuOverSelection() {
-        guard let bounds = inkLasso?.selectionBounds, let window = view.window else { return }
-        
-        let screenBounds = contentView.convert(bounds, to: window)
-        
-        // If the selection is in the top 45% of the screen, the menu appears below the ink.
-        // Otherwise, it appears above it.
-        if screenBounds.midY < window.bounds.height * 0.45 {
-            showInkMenu(at: CGPoint(x: bounds.midX, y: bounds.maxY + 8), forSelection: true, preferBelow: true)
-        } else {
-            showInkMenu(at: CGPoint(x: bounds.midX, y: bounds.minY - 8), forSelection: true, preferBelow: false)
-        }
+    /// Puts a Paste button where the paper was tapped or held, when there is ink to paste.
+    private func offerPaste(at stackPoint: CGPoint) {
+        guard !InkClipboard.shared.isEmpty, !document.isReadOnly, bakedScale > 0 else { return }
+        inkPasteStackPoint = stackPoint
+        session.inkPasteSpot = view.convert(CGPoint(x: stackPoint.x * bakedScale, y: stackPoint.y * bakedScale), from: contentView)
     }
 
-    private func showInkMenu(at point: CGPoint, forSelection: Bool, preferBelow: Bool = false) {
-        guard isViewLoaded, bakedScale > 0 else { return }
-        inkMenuPoint = point
-        inkMenuForSelection = forSelection
-        inkPopover?.dismiss(animated: false)
-        inkPopover = nil
-
-        let preset = selectedInkStyle() ?? ToolPreset(kind: .pen)
-        let menu = InkSelectionMenu(
-            preset: preset,
-            forSelection: forSelection,
-            canPaste: !InkClipboard.shared.isEmpty && !document.isReadOnly,
-            canDelete: forSelection && !inkSelection.isEmpty && !document.isReadOnly,
-            onStyle: { [weak self] in self?.session.requestRestyle() },
-            onCut: { [weak self] in self?.cutInkSelection() },
-            onCopy: { [weak self] in self?.copyInkSelection() },
-            onPaste: { [weak self] in
-                guard let self else { return }
-                if !self.inkMenuForSelection, let p = self.inkMenuPoint { self.pasteInk(at: p) }
-                else { self.pasteInk() }
-            },
-            onDuplicate: { [weak self] in self?.duplicateInkSelection() },
-            onDelete: { [weak self] in self?.deleteInkSelection() },
-            onWidth: { [weak self] fraction in
-                guard let self, let current = self.selectedInkStyle(), let kind = current.inkType else { return }
-                var next = current
-                next.width = ToolPreset.width(at: fraction, of: kind)
-                self.restyleInkSelection(to: next)
-            },
-            onOpacity: { [weak self] value in
-                guard let self, var current = self.selectedInkStyle() else { return }
-                current.opacity = value
-                self.restyleInkSelection(to: current)
-            },
-            onColor: { [weak self] color in
-                guard let self, var current = self.selectedInkStyle() else { return }
-                current.setTint(color)
-                self.restyleInkSelection(to: current)
-            },
-            onDismiss: { [weak self] in self?.dismissInkPopover() }
-        )
-
-        let host = UIHostingController(rootView: menu)
-        host.view.backgroundColor = .clear
-        host.modalPresentationStyle = .popover
-        host.preferredContentSize = CGSize(width: 320, height: forSelection ? 380 : 120)
-        
-        if let pop = host.popoverPresentationController {
-            pop.sourceView = view
-            let shown = view.convert(CGPoint(x: point.x * bakedScale, y: point.y * bakedScale), from: contentView)
-            pop.sourceRect = CGRect(x: shown.x, y: shown.y, width: 1, height: 1)
-            
-            // If preferBelow is true, the arrow points up (menu is below the anchor).
-            // If preferBelow is false, the arrow points down (menu is above the anchor).
-            pop.permittedArrowDirections = preferBelow ? [.up] : [.down]
-            
-            pop.delegate = self
-        }
-        present(host, animated: true)
-        inkPopover = host
+    private func clearPasteSpot() {
+        inkPasteStackPoint = nil
+        if session.inkPasteSpot != nil { session.inkPasteSpot = nil }
     }
 
-    private func dismissInkPopover() {
-        inkPopover?.dismiss(animated: true)
-        inkPopover = nil
-    }
-
-    func popoverPresentationControllerDidDismissPopover(_ controller: UIPopoverPresentationController) {
-        inkPopover = nil
-        inkMenuPoint = nil
-        if inkLasso != nil { setInkSelection([:]) }
+    func pasteInkAtHeldSpot() {
+        guard let point = inkPasteStackPoint else { return pasteInk() }
+        clearPasteSpot()
+        pasteInk(at: point)
     }
 
     func selectedInk() -> [PKDrawing] {
@@ -3092,6 +3066,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         guard scrollView === self.scrollView else { return }
         guard !isBaking else { return }
         updateWindow()
+        if inkLasso != nil { publishInkSelection() }
     }
 
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
@@ -3104,6 +3079,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         guard scrollView === self.scrollView else { return }
         pendingPage = nil
         dropLaser()
+        clearPasteSpot()
     }
 
     func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
@@ -3117,6 +3093,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         guard !isBaking else { return }
         updateInsets()
         updateWindow()
+        if inkLasso != nil { publishInkSelection() }
     }
 
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
@@ -3136,5 +3113,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         updateWindow(force: true)
         CATransaction.commit()
+        if inkLasso != nil { publishInkSelection() }
     }
 }

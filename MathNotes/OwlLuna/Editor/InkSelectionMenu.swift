@@ -1,96 +1,147 @@
 import SwiftUI
 import PencilKit
 
-/// The pen-style popover over an ink selection: Style, Cut, Copy, Paste, Duplicate, Delete, a Colour grid,
-/// and the width and opacity of the selected strokes.
+/// The menu that stands beside the ink the lasso has selected, and nowhere else on screen: Style, Copy, Cut,
+/// Duplicate, Paste, Turn into Text, Make Flashcard and Delete. Style opens inline, below the buttons, with the colour,
+/// the width and the opacity of the selected strokes; the ink changes as the knob moves and is kept when it is let go.
 struct InkSelectionMenu: View {
-    let preset: ToolPreset
-    let forSelection: Bool
+    /// The style of the selected ink, read when the menu appears and whenever other ink is selected.
+    let initialStyle: () -> ToolPreset?
+    /// Changes when other ink is selected.
+    let selectionToken: Int
     let canPaste: Bool
-    let canDelete: Bool
-    let onStyle: () -> Void
-    let onCut: () -> Void
+    let canMakeCard: Bool
+    let onTurnIntoText: () -> Void
+    let onMakeCard: () -> Void
     let onCopy: () -> Void
+    let onCut: () -> Void
     let onPaste: () -> Void
     let onDuplicate: () -> Void
     let onDelete: () -> Void
-    let onWidth: (Double) -> Void
-    let onOpacity: (Double) -> Void
-    let onColor: (UInt32) -> Void
-    let onDismiss: () -> Void
+    /// The style asked for, as a pen: the ink follows it.
+    let onRestyle: (ToolPreset) -> Void
+    /// The style asked for is to be kept.
+    let onSettle: () -> Void
+
+    @State private var styling = false
+    @State private var style = ToolPreset(ink: .pen, color: 0x1B22_30FF, width: 2.7)
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 6)
+    private static let panelWidth: CGFloat = 300
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.x3) {
-            // Top Action Buttons
-            HStack(spacing: Space.x2) {
-                if forSelection {
-                    Button(action: onStyle) { Label("Style", systemImage: "paintbrush.pointed") }
-                    Button(action: onCopy) { Label("Copy", systemImage: "doc.on.doc") }
-                    Button(action: onCut) { Label("Cut", systemImage: "scissors") }
-                    Button(action: onDuplicate) { Label("Duplicate", systemImage: "plus.square.on.square") }
-                }
-                if canPaste {
-                    Button(action: onPaste) { Label("Paste", systemImage: "doc.on.clipboard") }
-                }
-                Spacer(minLength: 0)
-                if canDelete {
-                    Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
-                }
-            }
-            .labelStyle(.iconOnly)
-            .font(.body.weight(.medium))
-            .frame(minHeight: 44)
-
-            if forSelection {
-                Divider()
-                
-                let ink = preset.inkType ?? .pen
-                let solid = Color(uiColor: ToolPreset.uiColor(preset.tint))
-                let paper = scheme == .dark ? Color.well : Color.labelCream
-                let night = scheme == .dark
-
-                // Color Palette
-                LazyVGrid(columns: Self.columns, spacing: 0) {
-                    ForEach(ToolPreset.palette(for: ink), id: \.self) { color in
-                        Button {
-                            onColor(color)
-                        } label: {
-                            Circle()
-                                .fill(Color(uiColor: ToolPreset.uiColor(color)))
-                                .frame(width: 24, height: 24)
-                                .padding(4)
-                                .overlay {
-                                    if preset.tint == color {
-                                        Circle().strokeBorder(Color.accentColor, lineWidth: 2)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 36)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text(ToolPreset.colorName(color)))
-                    }
-                }
-                .padding(.bottom, Space.x1)
-
-                // Width and Opacity Sliders
-                WidthBar(travel: Binding(get: { preset.widthTravel }, set: { onWidth($0) }),
-                         ink: solid, paper: paper, night: night,
-                         value: preset.width.formatted(.number.precision(.fractionLength(0...1))),
-                         identifier: "editor.ink.menu.width")
-                
-                WidthBar(measure: .opacity,
-                         travel: Binding(get: { (preset.opacity - ToolPreset.leastOpacity) / (1 - ToolPreset.leastOpacity) },
-                                         set: { onOpacity(((ToolPreset.leastOpacity + (1 - ToolPreset.leastOpacity) * $0) * 20).rounded() / 20) }),
-                         ink: solid, paper: paper, night: night,
-                         value: preset.opacityName,
-                         identifier: "editor.ink.menu.opacity")
+        VStack(spacing: 0) {
+            actions
+            if styling {
+                Rectangle().fill(Color.hairline).frame(height: 1)
+                stylePanel
             }
         }
-        .padding(Space.x4)
-        .frame(minWidth: 320, idealWidth: 340)
+        .board(in: RoundedRectangle.bar)
+        .onAppear(perform: refresh)
+        .onChange(of: selectionToken) { refresh() }
+    }
+
+    private func refresh() {
+        if let current = initialStyle() { style = current }
+    }
+
+    // MARK: Buttons
+
+    private var actions: some View {
+        HStack(spacing: 0) {
+            button("Style", "paintbrush.pointed", identifier: "style", isOn: styling) {
+                withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) { styling.toggle() }
+                if !styling { onSettle() }
+            }
+            button("Copy", "doc.on.doc", identifier: "copy", action: onCopy)
+            button("Cut", "scissors", identifier: "cut", action: onCut)
+            button("Duplicate", "plus.square.on.square", identifier: "duplicate", action: onDuplicate)
+            if canPaste {
+                button("Paste", "doc.on.clipboard", identifier: "paste", action: onPaste)
+            }
+            rule
+            button("Turn into Text", "text.viewfinder", identifier: "text", action: onTurnIntoText)
+            if canMakeCard {
+                button("Make Flashcard", "rectangle.on.rectangle.angled", identifier: "card", action: onMakeCard)
+            }
+            rule
+            button("Delete", "trash", identifier: "delete", role: .destructive, action: onDelete)
+        }
+        .padding(.horizontal, Space.x1)
+        .padding(.vertical, 2)
+    }
+
+    private var rule: some View {
+        Rectangle().fill(Color.hairline).frame(width: 1, height: 24).padding(.horizontal, Space.x1)
+    }
+
+    private func button(_ title: LocalizedStringKey, _ symbol: String, identifier: String, isOn: Bool = false,
+                        role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
+        Button(role: role, action: action) { Label(title, systemImage: symbol) }
+            .buttonStyle(TrayIconStyle(isOn: isOn))
+            .accessibilityAddTraits(isOn ? .isSelected : [])
+            .accessibilityIdentifier("editor.ink.\(identifier)")
+    }
+
+    // MARK: Style
+
+    private var stylePanel: some View {
+        let ink = style.inkType ?? .pen
+        let solid = Color(uiColor: ToolPreset.uiColor(style.tint))
+        let night = scheme == .dark
+        let paper = night ? Color.well : Color.labelCream
+        return VStack(alignment: .leading, spacing: Space.x2) {
+            LazyVGrid(columns: Self.columns, spacing: 0) {
+                ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color) }
+            }
+            WidthBar(travel: Binding(get: { style.widthTravel }, set: { travel in
+                         var next = style
+                         next.width = ToolPreset.width(at: travel, of: ink)
+                         change(next)
+                     }),
+                     ink: solid, paper: paper, night: night,
+                     value: style.width.formatted(.number.precision(.fractionLength(0...1))),
+                     identifier: "editor.ink.menu.width", onSettle: onSettle)
+            WidthBar(measure: .opacity,
+                     travel: Binding(get: { (style.opacity - ToolPreset.leastOpacity) / (1 - ToolPreset.leastOpacity) }, set: { travel in
+                         var next = style
+                         next.opacity = ((ToolPreset.leastOpacity + (1 - ToolPreset.leastOpacity) * travel) * 20).rounded() / 20
+                         change(next)
+                     }),
+                     ink: solid, paper: paper, night: night,
+                     value: style.opacityName,
+                     identifier: "editor.ink.menu.opacity", onSettle: onSettle)
+        }
+        .padding(Space.x3)
+        .frame(width: Self.panelWidth)
+    }
+
+    private func colourButton(_ color: UInt32) -> some View {
+        let chosen = style.tint == color
+        return Button {
+            var next = style
+            next.setTint(color)
+            change(next)
+            onSettle()
+        } label: {
+            Circle()
+                .fill(Color(uiColor: ToolPreset.uiColor(color)))
+                .frame(width: 24, height: 24)
+                .padding(4)
+                .overlay { if chosen { Circle().strokeBorder(Color.accentColor, lineWidth: 2) } }
+                .frame(maxWidth: .infinity, minHeight: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(ToolPreset.colorName(color)))
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+
+    private func change(_ next: ToolPreset) {
+        style = next
+        onRestyle(next)
     }
 }
