@@ -7417,7 +7417,6 @@
       }
     },
     "Calligraphy Pen" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9163,7 +9162,6 @@
       }
     },
     "Custom Colour" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10336,9 +10334,6 @@
           }
         }
       }
-    },
-    "Drag to another edge of the screen" : {
-
     },
     "Drag to choose the part of the page the zoom window shows. Swipe up or down to move it along the line." : {
       "localizations" : {
@@ -11575,7 +11570,6 @@
       }
     },
     "Fineliner" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12937,7 +12931,6 @@
       }
     },
     "Highlighter" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12982,7 +12975,6 @@
       }
     },
     "Hue" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15394,9 +15386,6 @@
         }
       }
     },
-    "Marker" : {
-
-    },
     "Marks" : {
       "localizations" : {
         "de" : {
@@ -15779,9 +15768,6 @@
         }
       }
     },
-    "Monoline" : {
-
-    },
     "Moon" : {
       "localizations" : {
         "de" : {
@@ -16133,21 +16119,6 @@
           }
         }
       }
-    },
-    "Move Tools" : {
-
-    },
-    "Move Tools to Bottom" : {
-
-    },
-    "Move Tools to Left" : {
-
-    },
-    "Move Tools to Right" : {
-
-    },
-    "Move Tools to Top" : {
-
     },
     "Moved “%@” to %@" : {
       "localizations" : {
@@ -23242,6 +23213,9 @@
         }
       }
     },
+    "Selected Ink" : {
+
+    },
     "Selecting ink. Draw round ink on any page, then drag it." : {
       "localizations" : {
         "de" : {
@@ -23419,7 +23393,6 @@
       }
     },
     "Shade" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25339,9 +25312,6 @@
       }
     },
     "Style" : {
-
-    },
-    "Style of Selected Ink" : {
 
     },
     "Summary" : {
@@ -28226,9 +28196,6 @@
           }
         }
       }
-    },
-    "Tools moved" : {
-
     },
     "Top Edge" : {
       "localizations" : {

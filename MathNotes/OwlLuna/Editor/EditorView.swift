@@ -506,9 +506,10 @@ final class EditorSession {
         }
     }
 
-    /// The tool tray is at the foot of the editor while the page can be written on and nothing is being typed.
+    /// The tool tray is at the foot of the editor while the page can be written on, or ink is being selected, and
+    /// nothing is being typed. It stays while the lasso is out, so another tool can be taken when the selecting is done.
     var showsToolTray: Bool {
-        showsTools && (mode == .writing || mode == .focus) && !document.isReadOnly && !isEditingText
+        showsTools && (mode == .writing || mode == .focus || mode == .selecting) && !document.isReadOnly && !isEditingText
     }
 
     func toggleTools() {

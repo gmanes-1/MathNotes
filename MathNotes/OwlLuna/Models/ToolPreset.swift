@@ -10,19 +10,38 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// Red, green, blue and alpha, a byte each, as the ink is on light paper.
     var color: UInt32
     var width: Double
+    /// Whether the pen's line swells with how hard it is pressed. Off, it is the same width all along, as the fineliner
+    /// is: the two are one pen on one scale of widths, and this is the switch between them. Only the pen has it.
+    var pressure = true
 
-    init(id: UUID = UUID(), ink: PKInkingTool.InkType, color: UInt32, width: Double) {
+    /// The fineliner is not a kind of its own: it is the pen with its pressure off.
+    init(id: UUID = UUID(), ink: PKInkingTool.InkType, color: UInt32, width: Double, pressure: Bool = true) {
         self.id = id
-        self.ink = ink.rawValue
+        self.ink = ink == .monoline ? PKInkingTool.InkType.pen.rawValue : ink.rawValue
         self.color = color
         self.width = width
+        self.pressure = ink == .monoline ? false : pressure
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, ink, color, width, pressure }
+
+    /// Pens saved with the fineliner as a kind of its own are read as the pen with its pressure off.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        let saved = try container.decode(String.self, forKey: .ink)
+        color = try container.decode(UInt32.self, forKey: .color)
+        width = try container.decode(Double.self, forKey: .width)
+        let monoline = saved == PKInkingTool.InkType.monoline.rawValue
+        ink = monoline ? PKInkingTool.InkType.pen.rawValue : saved
+        let savedPressure = try container.decodeIfPresent(Bool.self, forKey: .pressure) ?? true
+        pressure = monoline ? false : savedPressure
     }
 
     /// A tool as it is on a canvas; nil for the eraser and the lasso.
     init?(_ tool: PKTool) {
         guard let inking = tool as? PKInkingTool else { return nil }
-        // A tool is written at the width the pen is set to, less what its kind of ink is scaled by.
-        self.init(ink: inking.inkType, color: Self.bytes(of: inking.color), width: Double(inking.width / Self.writingScale(of: inking.inkType)))
+        self.init(ink: inking.inkType, color: Self.bytes(of: inking.color), width: Double(inking.width))
     }
 
     /// A colour as it is on light paper, a byte each for red, green, blue and alpha.
@@ -62,8 +81,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
                 blue: CGFloat(color >> 8 & 0xFF) / 255, alpha: CGFloat(color & 0xFF) / 255)
     }
 
-    /// The widths a kind of ink can be set to: the range PencilKit allows for it.
+    /// The widths a kind of ink can be set to. The pen's runs thinner than PencilKit allows its tools, from very fine
+    /// to broad, and is the same with its pressure on or off; every other kind has the range PencilKit allows it.
     static func widthRange(of ink: PKInkingTool.InkType) -> ClosedRange<Double> {
+        if ink == .pen || ink == .monoline { return 0.25...8 }
         let valid = ink.validWidthRange
         return Double(valid.lowerBound)...Double(valid.upperBound)
     }
@@ -72,33 +93,65 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// How much of its set width a kind of ink is written with. The fineliner is written a quarter thinner than
-    /// PencilKit's own monoline, which is too heavy for fine handwriting; the width shown and set stays the pen's.
-    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
-        ink == .monoline ? 0.75 : 1
+    /// The width a pen of this kind starts with: PencilKit's own, kept inside the range the pen is offered.
+    static func defaultWidth(of ink: PKInkingTool.InkType) -> Double {
+        clamped(Double(ink.defaultWidth), to: widthRange(of: ink))
     }
 
-    var tool: PKInkingTool? {
+    /// The kind of ink PencilKit is asked to write with: the pen's own, or, with its pressure off, the monoline, which
+    /// is even all along.
+    private var writingInk: PKInkingTool.InkType? {
         guard let inkType else { return nil }
-        let range = inkType.validWidthRange
-        let written = width * Double(Self.writingScale(of: inkType))
-        return PKInkingTool(inkType, color: uiColor, width: min(max(written, range.lowerBound), range.upperBound))
+        return inkType == .pen && !pressure ? .monoline : inkType
+    }
+
+    /// PencilKit holds the width of each of its tools to a range, which is narrower than the pen's: the tool is as near
+    /// to the width as it may be, and `finished(_:writtenWith:)` brings the stroke the rest of the way.
+    var tool: PKInkingTool? {
+        guard let writing = writingInk else { return nil }
+        let range = writing.validWidthRange
+        return PKInkingTool(writing, color: uiColor, width: min(max(width, range.lowerBound), range.upperBound))
+    }
+
+    /// The stroke as this pen means it to be, or nil when it already is. A stroke written with `tool` has the width of
+    /// the tool; where the pen is set thinner or broader than the tool could be, every point of the stroke is made as
+    /// much thinner or broader as the pen is of the tool, so the line comes out the width the slider says.
+    func finished(_ stroke: PKStroke, writtenWith tool: PKInkingTool) -> PKStroke? {
+        guard let writing = writingInk, tool.inkType == writing, tool.width > 0, stroke.path.count > 0 else { return nil }
+        let scale = CGFloat(width) / tool.width
+        guard abs(scale - 1) > 0.02 else { return nil }
+        let points = stroke.path.map { p in
+            PKStrokePoint(location: p.location, timeOffset: p.timeOffset,
+                          size: CGSize(width: p.size.width * scale, height: p.size.height * scale),
+                          opacity: p.opacity, force: p.force, azimuth: p.azimuth, altitude: p.altitude,
+                          secondaryScale: p.secondaryScale)
+        }
+        let path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
+        return PKStroke(ink: stroke.ink, path: path, transform: stroke.transform, mask: stroke.mask, randomSeed: stroke.randomSeed)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
     var widthFraction: Double {
-        guard let range = inkType?.validWidthRange, range.upperBound > range.lowerBound else { return 0.5 }
+        guard let inkType else { return 0.5 }
+        let range = Self.widthRange(of: inkType)
+        guard range.upperBound > range.lowerBound else { return 0.5 }
         return min(max((width - range.lowerBound) / (range.upperBound - range.lowerBound), 0), 1)
     }
 
     /// The same tool, whichever one of them was saved.
     func isSameTool(as other: ToolPreset) -> Bool {
-        ink == other.ink && color == other.color && abs(width - other.width) < 0.15
+        ink == other.ink && pressure == other.pressure && color == other.color && abs(width - other.width) < 0.15
     }
 
-    var kindName: String { inkType.map(Self.name(of:)) ?? String(localized: "Pen") }
+    var kindName: String {
+        if inkType == .pen, !pressure { return Self.name(of: .monoline) }
+        return inkType.map(Self.name(of:)) ?? String(localized: "Pen")
+    }
 
-    var symbol: String { inkType.map(Self.symbol(of:)) ?? "pencil.tip" }
+    var symbol: String {
+        if inkType == .pen, !pressure { return Self.symbol(of: .monoline) }
+        return inkType.map(Self.symbol(of:)) ?? "pencil.tip"
+    }
 
     static func name(of ink: PKInkingTool.InkType) -> String {
         switch ink {
@@ -127,7 +180,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     /// The kinds of ink a pen can be given, in the order they are offered.
     static var kinds: [PKInkingTool.InkType] {
-        var kinds: [PKInkingTool.InkType] = [.pen, .monoline, .fountainPen, .pencil, .marker, .crayon, .watercolor]
+        var kinds: [PKInkingTool.InkType] = [.pen, .fountainPen, .pencil, .marker, .crayon, .watercolor]
         if #available(iOS 26, *) { kinds.insert(.reed, at: 3) }
         return kinds
     }
@@ -145,7 +198,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// Where a width at `fraction` of the way lies for a kind of ink. The thin end has most of the travel, where
     /// writing is done.
     static func width(at fraction: Double, of ink: PKInkingTool.InkType) -> Double {
-        let range = ink.validWidthRange, clamped = min(max(fraction, 0), 1)
+        let range = widthRange(of: ink), clamped = min(max(fraction, 0), 1)
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
     }
 

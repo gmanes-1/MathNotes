@@ -26,29 +26,63 @@ final class ToolPresetTests: XCTestCase {
     }
 
     func testAWidthPastWhatTheInkAllowsIsBroughtBackIn() throws {
-        let range = ToolPreset.widthRange(of: .monoline)
-        let valid = PKInkingTool.InkType.monoline.validWidthRange
-        let tool = try XCTUnwrap(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).tool)
-        let written = range.upperBound * Double(ToolPreset.writingScale(of: .monoline))
-        XCTAssertEqual(Double(tool.width), min(max(written, Double(valid.lowerBound)), Double(valid.upperBound)), accuracy: 0.01)
-        XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).widthFraction, 1)
+        let pen = ToolPreset(ink: .pen, color: 0x0000_00FF, width: 500)
+        let tool = try XCTUnwrap(pen.tool)
+        XCTAssertEqual(Double(tool.width), Double(PKInkingTool.InkType.pen.validWidthRange.upperBound), accuracy: 0.01,
+                       "the tool is held to what PencilKit allows it")
+        XCTAssertEqual(pen.widthFraction, 1)
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0x0000_00FF, width: 1).widthFraction, 0)
     }
 
-    func testTheFinelinerWritesThinnerThanPencilKitsMonolineButEveryOtherInkIsAsSet() throws {
-        XCTAssertLessThan(ToolPreset.writingScale(of: .monoline), 1)
+    func testTheFinelinerIsThePenWithItsPressureOffOnTheSameScaleOfWidths() throws {
         let fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 2)
+        XCTAssertEqual(fineliner.inkType, .pen)
+        XCTAssertFalse(fineliner.pressure)
+        XCTAssertEqual(fineliner.kindName, ToolPreset.name(of: .monoline))
+        XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "written even all along")
+
+        let pen = ToolPreset(ink: .pen, color: 0x0000_00FF, width: 2)
+        XCTAssertTrue(pen.pressure)
+        XCTAssertEqual(try XCTUnwrap(pen.tool).inkType, .pen)
+        XCTAssertEqual(pen.widthFraction, fineliner.widthFraction, "one scale, with the pressure on or off")
+        XCTAssertFalse(ToolPreset.kinds.contains(.monoline), "there is one pen to choose, not two")
+        XCTAssertFalse(pen.isSameTool(as: fineliner))
+    }
+
+    func testAPenSetThinnerThanItsToolMayBeIsFinishedAtTheWidthSet() throws {
+        let thinnest = ToolPreset.widthRange(of: .pen).lowerBound
+        let fineliner = ToolPreset(ink: .pen, color: 0x0000_00FF, width: thinnest, pressure: false)
         let tool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(Double(tool.width), 2 * Double(ToolPreset.writingScale(of: .monoline)), accuracy: 0.01)
-        XCTAssertEqual(try XCTUnwrap(ToolPreset(tool)).width, 2, accuracy: 0.01, "the pen reads back as it was set")
-        for kind in [PKInkingTool.InkType.pen, .pencil, .marker, .fountainPen] {
-            XCTAssertEqual(ToolPreset.writingScale(of: kind), 1)
-        }
+        XCTAssertGreaterThan(Double(tool.width), thinnest, "PencilKit can't write so fine")
+        let written = stroke(from: CGPoint(x: 10, y: 10), to: CGPoint(x: 200, y: 10), width: tool.width)
+        let finished = try XCTUnwrap(fineliner.finished(written, writtenWith: tool))
+        let ratio = Double(InkCalibration.middleSize(of: finished) ?? 0) / Double(InkCalibration.middleSize(of: written) ?? 1)
+        XCTAssertEqual(ratio, thinnest / Double(tool.width), accuracy: 0.001)
+        XCTAssertEqual(finished.path.count, written.path.count)
+
+        let inRange = ToolPreset(ink: .pen, color: 0x0000_00FF, width: Double(tool.width), pressure: false)
+        let sameTool = try XCTUnwrap(inRange.tool)
+        XCTAssertNil(inRange.finished(written, writtenWith: sameTool), "a stroke already the width set is left as it is")
+        XCTAssertNil(ToolPreset(ink: .marker, color: 0x0000_00FF, width: 10).finished(written, writtenWith: sameTool),
+                     "the stroke of another tool is not the pen's to finish")
+    }
+
+    func testAPenSavedAsAFinelinerIsReadAsThePenWithItsPressureOff() throws {
+        let id = UUID().uuidString
+        let old = try JSONDecoder().decode(ToolPreset.self, from: Data("{\"id\":\"\(id)\",\"ink\":\"monoline\",\"color\":255,\"width\":1.5}".utf8))
+        XCTAssertEqual(old.inkType, .pen)
+        XCTAssertFalse(old.pressure)
+        XCTAssertEqual(old.width, 1.5)
+
+        let before = try JSONDecoder().decode(ToolPreset.self, from: Data("{\"id\":\"\(id)\",\"ink\":\"pen\",\"color\":255,\"width\":2}".utf8))
+        XCTAssertTrue(before.pressure, "a pen saved before the switch existed has its pressure on")
+
+        XCTAssertEqual(try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(old)), old)
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
-        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.5...3)
-        XCTAssertEqual(ToolPreset.widthRange(of: .pen), 1...8)
+        XCTAssertEqual(ToolPreset.widthRange(of: .pen), 0.25...8)
+        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), ToolPreset.widthRange(of: .pen))
         XCTAssertEqual(ToolPreset.widthRange(of: .marker), 5...30)
         for kind in ToolPreset.kinds {
             let range = ToolPreset.widthRange(of: kind)

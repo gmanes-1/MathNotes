@@ -55,13 +55,12 @@ enum InkCalibration {
         return byte(red) << 24 | byte(green) << 16 | byte(blue) << 8 | byte(alpha)
     }
 
-    static func learn(from stroke: PKStroke, writtenWith tool: PKInkingTool) {
-        guard stroke.path.count >= 4, tool.width > 0,
-              stroke.ink.inkType.rawValue == tool.inkType.rawValue,
-              let middle = middleSize(of: stroke) else { return }
-        let sample = Double(middle) / (Double(tool.width) / Double(ToolPreset.writingScale(of: tool.inkType)))
+    /// Learns how many points of stroke a unit of the pen's width comes to, from a stroke written at `width`.
+    static func learn(from stroke: PKStroke, width: Double) {
+        guard stroke.path.count >= 4, width > 0, let middle = middleSize(of: stroke) else { return }
+        let sample = Double(middle) / width
         guard (0.2...6).contains(sample) else { return }
-        let name = tool.inkType.rawValue
+        let name = stroke.ink.inkType.rawValue
         let next = factors[name].map { $0 * 0.7 + sample * 0.3 } ?? sample
         factors[name] = next
         if let last = saved[name], abs(last - next) / last < 0.03 { return }
