@@ -2,24 +2,25 @@ import UIKit
 import PencilKit
 import Observation
 
-@MainActor
+/// What a restyle changes in the selected ink. The width is a multiple of what it is now, never a width worked out
+/// from a guess, so the ink grows and shrinks from what it is; colour and opacity are the ones asked for, and are
+/// left as they were when they are nil.
+struct InkRestyleChange: Equatable {
+    var widthScale: CGFloat = 1
+    var tint: UInt32?
+    var opacity: Double?
+
+    var isIdentity: Bool { abs(widthScale - 1) < 0.001 && tint == nil && opacity == nil }
+}
+
 enum InkCalibration {
-    private static let key = "inkPointsPerWidth.v2"
-    private static var factors: [String: Double] = UserDefaults.standard.dictionary(forKey: key) as? [String: Double] ?? [:]
-    private static var saved: [String: Double] = factors
-
-    static func factor(for ink: PKInkingTool.InkType) -> CGFloat {
-        CGFloat(factors[ink.rawValue] ?? guess(ink))
+    /// The width in the middle of a stroke's points, which is how thick the stroke is without its swells.
+    nonisolated static func middleSize(of stroke: PKStroke) -> CGFloat? {
+        let sizes = stroke.path.map(\.size.width).sorted()
+        return sizes.isEmpty ? nil : sizes[sizes.count / 2]
     }
 
-    private static func guess(_ ink: PKInkingTool.InkType) -> Double {
-        switch ink {
-        case .pen: 1.25
-        case .fountainPen: 1.3
-        default: 1.0
-        }
-    }
-
+    /// The least a point of a stroke may be thinned to, so restyled ink is never made too fine to see.
     static func leastPoint(for ink: PKInkingTool.InkType) -> CGFloat {
         switch ink {
         case .pen, .fountainPen: 2.0
@@ -31,20 +32,6 @@ enum InkCalibration {
         }
     }
 
-    static func pointSize(forWidth width: Double, of ink: PKInkingTool.InkType) -> CGFloat {
-        max(CGFloat(width) * factor(for: ink), leastPoint(for: ink))
-    }
-
-    static func width(forPointSize size: CGFloat, of ink: PKInkingTool.InkType) -> Double {
-        let raw = Double(size / max(factor(for: ink), 0.01))
-        return ToolPreset.clamped((raw * 10).rounded() / 10, to: ToolPreset.widthRange(of: ink))
-    }
-
-    nonisolated static func middleSize(of stroke: PKStroke) -> CGFloat? {
-        let sizes = stroke.path.map(\.size.width).sorted()
-        return sizes.isEmpty ? nil : sizes[sizes.count / 2]
-    }
-
     /// A colour as the pen stores it: a byte each for red, green, blue and alpha, as it is on light paper. A colour
     /// that can't be read as red, green and blue is left black rather than clear, so ink is never made invisible.
     static func bytes(of color: UIColor) -> UInt32 {
@@ -53,19 +40,6 @@ enum InkCalibration {
         guard light.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return ToolPreset.bytes(of: .black) }
         func byte(_ value: CGFloat) -> UInt32 { UInt32((min(max(value, 0), 1) * 255).rounded()) }
         return byte(red) << 24 | byte(green) << 16 | byte(blue) << 8 | byte(alpha)
-    }
-
-    /// Learns how many points of stroke a unit of the pen's width comes to, from a stroke written at `width`.
-    static func learn(from stroke: PKStroke, width: Double) {
-        guard stroke.path.count >= 4, width > 0, let middle = middleSize(of: stroke) else { return }
-        let sample = Double(middle) / width
-        guard (0.2...6).contains(sample) else { return }
-        let name = stroke.ink.inkType.rawValue
-        let next = factors[name].map { $0 * 0.7 + sample * 0.3 } ?? sample
-        factors[name] = next
-        if let last = saved[name], abs(last - next) / last < 0.03 { return }
-        saved = factors
-        UserDefaults.standard.set(factors, forKey: key)
     }
 }
 

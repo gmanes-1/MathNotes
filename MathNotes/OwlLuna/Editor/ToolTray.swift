@@ -346,22 +346,9 @@ private struct PenOptions: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             PenRoll(kind: Binding(get: { ink }, set: { kind in
-                toolbox.changePen(id) {
-                    $0.ink = kind.rawValue
-                    $0.pressure = true
-                    $0.width = ToolPreset.defaultWidth(of: kind)
-                }
+                toolbox.changePen(id) { $0.ink = kind.rawValue; $0.width = Double(kind.defaultWidth) }
             }), ink: solid, paper: paper, night: night)
                 .accessibilityIdentifier("editor.tools.pen.kind")
-            if ink == .pen {
-                // One pen on one scale of widths: with pressure off its line is the same width all along, as a fineliner's.
-                Toggle(isOn: Binding(get: { pen.pressure }, set: { on in toolbox.changePen(id) { $0.pressure = on } })) {
-                    Text("Pressure")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.ink)
-                }
-                .accessibilityIdentifier("editor.tools.pen.pressure")
-            }
             LazyVGrid(columns: Self.columns, spacing: 0) {
                 ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color, chosen: pen.tint == color) }
                 mixButton(pen)

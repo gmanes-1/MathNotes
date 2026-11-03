@@ -31,7 +31,7 @@ protocol EditorCanvasControlling: AnyObject {
     func copyInkSelection()
     func pasteInk()
     func pasteInkAtHeldSpot()
-    func restyleInkSelection(to preset: ToolPreset)
+    func restyleInkSelection(_ change: InkRestyleChange)
     func commitRestyle()
     func selectedInkStyle() -> ToolPreset?
     func selectedInk() -> [PKDrawing]
@@ -846,7 +846,7 @@ fileprivate struct EditorContent: View {
                     onPaste: { session.canvas?.pasteInk() },
                     onDuplicate: { session.canvas?.duplicateInkSelection() },
                     onDelete: { session.canvas?.deleteInkSelection() },
-                    onRestyle: { session.canvas?.restyleInkSelection(to: $0) },
+                    onRestyle: { session.canvas?.restyleInkSelection($0) },
                     onSettle: { session.canvas?.commitRestyle() }
                 )
                 .fixedSize()

@@ -2,8 +2,9 @@ import SwiftUI
 import PencilKit
 
 /// The menu that stands beside the ink the lasso has selected, and nowhere else on screen: Style, Copy, Cut,
-/// Duplicate, Paste, Turn into Text, Make Flashcard and Delete. Style opens inline, below the buttons, with the colour,
-/// the width and the opacity of the selected strokes; the ink changes as the knob moves and is kept when it is let go.
+/// Duplicate, Paste, Turn into Text, Make Flashcard and Delete. Style opens inline, below the buttons, with a colour,
+/// a thickness and an opacity for the selected strokes. Thickness is how many times thicker or thinner than the ink is
+/// now, so it can go as fine as the line is wanted; the ink changes as the knob moves and is kept when it is let go.
 struct InkSelectionMenu: View {
     /// The style of the selected ink, read when the menu appears and whenever other ink is selected.
     let initialStyle: () -> ToolPreset?
@@ -18,13 +19,19 @@ struct InkSelectionMenu: View {
     let onPaste: () -> Void
     let onDuplicate: () -> Void
     let onDelete: () -> Void
-    /// The style asked for, as a pen: the ink follows it.
-    let onRestyle: (ToolPreset) -> Void
-    /// The style asked for is to be kept.
+    /// What is asked for, against the ink as it is: the ink follows it.
+    let onRestyle: (InkRestyleChange) -> Void
+    /// What is asked for is to be kept.
     let onSettle: () -> Void
 
     @State private var styling = false
+    /// The colour and opacity the ink has, as the menu last read or set them.
     @State private var style = ToolPreset(ink: .pen, color: 0x1B22_30FF, width: 2.7)
+    /// What has been asked for since the ink was last kept: a multiple of its thickness, and a colour and opacity.
+    @State private var scale: CGFloat = 1
+    @State private var thickness = 0.5
+    @State private var pickedTint: UInt32?
+    @State private var pickedOpacity: Double?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -46,6 +53,24 @@ struct InkSelectionMenu: View {
 
     private func refresh() {
         if let current = initialStyle() { style = current }
+        forgetAsked()
+    }
+
+    private func forgetAsked() {
+        scale = 1
+        thickness = 0.5
+        pickedTint = nil
+        pickedOpacity = nil
+    }
+
+    /// Keeps what was asked for. The ink is then as asked, and what is asked next is against that.
+    private func settle() {
+        onSettle()
+        forgetAsked()
+    }
+
+    private func ask() {
+        onRestyle(InkRestyleChange(widthScale: scale, tint: pickedTint, opacity: pickedOpacity))
     }
 
     // MARK: Buttons
@@ -54,7 +79,7 @@ struct InkSelectionMenu: View {
         HStack(spacing: 0) {
             button("Style", "paintbrush.pointed", identifier: "style", isOn: styling) {
                 withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) { styling.toggle() }
-                if !styling { onSettle() }
+                if !styling { settle() }
             }
             button("Copy", "doc.on.doc", identifier: "copy", action: onCopy)
             button("Cut", "scissors", identifier: "cut", action: onCut)
@@ -97,23 +122,25 @@ struct InkSelectionMenu: View {
             LazyVGrid(columns: Self.columns, spacing: 0) {
                 ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color) }
             }
-            WidthBar(travel: Binding(get: { style.widthTravel }, set: { travel in
-                         var next = style
-                         next.width = ToolPreset.width(at: travel, of: ink)
-                         change(next)
+            // From a quarter to four times the thickness it has: the middle leaves it as it is.
+            WidthBar(travel: Binding(get: { thickness }, set: { travel in
+                         thickness = travel
+                         scale = abs(travel - 0.5) < 0.02 ? 1 : CGFloat(pow(4, travel * 2 - 1))
+                         ask()
                      }),
                      ink: solid, paper: paper, night: night,
-                     value: style.width.formatted(.number.precision(.fractionLength(0...1))),
-                     identifier: "editor.ink.menu.width", onSettle: onSettle)
+                     value: "×" + Double(scale).formatted(.number.precision(.fractionLength(0...2))),
+                     identifier: "editor.ink.menu.width", onSettle: settle)
             WidthBar(measure: .opacity,
                      travel: Binding(get: { (style.opacity - ToolPreset.leastOpacity) / (1 - ToolPreset.leastOpacity) }, set: { travel in
-                         var next = style
-                         next.opacity = ((ToolPreset.leastOpacity + (1 - ToolPreset.leastOpacity) * travel) * 20).rounded() / 20
-                         change(next)
+                         let opacity = ((ToolPreset.leastOpacity + (1 - ToolPreset.leastOpacity) * travel) * 20).rounded() / 20
+                         style.opacity = opacity
+                         pickedOpacity = opacity
+                         ask()
                      }),
                      ink: solid, paper: paper, night: night,
                      value: style.opacityName,
-                     identifier: "editor.ink.menu.opacity", onSettle: onSettle)
+                     identifier: "editor.ink.menu.opacity", onSettle: settle)
         }
         .padding(Space.x3)
         .frame(width: Self.panelWidth)
@@ -122,10 +149,10 @@ struct InkSelectionMenu: View {
     private func colourButton(_ color: UInt32) -> some View {
         let chosen = style.tint == color
         return Button {
-            var next = style
-            next.setTint(color)
-            change(next)
-            onSettle()
+            style.setTint(color)
+            pickedTint = color
+            ask()
+            settle()
         } label: {
             Circle()
                 .fill(Color(uiColor: ToolPreset.uiColor(color)))
@@ -138,10 +165,5 @@ struct InkSelectionMenu: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(ToolPreset.colorName(color)))
         .accessibilityAddTraits(chosen ? .isSelected : [])
-    }
-
-    private func change(_ next: ToolPreset) {
-        style = next
-        onRestyle(next)
     }
 }

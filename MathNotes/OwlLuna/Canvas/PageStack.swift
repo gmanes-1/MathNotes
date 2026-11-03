@@ -337,11 +337,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var inkSelection: InkSelection = [:]
     private var lassoMoveOrigin: CGPoint?
     private var isMovingInk = false
-    private var restyleTask: Task<Void, Never>?
     private var previewTask: Task<Void, Never>?
     private var pendingRestyle: InkRestyleChange?
-    private var pendingRestyleStyle: ToolPreset?
-    private var restyleBaseline: ToolPreset?
     private var inkMenuSuspended = false
     private var inkPasteStackPoint: CGPoint?
     private lazy var lassoPan = UIPanGestureRecognizer(target: self, action: #selector(lassoPanned))
@@ -1093,21 +1090,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if !unreadWriting.isEmpty { readWritingAfterARest() }
             return
         }
-        if canvas !== zoomCanvas, let before, canvas.drawing.strokes.count == before.strokes.count + 1,
-           let drawn = canvas.drawing.strokes.last, let tool = canvas.tool as? PKInkingTool {
-            // PencilKit holds each tool to a range of widths; a pen set outside it has its stroke brought to the width set.
-            var written = drawn
-            if let pen = toolbox.pen, let finished = pen.finished(drawn, writtenWith: tool) {
-                var strokes = canvas.drawing.strokes
-                strokes[strokes.count - 1] = finished
-                isApplyingDrawing = true
-                canvas.drawing = PKDrawing(strokes: strokes)
-                isApplyingDrawing = false
-                written = finished
-            }
-            InkCalibration.learn(from: written, width: toolbox.pen?.width ?? Double(tool.width))
-        }
-
         document.canvasDidChangeInk(id, to: canvas.drawing)
         mirrorInk(from: canvas, pageID: id)
         let typing = noteWriting(on: canvas, pageID: id, before: before)
@@ -2028,10 +2010,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         // A style that was set but not yet written belongs to the ink it was set for: write it before that changes.
         if isNew, pendingRestyle != nil { commitRestyle() }
         inkSelection = kept
-        if isNew {
-            restyleBaseline = nil
-            if !kept.isEmpty { session.inkSelectionToken &+= 1 }
-        }
+        if isNew, !kept.isEmpty { session.inkSelectionToken &+= 1 }
         if !kept.isEmpty { clearPasteSpot() }
         inkLasso?.showSelection(InkLasso.bounds(of: inkSelection, drawings: liveInk, frames: stackFrames))
         let count = inkSelection.values.reduce(0) { $0 + $1.count }
@@ -2176,40 +2155,16 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     // MARK: Restyling the selected ink
 
-    /// What a restyle changes in the selected ink, measured against how it stood when its style was first touched, so
-    /// the ink never jumps to a width worked out from a guess: it grows and shrinks from what it is.
-    private struct InkRestyleChange: Equatable {
-        var widthScale: CGFloat
-        var tint: UInt32?
-        var opacity: Double?
-
-        var isIdentity: Bool { abs(widthScale - 1) < 0.001 && tint == nil && opacity == nil }
-    }
-
-    func restyleInkSelection(to preset: ToolPreset) {
-        guard !inkSelection.isEmpty, !document.isReadOnly else { return }
-        if restyleBaseline == nil { restyleBaseline = selectedInkStyle() }
-        guard let baseline = restyleBaseline else { return }
-        let change = InkRestyleChange(
-            widthScale: baseline.width > 0.001 ? CGFloat(preset.width / baseline.width) : 1,
-            tint: preset.tint == baseline.tint ? nil : preset.tint,
-            opacity: abs(preset.opacity - baseline.opacity) < 0.001 ? nil : preset.opacity)
-        guard change != pendingRestyle else { return }
+    /// Shows the ink restyled as asked, as the knob moves. Nothing is written to the notebook until `commitRestyle()`,
+    /// which the menu calls when the knob is let go, so a style is only ever applied once.
+    func restyleInkSelection(_ change: InkRestyleChange) {
+        guard !inkSelection.isEmpty, !document.isReadOnly, change != pendingRestyle else { return }
         pendingRestyle = change
-        pendingRestyleStyle = preset
-
         previewTask?.cancel()
         previewTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(40))
             guard !Task.isCancelled else { return }
             self?.showRestylePreview()
-        }
-
-        restyleTask?.cancel()
-        restyleTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            self?.commitRestyle()
         }
     }
 
@@ -2231,17 +2186,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
     }
 
-    /// Writes the style that is being previewed into the notebook, as one undo step. Called as soon as the slider is
-    /// let go, after a short rest, and always before the selection changes or goes.
+    /// Writes the style that is being previewed into the notebook, as one undo step. Called when the knob is let go,
+    /// and always before the selection changes or goes, so a style that was set is never lost.
     func commitRestyle() {
         previewTask?.cancel()
         previewTask = nil
-        restyleTask?.cancel()
-        restyleTask = nil
         guard let change = pendingRestyle else { return }
-        let style = pendingRestyleStyle
         pendingRestyle = nil
-        pendingRestyleStyle = nil
         guard !change.isIdentity, !inkSelection.isEmpty else { return revertRestylePreview() }
         var changed: [UUID: PKDrawing] = [:]
         for (id, indices) in inkSelection {
@@ -2252,7 +2203,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         isMovingInk = true
         let done = document.updateInk(changed, actionName: String(localized: "Change Ink Style"))
         isMovingInk = false
-        if done { restyleBaseline = style } else { revertRestylePreview() }
+        if !done { revertRestylePreview() }
         setInkSelection(inkSelection)
     }
 
@@ -2262,10 +2213,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             guard let indices = inkSelection[page.id], let ink = document.loadedInk(page.id) else { continue }
             for i in indices.sorted() where ink.strokes.indices.contains(i) {
                 let stroke = ink.strokes[i]
-                guard let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue),
-                      let size = InkCalibration.middleSize(of: stroke) else { continue }
-                let width = InkCalibration.width(forPointSize: size, of: kind)
-                return ToolPreset(ink: kind, color: InkCalibration.bytes(of: stroke.ink.color), width: width)
+                guard let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue) else { continue }
+                return ToolPreset(ink: kind, color: InkCalibration.bytes(of: stroke.ink.color), width: ToolPreset.defaultWidth(of: kind))
             }
         }
         return nil
