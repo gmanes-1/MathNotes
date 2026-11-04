@@ -13,6 +13,41 @@ struct InkRestyleChange: Equatable {
     var isIdentity: Bool { abs(widthScale - 1) < 0.001 && tint == nil && opacity == nil }
 }
 
+/// How thick the ink is written, against the width the pen is set to: PencilKit draws a page about twice as large as its
+/// points, so its own widths look heavy beside Notes or Freeform. A highlighter keeps its breadth.
+enum InkThickness {
+    static let standard = 0.5
+    static let range = 0.2...1.0
+
+    /// What Settings › Apple Pencil › Ink Thickness is set to.
+    static var setting: Double {
+        let saved = UserDefaults.standard.object(forKey: SettingsKey.inkThickness) as? Double ?? standard
+        return min(max(saved, range.lowerBound), range.upperBound)
+    }
+
+    static func factor(for ink: PKInkingTool.InkType) -> CGFloat {
+        switch ink {
+        case .marker, .crayon, .watercolor: 1
+        default: CGFloat(setting)
+        }
+    }
+}
+
+extension PKStroke {
+    /// The same stroke along the same path, `scale` times as thick.
+    func scaledWidth(by scale: CGFloat) -> PKStroke {
+        guard scale > 0, abs(scale - 1) > 0.001 else { return self }
+        let points = path.map { p in
+            PKStrokePoint(location: p.location, timeOffset: p.timeOffset,
+                          size: CGSize(width: p.size.width * scale, height: p.size.height * scale),
+                          opacity: p.opacity, force: p.force, azimuth: p.azimuth, altitude: p.altitude,
+                          secondaryScale: p.secondaryScale)
+        }
+        return PKStroke(ink: ink, path: PKStrokePath(controlPoints: points, creationDate: path.creationDate),
+                        transform: transform, mask: mask, randomSeed: randomSeed)
+    }
+}
+
 enum InkCalibration {
     /// The width in the middle of a stroke's points, which is how thick the stroke is without its swells.
     nonisolated static func middleSize(of stroke: PKStroke) -> CGFloat? {

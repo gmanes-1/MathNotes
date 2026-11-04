@@ -33,6 +33,35 @@ final class InkLassoTests: XCTestCase {
         XCTAssertEqual(drawing.restyled([], widthScale: 3, tint: nil, opacity: nil).strokes.count, 2)
     }
 
+    func testInkThicknessScalesPensAndLeavesTheHighlighterBreadthAlone() {
+        let defaults = UserDefaults.standard, key = SettingsKey.inkThickness
+        let saved = defaults.object(forKey: key)
+        defer { if let saved { defaults.set(saved, forKey: key) } else { defaults.removeObject(forKey: key) } }
+
+        defaults.removeObject(forKey: key)
+        XCTAssertEqual(InkThickness.setting, InkThickness.standard)
+        defaults.set(0.3, forKey: key)
+        XCTAssertEqual(InkThickness.factor(for: .pen), 0.3, accuracy: 0.0001)
+        XCTAssertEqual(InkThickness.factor(for: .monoline), 0.3, accuracy: 0.0001)
+        XCTAssertEqual(InkThickness.factor(for: .marker), 1, "a highlighter keeps its breadth")
+        defaults.set(40, forKey: key)
+        XCTAssertEqual(InkThickness.setting, InkThickness.range.upperBound, "a setting out of range is brought in")
+        defaults.set(0.0, forKey: key)
+        XCTAssertEqual(InkThickness.setting, InkThickness.range.lowerBound)
+    }
+
+    func testAStrokeMadeFinerKeepsItsPathItsInkAndItsPlaceInTheDrawing() {
+        let pen = line(y: 10)
+        let before = InkCalibration.middleSize(of: pen) ?? 0
+        let finer = pen.scaledWidth(by: 0.5)
+        XCTAssertEqual(InkCalibration.middleSize(of: finer) ?? 0, before * 0.5, accuracy: 0.001)
+        XCTAssertEqual(finer.path.count, pen.path.count)
+        XCTAssertEqual(finer.path.creationDate, pen.path.creationDate, "it is found by when it was written")
+        XCTAssertEqual(finer.path.first?.location, pen.path.first?.location)
+        XCTAssertEqual(finer.ink.inkType, pen.ink.inkType)
+        XCTAssertEqual(pen.scaledWidth(by: 1).path.count, pen.path.count)
+    }
+
     func testALoopCatchesTheInkInsideItAndAStraightDragIsABox() {
         let drawing = PKDrawing(strokes: [line(y: 100), line(y: 200), line(y: 400)])
         let loop = [CGPoint(x: 60, y: 60), CGPoint(x: 340, y: 60), CGPoint(x: 360, y: 250), CGPoint(x: 50, y: 240)]
