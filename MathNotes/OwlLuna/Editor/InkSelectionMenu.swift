@@ -104,14 +104,36 @@ struct InkSelectionMenu: View {
             LazyVGrid(columns: Self.columns, spacing: 0) {
                 ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color) }
             }
-            WidthBar(travel: Binding(get: { style.widthTravel }, set: { travel in
-                         var next = style
-                         next.width = ToolPreset.width(at: travel, of: ink)
-                         change(next)
-                     }),
-                     ink: solid, paper: paper, night: night,
-                     value: style.width.formatted(.number.precision(.fractionLength(0...1))),
-                     identifier: "editor.ink.menu.width", onSettle: onSettle)
+            VStack(alignment: .leading, spacing: Space.x2) {
+                HStack {
+                    Text("Width").font(.subheadline.weight(.semibold)).foregroundStyle(Color.ink)
+                    Spacer()
+                    Text(style.width.formatted(.number.precision(.fractionLength(0...1))))
+                        .font(.subheadline.monospacedDigit()).foregroundStyle(Color.textSecondary)
+                }
+                HStack(spacing: Space.x1) {
+                    ForEach(Array(ToolPreset.widthSteps(of: ink).enumerated()), id: \.offset) { index, step in
+                        let chosen = abs(style.width - step) < 0.02
+                        Button {
+                            var next = style
+                            next.width = step
+                            change(next)
+                            onSettle()
+                        } label: {
+                            Circle().fill(solid)
+                                .frame(width: CGFloat(3 + 7 * Double(index) / 7),
+                                       height: CGFloat(3 + 7 * Double(index) / 7))
+                                .frame(maxWidth: .infinity, minHeight: 34)
+                                .contentShape(Rectangle())
+                                .overlay { if chosen { Circle().strokeBorder(Color.accentColor, lineWidth: 2).frame(width: 34, height: 34) } }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Text("Width \(step.formatted(.number.precision(.fractionLength(0...1))))"))
+                        .accessibilityAddTraits(chosen ? .isSelected : [])
+                        .accessibilityIdentifier("editor.ink.menu.width.\(index + 1)")
+                    }
+                }
+            }
             WidthBar(measure: .opacity,
                      travel: Binding(get: { (style.opacity - ToolPreset.leastOpacity) / (1 - ToolPreset.leastOpacity) }, set: { travel in
                          var next = style
