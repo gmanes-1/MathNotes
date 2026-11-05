@@ -1107,7 +1107,15 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last {
             if canvas !== zoomCanvas, let tool = canvas.tool as? PKInkingTool {
-                InkCalibration.learn(from: drawn, writtenWith: tool)
+                // Fine pen presets are corrected against PencilKit's apparent 0.9 pt floor,
+                // so learn the calibration against that same reference rather than the smaller request.
+                let calibrationTool: PKInkingTool
+                if let preset = toolbox.pen, preset.inkType == .pen, preset.width < 0.9 {
+                    calibrationTool = PKInkingTool(.pen, color: tool.color, width: 0.9)
+                } else {
+                    calibrationTool = tool
+                }
+                InkCalibration.learn(from: drawn, writtenWith: calibrationTool)
             }
             if let preset = toolbox.pen, preset.inkType == .pen, preset.width < 0.9 {
                 var strokes = canvas.drawing.strokes
