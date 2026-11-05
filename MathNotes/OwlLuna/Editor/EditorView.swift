@@ -908,7 +908,7 @@ fileprivate struct EditorContent: View {
                         .fixedSize(horizontal: true, vertical: false)
                         .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0), anchor: .center)
                         .frame(width: dock.isVertical ? ToolTray.height : nil,
-                               height: dock.isVertical ? stackSize.height : ToolTray.height, alignment: .center)
+                               height: dock.isVertical ? toolTraySize.height : ToolTray.height, alignment: .center)
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
                                  dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
                         .offset(x: toolTrayPositionX, y: toolTrayPositionY)
