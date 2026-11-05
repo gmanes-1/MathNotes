@@ -76,8 +76,9 @@ final class ToolPresetTests: XCTestCase {
         let preset = ToolPreset(ink: .pen, color: 0x0000_00FF, width: 0.5)
         let corrected = InkCalibration.correctedFinePenStroke(stroke, preset: preset)
         XCTAssertEqual(corrected.path.count, stroke.path.count)
-        XCTAssertEqual(corrected.path[2].size.width, 0.5 / 0.9, accuracy: 0.001)
-        XCTAssertEqual(corrected.path[2].size.height, 0.5 / 0.9, accuracy: 0.001)
+        XCTAssertEqual(corrected.path[2].size.width, 0.5, accuracy: 0.001,
+                       "the median stroke width is calibrated to the saved Fineliner width")
+        XCTAssertEqual(corrected.path[2].size.height, 0.5, accuracy: 0.001)
         XCTAssertEqual(corrected.ink.inkType, stroke.ink.inkType)
         XCTAssertEqual(corrected.path.creationDate, stroke.path.creationDate)
     }
