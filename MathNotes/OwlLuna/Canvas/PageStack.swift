@@ -988,9 +988,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             // different points-per-page-point scale from the main canvas, so compensate the tool
             // width to keep the resulting stroke the same size in the notebook.
             let scale = canvas.zoomScale / max(bakedScale, 0.001)
-            let range = ink.inkType.validWidthRange
-            let width = min(max(ink.width * scale, range.lowerBound), range.upperBound)
-            canvas.tool = PKInkingTool(ink.inkType, color: ink.color, width: width)
+            // Preserve the app's explicit fine widths; do not re-clamp them to the picker range.
+            canvas.tool = PKInkingTool(ink.inkType, color: ink.color, width: ink.width * scale)
         } else {
             canvas.tool = selected
         }
