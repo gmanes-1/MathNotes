@@ -848,8 +848,8 @@ fileprivate struct EditorContent: View {
                     let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
                     ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use,
                              move: { delta in
-                                 let horizontalTravel = max(0, (stackSize.width - toolTraySize.width) / 2)
-                                 let verticalTravel = max(0, (stackSize.height - toolTraySize.height) / 2)
+                                 let horizontalTravel = Double(max(0, (stackSize.width - toolTraySize.width) / 2))
+                                 let verticalTravel = Double(max(0, (stackSize.height - toolTraySize.height) / 2))
                                  let minX = dock == .left ? 0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
                                  let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0 : horizontalTravel
                                  let minY = dock == .top ? 0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
