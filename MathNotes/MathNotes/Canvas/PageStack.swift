@@ -365,6 +365,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var zoomLevel = 1
     private var zoomDragOrigin: CGPoint?
     private var zoomAdvance: DispatchWorkItem?
+    private var pressureStrokeWork: DispatchWorkItem?
     private var zoomReachedBand = false
     private var selectionView: ItemSelectionView?
     private var cropView: ItemCropView?
@@ -1115,6 +1116,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
         document.canvasDidChangeInk(id, to: canvas.drawing)
         mirrorInk(from: canvas, pageID: id)
+        if canvas !== zoomCanvas, !toolbox.typesHandwriting, toolbox.pen?.pressureSensitive == true,
+           let activeTool = canvas.tool as? PKInkingTool, activeTool.inkType == .pen,
+           let drawn = canvas.drawing.strokes.last {
+            schedulePressureFineliner(drawn, on: canvas, pageID: id)
+        }
         let typing = noteWriting(on: canvas, pageID: id, before: before)
         let straighten = { [weak self, weak canvas] in
             guard let self, let canvas, canvas !== zoomCanvas, !typing, toolbox.pen?.pressureSensitive != true else { return }
@@ -1123,6 +1129,37 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let readingText = snapHighlighter(on: canvas, pageID: id, before: before, otherwise: straighten)
         if canvas === zoomCanvas { return zoomStrokeEnded(canvas, before: before) }
         if !readingText { straighten() }
+    }
+
+    /// Narrow PencilKit's sampled pressure widths, but keep the original .pen ink so the
+    /// finished stroke remains a native, persistent PencilKit stroke.
+    private func schedulePressureFineliner(_ drawn: PKStroke, on canvas: PageCanvasView, pageID: UUID) {
+        pressureStrokeWork?.cancel()
+        let count = canvas.drawing.strokes.count
+        let stamp = drawn.path.creationDate
+        let work = DispatchWorkItem { [weak self, weak canvas] in
+            guard let self, let canvas, canvas.pageID == pageID,
+                  canvas.drawing.strokes.count == count,
+                  let current = canvas.drawing.strokes.last,
+                  current.path.creationDate == stamp else { return }
+            let scale = ToolPreset.pressureStrokeScale
+            let points = current.path.map { sample -> PKStrokePoint in
+                let size = CGSize(width: sample.size.width * scale, height: sample.size.height * scale)
+                return PKStrokePoint(location: sample.location, timeOffset: sample.timeOffset,
+                                     size: size, opacity: sample.opacity, force: sample.force,
+                                     azimuth: sample.azimuth, altitude: sample.altitude,
+                                     secondaryScale: sample.secondaryScale)
+            }
+            guard !points.isEmpty else { return }
+            let path = PKStrokePath(controlPoints: points, creationDate: current.path.creationDate)
+            let refined = PKStroke(ink: current.ink, path: path, transform: current.transform,
+                                   mask: current.mask, randomSeed: current.randomSeed)
+            self.replaceLastStroke(current, with: refined, on: canvas, pageID: pageID,
+                                   actionName: String(localized: "Pressure Fineliner"),
+                                   announcement: String(localized: "Fineliner stroke refined"))
+        }
+        pressureStrokeWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
     }
 
     private func noteWriting(on canvas: PageCanvasView, pageID: UUID, before: PKDrawing?) -> Bool {
