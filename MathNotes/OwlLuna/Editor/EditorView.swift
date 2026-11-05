@@ -815,16 +815,16 @@ fileprivate struct EditorContent: View {
                 if isToolTrayDragging {
                     GeometryReader { geometry in
                         ZStack {
-                            dropZone(.top, active: toolTrayDropEdge == .top)
+                            dropZone(active: toolTrayDropEdge == .top)
                                 .frame(width: 168, height: 58)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                            dropZone(.bottom, active: toolTrayDropEdge == .bottom)
+                            dropZone(active: toolTrayDropEdge == .bottom)
                                 .frame(width: 168, height: 58)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                            dropZone(.left, active: toolTrayDropEdge == .left)
+                            dropZone(active: toolTrayDropEdge == .left)
                                 .frame(width: 58, height: 168)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                            dropZone(.right, active: toolTrayDropEdge == .right)
+                            dropZone(active: toolTrayDropEdge == .right)
                                 .frame(width: 58, height: 168)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
                         }
@@ -884,7 +884,7 @@ fileprivate struct EditorContent: View {
                                      }
                                      toolTrayDropEdge = nil
                                  }
-                             }
+                             })
                         // Measure the actual controls before the side-dock frame stretches the rotated tray.
                         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
                             toolTraySize = dock.isVertical
@@ -916,7 +916,7 @@ fileprivate struct EditorContent: View {
             .onChange(of: session.mode) { session.dish = nil }
     }
 
-    private func dropZone(_ edge: ToolTray.DockEdge, active: Bool) -> some View {
+    private func dropZone(active: Bool) -> some View {
         RoundedRectangle(cornerRadius: 16)
             .fill(active ? Color.accentColor.opacity(0.30) : Color.accentColor.opacity(0.08))
             .overlay {
