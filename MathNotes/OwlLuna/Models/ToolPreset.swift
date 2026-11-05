@@ -64,7 +64,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
                 blue: CGFloat(color >> 8 & 0xFF) / 255, alpha: CGFloat(color & 0xFF) / 255)
     }
 
-    /// The widths a kind of ink can be set to: the range PencilKit allows for it.
+    /// The app's displayed width range, including fine values below PencilKit's picker minimum.
     static func widthRange(of ink: PKInkingTool.InkType) -> ClosedRange<Double> {
         let valid = ink.validWidthRange
         // These are app-authored widths, not PencilKit's picker limits. Keep the requested fine
@@ -77,8 +77,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// How much of its set width a kind of ink is written with. The fineliner is written a quarter thinner than
-    /// PencilKit's own monoline, which is too heavy for fine handwriting; the width shown and set stays the pen's.
+    /// App widths are sent to PencilKit directly, without applying its picker-range clamp.
     static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat { 1 }
 
     var tool: PKInkingTool? {
