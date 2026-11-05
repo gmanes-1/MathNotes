@@ -50,40 +50,39 @@ enum InkLasso {
         return sqrt(max(0, (xx + yy + sqrt(discriminant)) / 2))
     }
 
-    /// True only when the complete visible stroke, including its width, is enclosed by the lasso.
-    /// Dense path sampling catches curved sections; the distance-to-edge test keeps the stroke's
-    /// outer edge inside too, rather than merely checking its centreline.
-    private static func isFullyEnclosed(_ stroke: PKStroke, by polygon: [CGPoint]) -> Bool {
+    /// A stroke counts as selected when more than 70% of its centreline length is inside the lasso.
+    /// Dense distance-based samples make the estimate work for curved handwriting as well as straight lines.
+    private static func isMostlyEnclosed(_ stroke: PKStroke, by polygon: [CGPoint]) -> Bool {
         guard polygon.count >= 3 else { return false }
-        let scale = maximumScale(of: stroke.transform)
-        let samples = stroke.path.interpolatedPoints(by: .distance(0.5))
-        var sampledAny = false
-
-        for sample in samples {
-            sampledAny = true
-            let center = sample.location.applying(stroke.transform)
-            guard contains(polygon, center) else { return false }
-
-            let radius = max(sample.size.width, sample.size.height) * 0.5 * scale
-            if radius > 0 {
-                var nearestEdge = CGFloat.greatestFiniteMagnitude
-                for edge in polygon.indices {
-                    let next = (edge + 1) % polygon.count
-                    nearestEdge = min(nearestEdge, distance(center, toSegmentFrom: polygon[edge], to: polygon[next]))
-                    if nearestEdge < radius { return false }
-                }
-            }
+        let samples = Array(stroke.path.interpolatedPoints(by: .distance(0.5)))
+        guard let first = samples.first else { return false }
+        if samples.count == 1 {
+            return contains(polygon, first.location.applying(stroke.transform))
         }
-        return sampledAny
+
+        var totalLength: CGFloat = 0
+        var enclosedLength: CGFloat = 0
+        var previous = first.location.applying(stroke.transform)
+        for sample in samples.dropFirst() {
+            let current = sample.location.applying(stroke.transform)
+            let length = hypot(current.x - previous.x, current.y - previous.y)
+            if length > 0 {
+                totalLength += length
+                let midpoint = CGPoint(x: (previous.x + current.x) * 0.5, y: (previous.y + current.y) * 0.5)
+                if contains(polygon, midpoint) { enclosedLength += length }
+            }
+            previous = current
+        }
+        return totalLength > 0 && enclosedLength / totalLength > 0.70
     }
 
-    /// Only strokes wholly enclosed by the outline. `polygon` is in the page's own points.
+    /// Strokes with more than 70% of their path inside the outline. `polygon` is in page points.
     static func strokes(in drawing: PKDrawing, inside polygon: [CGPoint]) -> [Int] {
         guard polygon.count >= 3 else { return [] }
         let box = ShapeRecognizer.bounds(of: polygon)
         return drawing.strokes.enumerated().compactMap { index, stroke in
             guard box.contains(stroke.renderBounds),
-                  isFullyEnclosed(stroke, by: polygon) else { return nil }
+                  isMostlyEnclosed(stroke, by: polygon) else { return nil }
             return index
         }
     }
