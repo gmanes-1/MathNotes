@@ -41,7 +41,10 @@ final class InkLassoTests: XCTestCase {
         XCTAssertFalse(InkLasso.contains(loop, CGPoint(x: 200, y: 300)))
 
         let half = [CGPoint(x: 60, y: 60), CGPoint(x: 180, y: 60), CGPoint(x: 180, y: 250), CGPoint(x: 60, y: 250)]
-        XCTAssertEqual(InkLasso.strokes(in: drawing, inside: half), [], "a stroke only partly inside is left out")
+        XCTAssertEqual(InkLasso.strokes(in: drawing, inside: half), [], "a stroke with less than 70% overlap is left out")
+
+        let mostlyInside = [CGPoint(x: 90, y: 60), CGPoint(x: 245, y: 60), CGPoint(x: 245, y: 140), CGPoint(x: 90, y: 140)]
+        XCTAssertEqual(InkLasso.strokes(in: drawing, inside: mostlyInside), [0], "a stroke with over 70% overlap is selected")
 
         let drag = (0...20).map { CGPoint(x: 60 + CGFloat($0) * 14, y: 380 + CGFloat($0) * 2) }
         let box = InkLasso.outline(from: drag)
