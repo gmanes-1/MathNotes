@@ -906,17 +906,9 @@ fileprivate struct EditorContent: View {
                              })
                         // Measure the actual controls before the side-dock frame stretches the rotated tray.
                         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-                            toolTraySize = dock.isVertical
-                                ? CGSize(width: ToolTray.height, height: size.width)
-                                : size
+                            toolTraySize = size
                         }
-                        // Keep the tray at its natural content width when horizontal. The previous
-                        // full-pane frame made it impossible to move sideways in the editor.
-                        // Lay out the tray at its natural horizontal size first, then rotate that
-                        // complete tray. The vertical frame only centres it; it must not stretch it
-                        // before rotation.
-                        .fixedSize(horizontal: true, vertical: false)
-                        .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0), anchor: .center)
+                        .fixedSize(horizontal: !dock.isVertical, vertical: dock.isVertical)
                         .animation(Motion.adaptive(.spring(response: 0.42, dampingFraction: 0.84), reduceMotion: reduceMotion), value: dock)
                         .frame(width: dock.isVertical ? ToolTray.height : nil,
                                height: dock.isVertical ? toolTraySize.height : ToolTray.height, alignment: .center)
