@@ -9,7 +9,9 @@ struct ToolTray: View {
     /// The width of the pane the tray stands in.
     let room: CGFloat
     let use: (ToolExtra) -> Void
+    let move: (CGSize) -> Void
     @State private var toolbox = Toolbox.shared
+    @State private var dragTranslation: CGSize = .zero
     @State private var hidden: Edge.Set = []
     @State private var editing: UUID?
     @State private var editingEraser = false
@@ -91,6 +93,7 @@ struct ToolTray: View {
             rule
             ForEach(extras.prefix(plan.extras)) { extraButton($0) }
             customiseButton
+            moveHandle
         }
         .padding(.horizontal, Self.inset)
         .frame(height: Self.height)
@@ -279,6 +282,27 @@ struct ToolTray: View {
                     .scrollBounceBehavior(.basedOnSize)
             }
             .accessibilityIdentifier("editor.tools.customise")
+    }
+
+    /// A three-line grip, like Notability's tray handle. Drag it to move the tray within the page area.
+    private var moveHandle: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color.textSecondary)
+            .frame(width: 30, height: Self.button)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .global)
+                .onChanged { value in
+                    let delta = CGSize(width: value.translation.width - dragTranslation.width,
+                                       height: value.translation.height - dragTranslation.height)
+                    move(delta)
+                    dragTranslation = value.translation
+                }
+                .onEnded { _ in dragTranslation = .zero })
+            .accessibilityElement()
+            .accessibilityLabel(Text("Move tool tray"))
+            .accessibilityHint(Text("Drag to position the tray within the page area"))
+            .accessibilityIdentifier("editor.tools.move")
     }
 }
 
