@@ -2261,7 +2261,14 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 guard let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue),
                       let size = InkCalibration.middleSize(of: stroke) else { continue }
                 let width = InkCalibration.width(forPointSize: size, of: kind)
-                return ToolPreset(ink: kind, color: InkCalibration.bytes(of: stroke.ink.color), width: width)
+                let colour = InkCalibration.bytes(of: stroke.ink.color)
+                // A stroke's point widths can swell with pressure. When it matches a saved tool's
+                // ink and colour, prefer that tool's exact discrete setting over a pressure-derived guess.
+                let saved = Toolbox.shared.shelf.usable
+                    .filter { $0.ink == kind.rawValue && ($0.tint & 0xFFFF_FF00) == (colour & 0xFFFF_FF00) }
+                    .min { abs($0.width - width) < abs($1.width - width) }
+                if let saved { return saved }
+                return ToolPreset(ink: kind, color: colour, width: width)
             }
         }
         return nil
