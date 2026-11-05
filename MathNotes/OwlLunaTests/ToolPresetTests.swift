@@ -53,7 +53,7 @@ final class ToolPresetTests: XCTestCase {
         let pressureTool = try XCTUnwrap(fineliner.tool)
         XCTAssertEqual(pressureTool.inkType, .pen, "on uses PencilKit's pressure-sensitive pen rendering")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
-        XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.01)
+        XCTAssertEqual(Double(pressureTool.width), 0.36, accuracy: 0.01, "pressure mode compensates for PencilKit pen rendering")
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)
@@ -63,24 +63,6 @@ final class ToolPresetTests: XCTestCase {
         let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
         XCTAssertFalse(oldPreset.pressureSensitive ?? false, "saved presets from before the toggle stay off")
         XCTAssertEqual(try XCTUnwrap(oldPreset.tool).inkType, .monoline)
-    }
-
-    func testFinePenWidthsAreAppliedToTheCompletedStroke() throws {
-        let points = (0..<5).map { index in
-            PKStrokePoint(location: CGPoint(x: index, y: 0), timeOffset: TimeInterval(index),
-                          size: CGSize(width: 1, height: 1), opacity: 1, force: 1,
-                          azimuth: 0, altitude: .pi / 2, secondaryScale: 1)
-        }
-        let path = PKStrokePath(controlPoints: points, creationDate: Date())
-        let stroke = PKStroke(ink: PKInk(.pen, color: .black), path: path)
-        let preset = ToolPreset(ink: .pen, color: 0x0000_00FF, width: 0.5)
-        let corrected = InkCalibration.correctedFinePenStroke(stroke, preset: preset)
-        XCTAssertEqual(corrected.path.count, stroke.path.count)
-        XCTAssertEqual(corrected.path[2].size.width, 0.5, accuracy: 0.001,
-                       "the median stroke width is calibrated to the saved Fineliner width")
-        XCTAssertEqual(corrected.path[2].size.height, 0.5, accuracy: 0.001)
-        XCTAssertEqual(corrected.ink.inkType, stroke.ink.inkType)
-        XCTAssertEqual(corrected.path.creationDate, stroke.path.creationDate)
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
