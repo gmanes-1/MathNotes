@@ -611,7 +611,7 @@ fileprivate struct EditorContent: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var paneWidth: CGFloat = 1024
     @State private var stackSize = CGSize(width: 1024, height: 768)
-    @AppStorage("editor.toolTray.dockEdge") private var toolTrayDockEdge = "top"
+    @AppStorage("editor.toolTray.dockEdge.v2") private var toolTrayDockEdge = "top"
     @AppStorage("editor.toolTray.offsetX") private var toolTrayPositionX = 0.0
     @AppStorage("editor.toolTray.offsetY") private var toolTrayPositionY = 0.0
     @State private var isToolTrayDragging = false
