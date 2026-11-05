@@ -229,7 +229,7 @@ final class ToolShelf {
         // Normalize older saved presets so the displayed choice matches the tool actually used.
         let original = loaded
         for index in loaded.indices where loaded[index].inkType == .pen {
-            loaded[index].width = Self.clamped(loaded[index].width, to: Self.widthRange(of: .pen))
+            loaded[index].width = ToolPreset.clamped(loaded[index].width, to: ToolPreset.widthRange(of: .pen))
         }
         presets = loaded
         if store != nil, loaded != original { save() }
