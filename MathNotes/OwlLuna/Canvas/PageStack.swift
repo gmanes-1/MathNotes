@@ -1104,7 +1104,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if !unreadWriting.isEmpty { readWritingAfterARest() }
             return
         }
-        if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
+        if canvas !== zoomCanvas, let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last, let tool = canvas.tool as? PKInkingTool {
             InkCalibration.learn(from: drawn, writtenWith: tool)
         }
