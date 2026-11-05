@@ -10,6 +10,8 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// Red, green, blue and alpha, a byte each, as the ink is on light paper.
     var color: UInt32
     var width: Double
+    /// Fineliner can optionally use pressure-sensitive pen rendering; nil keeps older saved presets off.
+    var pressureSensitive: Bool? = nil
 
     init(id: UUID = UUID(), ink: PKInkingTool.InkType, color: UInt32, width: Double) {
         self.id = id
@@ -84,7 +86,8 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         guard let inkType else { return nil }
         // Do not clamp to validWidthRange: the app's fine presets intentionally go below
         // PencilKit's standard picker minimum, and PKInkingTool accepts an explicit width.
-        return PKInkingTool(inkType, color: uiColor, width: CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))))
+        let renderedInk: PKInkingTool.InkType = inkType == .monoline && pressureSensitive == true ? .pen : inkType
+        return PKInkingTool(renderedInk, color: uiColor, width: CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))))
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
