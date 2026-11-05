@@ -69,22 +69,7 @@ enum InkCalibration {
         UserDefaults.standard.set(factors, forKey: key)
     }
 
-    /// PencilKit can render sub-0.9 pt pen presets at nearly the same apparent width.
-    /// Scale the completed stroke through its affine transform instead of rebuilding its
-    /// PKStrokePath. This keeps PencilKit's original pressure/timing samples intact.
-    static func correctedFinePenStroke(_ stroke: PKStroke, preset: ToolPreset) -> PKStroke {
-        let referenceWidth = 0.9
-        guard preset.inkType == .pen, preset.width < referenceWidth,
-              !stroke.path.isEmpty, !stroke.renderBounds.isNull else { return stroke }
-        let scale = CGFloat(preset.width / referenceWidth)
-        let center = CGPoint(x: stroke.renderBounds.midX, y: stroke.renderBounds.midY)
-        let scaleAroundCenter = CGAffineTransform(translationX: center.x, y: center.y)
-            .scaledBy(x: scale, y: scale)
-            .translatedBy(x: -center.x, y: -center.y)
-        let transform = scaleAroundCenter.concatenating(stroke.transform)
-        return PKStroke(ink: stroke.ink, path: stroke.path, transform: transform,
-                        mask: stroke.mask, randomSeed: stroke.randomSeed)
-    }
+
 }
 
 @MainActor
