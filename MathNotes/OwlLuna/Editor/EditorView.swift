@@ -879,7 +879,17 @@ fileprivate struct EditorContent: View {
                                                      y: (stackSize.height - verticalLength) / 2,
                                                      width: ToolTray.height, height: verticalLength))
                                  ]
-                                 toolTrayDropEdge = zones.first(where: { $0.1.contains(center) })?.0
+                                 // Dock to whichever of the four drop-off zones is closest to the
+                                 // tray's centre. This keeps edge selection automatic even when the
+                                 // centre lands just outside a zone's bounds.
+                                 toolTrayDropEdge = zones.min { lhs, rhs in
+                                     func distanceSquared(to rect: CGRect) -> CGFloat {
+                                         let dx = max(rect.minX - center.x, 0, center.x - rect.maxX)
+                                         let dy = max(rect.minY - center.y, 0, center.y - rect.maxY)
+                                         return dx * dx + dy * dy
+                                     }
+                                     return distanceSquared(to: lhs.1) < distanceSquared(to: rhs.1)
+                                 }?.0
                              },
                              dragging: { isDragging in
                                  isToolTrayDragging = isDragging
