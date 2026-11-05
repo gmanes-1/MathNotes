@@ -17,7 +17,7 @@ struct ToolTray: View {
     @State private var editing: UUID?
     @State private var editingEraser = false
     @State private var customising = false
-    @AppStorage("editor.toolTray.dockEdge") private var dockEdge = DockEdge.top.rawValue
+    @AppStorage("editor.toolTray.dockEdge.v2") private var dockEdge = DockEdge.top.rawValue
 
     enum DockEdge: String, CaseIterable, Identifiable {
         case top, bottom, left, right
