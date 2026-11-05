@@ -289,6 +289,7 @@ final class ToolTrayUITests: XCTestCase {
         let start = grip.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         let destination = window.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5))
         start.press(forDuration: 0.1, thenDragTo: destination)
+        sleep(1) // Let the spring snap settle before checking the final position.
 
         let moved = tray.frame
         XCTAssertLessThan(moved.midX, original.midX - 60, "the tray follows the grip toward the highlighted left position")
