@@ -680,6 +680,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         layoutZoomTarget()
         updateInsets()
         isBaking = false
+        if zoomWindow != nil { showZoomWindow() }
     }
 
     private func position(_ slot: PageSlotView, at index: Int) {
