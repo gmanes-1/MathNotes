@@ -81,7 +81,7 @@ struct ToolTray: View {
             if edge.isVertical {
                 VStack(spacing: 0) {
                     penColumn(pens)
-                        .frame(height: plan.pens, width: Self.button)
+                        .frame(width: Self.button, height: plan.pens)
                     horizontalRule
                     eraserButton
                     lassoButton
