@@ -65,6 +65,14 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(oldPreset.tool).inkType, .monoline)
     }
 
+    func testPressureFinelinerWidthsAreExplicitAndStayFine() {
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0), 0.132, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0.5), 0.366, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 1), 0.6, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: -1), 0.132, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 2), 0.6, accuracy: 0.001)
+    }
+
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
         XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.3...3)
         XCTAssertEqual(ToolPreset.widthRange(of: .pen), 0.5...8)
