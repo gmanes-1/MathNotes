@@ -17,7 +17,7 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
     /// The day this was written, keyed the same way, when that day's page in the daily journal had writing on it.
     var journalWrittenDay: String?
 
-    static let appGroup = "group.com.giuseppe.OwlLuna"
+    static let appGroup = "group.com.giuseppe.mathnotes"
     static let coverFile = "widget-cover.png"
 
     static var directory: URL? {

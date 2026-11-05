@@ -4,7 +4,7 @@
 
 MathNotes keeps only what you need to write: a Home screen of notebooks, paper you can tune (blank, lined, grid or dotted, with your own spacing and line weight), pages that add themselves as you write, and a per-page LaTeX converter that runs on the iPad. It is built on Apple frameworks (SwiftUI, PencilKit, SwiftData). Your notes stay on your device, with a copy in your own private iCloud storage if you turn iCloud sync on.
 
-MathNotes started from the open-source MathNotes project (MIT licence, see `LICENSE`). The Xcode project, targets and bundle identifiers still carry the original names so signing and existing notebooks keep working; the app shows itself as MathNotes everywhere.
+MathNotes is the app, project, and product name throughout. The app bundle identifier is `com.giuseppe.mathnotes`, the widget extension is `com.giuseppe.mathnotes.widgets`, and the shared App Group is `group.com.giuseppe.mathnotes`. Set your own Apple Developer Team for signing before installing on a device.
 
 ## What changed in the MathNotes refresh
 
@@ -146,7 +146,7 @@ git clone https://github.com/gmanes-1/MathNotes.git
 open MathNotes/MathNotes.xcodeproj
 ```
 
-Select an iPad simulator and run. To run on a device, choose your team for both the `MathNotes` and `MathNotesWidgets` targets; they share the App Group `group.com.owais.MathNotes`, which you may need to rename to one your team owns (it's set in `Config/*.entitlements` and `Shared/WidgetSnapshot.swift`). iCloud sync needs the iCloud capability, so the MathNotes target is signed with `Config/MathNotes-iCloud.entitlements`; rename its container `iCloud.com.owais.MathNotes` to one your team owns. A free developer account can't sign that capability: set the target's `CODE_SIGN_ENTITLEMENTS` to `Config/MathNotes.entitlements` instead, and the app builds and runs as before with Settings saying sync is unavailable. Only the Apple Pencil draws until you choose otherwise: **⋯ → Draw With → Pencil and Finger** lets a finger draw, and the mouse in the simulator.
+Select an iPad simulator and run. To run on a device, choose your team for both the `MathNotes` and `MathNotesWidgets` targets; they share the App Group `group.com.giuseppe.mathnotes`, which you may need to rename to one your team owns (it's set in `Config/*.entitlements` and `Shared/WidgetSnapshot.swift`). iCloud sync needs the iCloud capability, so the MathNotes target is signed with `Config/MathNotes-iCloud.entitlements`; rename its container `iCloud.com.giuseppe.mathnotes` to one your team owns. A free developer account can't sign that capability: set the target's `CODE_SIGN_ENTITLEMENTS` to `Config/MathNotes.entitlements` instead, and the app builds and runs as before with Settings saying sync is unavailable. Only the Apple Pencil draws until you choose otherwise: **⋯ → Draw With → Pencil and Finger** lets a finger draw, and the mouse in the simulator.
 
 Run the tests with ⌘U or from Terminal. Any iPad simulator works; this lists the ones you have:
 

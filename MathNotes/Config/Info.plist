@@ -6,7 +6,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.owais.MathNotes</string>
+			<string>com.giuseppe.mathnotes</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>mathnotes</string>
@@ -28,7 +28,7 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes backup</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.mathnotes.backup</string>
+			<string>com.giuseppe.mathnotes.backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -47,7 +47,7 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes notebook</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.mathnotes.notebook</string>
+			<string>com.giuseppe.mathnotes.notebook</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -64,7 +64,7 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes notebook</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.mathnotes.notebook-reference</string>
+			<string>com.giuseppe.mathnotes.notebook-reference</string>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
@@ -74,7 +74,7 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes page</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.mathnotes.page-reference</string>
+			<string>com.giuseppe.mathnotes.page-reference</string>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
@@ -84,7 +84,7 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes tab</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.mathnotes.tab-reference</string>
+			<string>com.giuseppe.mathnotes.tab-reference</string>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
