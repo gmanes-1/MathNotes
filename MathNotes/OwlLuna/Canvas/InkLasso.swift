@@ -32,24 +32,6 @@ enum InkLasso {
         return [first, CGPoint(x: last.x, y: first.y), last, CGPoint(x: first.x, y: last.y)]
     }
 
-    /// Distance from a point to a finite line segment.
-    private static func distance(_ point: CGPoint, toSegmentFrom start: CGPoint, to end: CGPoint) -> CGFloat {
-        let dx = end.x - start.x, dy = end.y - start.y
-        let lengthSquared = dx * dx + dy * dy
-        guard lengthSquared > 0 else { return hypot(point.x - start.x, point.y - start.y) }
-        let projection = min(max(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0), 1)
-        return hypot(point.x - (start.x + projection * dx), point.y - (start.y + projection * dy))
-    }
-
-    /// The largest scale applied by a stroke's affine transform.
-    private static func maximumScale(of transform: CGAffineTransform) -> CGFloat {
-        let xx = transform.a * transform.a + transform.b * transform.b
-        let yy = transform.c * transform.c + transform.d * transform.d
-        let xy = transform.a * transform.c + transform.b * transform.d
-        let discriminant = max(0, (xx - yy) * (xx - yy) + 4 * xy * xy)
-        return sqrt(max(0, (xx + yy + sqrt(discriminant)) / 2))
-    }
-
     /// A stroke counts as selected when more than 70% of its centreline length is inside the lasso.
     /// Dense distance-based samples make the estimate work for curved handwriting as well as straight lines.
     private static func isMostlyEnclosed(_ stroke: PKStroke, by polygon: [CGPoint]) -> Bool {
