@@ -79,11 +79,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// A pressure sample's final Fineliner width, independent of PencilKit's .pen rendering minimum.
-    static func pressureWidth(base: CGFloat, force: CGFloat) -> CGFloat {
-        let pressure = min(max(force, 0), 1)
-        return max(base * (0.08 + 0.22 * pressure), 0.035)
-    }
+    /// Pressure mode uses PencilKit's native pressure-sensitive pen renderer.
 
     /// App widths are sent to PencilKit directly, without applying its picker-range clamp.
     static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat { 1 }
@@ -94,9 +90,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         // PencilKit's standard picker minimum, and PKInkingTool accepts an explicit width.
         let pressureMode = inkType == .monoline && pressureSensitive == true
         let renderedInk: PKInkingTool.InkType = pressureMode ? .pen : inkType
-        // Capture with a normally visible PencilKit pen. The final stroke is rebuilt as a
-        // fine monoline path using per-sample force, so the capture width is not the saved width.
-        let renderedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
+        // Keep the stroke native to PencilKit so it remains visible after the Pencil lifts.
+        // A reduced base width retains pressure variation without a destructive post-processing pass.
+        let renderedWidth = pressureMode ? max(CGFloat(width) * 0.2, 0.06)
+                                         : CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         return PKInkingTool(renderedInk, color: uiColor, width: renderedWidth)
     }
 

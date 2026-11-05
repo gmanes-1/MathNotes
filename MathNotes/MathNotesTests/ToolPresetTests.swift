@@ -53,7 +53,7 @@ final class ToolPresetTests: XCTestCase {
         let pressureTool = try XCTUnwrap(fineliner.tool)
         XCTAssertEqual(pressureTool.inkType, .pen, "on uses PencilKit's pressure-sensitive pen rendering")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
-        XCTAssertEqual(Double(pressureTool.width), 0.006, accuracy: 0.001, "pressure mode uses an extremely small base width")
+        XCTAssertEqual(Double(pressureTool.width), 0.12, accuracy: 0.001, "pressure mode uses a reduced native PencilKit width")
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)
@@ -63,14 +63,6 @@ final class ToolPresetTests: XCTestCase {
         let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
         XCTAssertFalse(oldPreset.pressureSensitive ?? false, "saved presets from before the toggle stay off")
         XCTAssertEqual(try XCTUnwrap(oldPreset.tool).inkType, .monoline)
-    }
-
-    func testPressureFinelinerWidthsAreExplicitAndStayFine() {
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0), 0.048, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0.5), 0.114, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 1), 0.18, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: -1), 0.048, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 2), 0.18, accuracy: 0.001)
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
