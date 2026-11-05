@@ -149,6 +149,14 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
     }
 
+    /// A small, explicit set of widths. The first choice is PencilKit's true minimum for this ink;
+    /// subsequent choices are deliberately spaced more closely near the fine end.
+    static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
+        let range = widthRange(of: ink)
+        let fractions: [Double] = [0, 0.025, 0.07, 0.16, 0.30, 0.50, 0.73, 1]
+        return fractions.map { range.lowerBound + (range.upperBound - range.lowerBound) * $0 * $0 }
+    }
+
     /// The reverse of `width(at:of:)`.
     var widthTravel: Double { widthFraction.squareRoot() }
 
