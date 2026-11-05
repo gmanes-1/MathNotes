@@ -1,6 +1,6 @@
 //
-//  OwlLunaUITestsLaunchTests.swift
-//  OwlLunaUITests
+//  MathNotesUITestsLaunchTests.swift
+//  MathNotesUITests
 //
 //  Created by Khan, Owais on 6/7/24.
 //
@@ -8,7 +8,7 @@
 import XCTest
 
 @MainActor
-final class OwlLunaUITestsLaunchTests: XCTestCase {
+final class MathNotesUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

@@ -21,12 +21,12 @@ struct StorageRoot: Sendable, Hashable {
         library.appending(path: "\(id.uuidString).\(Self.packageExtension)", directoryHint: .isDirectory)
     }
 
-    static let packageExtension = "owlluna"
+    static let packageExtension = "mathnotes"
     static let legacyPackageExtension = "scribe"
 
     static let live: StorageRoot = {
         #if DEBUG
-        if let override = ProcessInfo.processInfo.environment["OWLLUNA_STORAGE_ROOT"] {
+        if let override = ProcessInfo.processInfo.environment["MATHNOTES_STORAGE_ROOT"] {
             return StorageRoot(url: URL(filePath: override, directoryHint: .isDirectory))
         }
         #endif

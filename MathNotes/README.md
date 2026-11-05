@@ -4,7 +4,7 @@
 
 MathNotes keeps only what you need to write: a Home screen of notebooks, paper you can tune (blank, lined, grid or dotted, with your own spacing and line weight), pages that add themselves as you write, and a per-page LaTeX converter that runs on the iPad. It is built on Apple frameworks (SwiftUI, PencilKit, SwiftData). Your notes stay on your device, with a copy in your own private iCloud storage if you turn iCloud sync on.
 
-MathNotes started from the open-source OwlLuna project (MIT licence, see `LICENSE`). The Xcode project, targets and bundle identifiers still carry the original names so signing and existing notebooks keep working; the app shows itself as MathNotes everywhere.
+MathNotes started from the open-source MathNotes project (MIT licence, see `LICENSE`). The Xcode project, targets and bundle identifiers still carry the original names so signing and existing notebooks keep working; the app shows itself as MathNotes everywhere.
 
 ## What changed in the MathNotes refresh
 
@@ -12,7 +12,7 @@ MathNotes started from the open-source OwlLuna project (MIT licence, see `LICENS
 - Home shows only your notebooks and a New Notebook button (touch and hold a cover to rename or delete it). The gear opens Settings.
 - New Notebook offers Blank, Lined, Grid and Dotted paper with sliders for line spacing / grid cell size / dot spacing and line thickness / dot size, and a live preview. The choice is kept per notebook (`defaults.extra["ruling"]` and each page's `extra["ruling"]`), so older pages look exactly as before.
 - Writing on the last page adds one blank page after it, in the same paper.
-- The daily journal (Today card, ⌘T, Today widget and control, the Siri phrase, the Settings section) is no longer offered. Old `owlluna://today` links open the notebook you last wrote in.
+- The daily journal (Today card, ⌘T, Today widget and control, the Siri phrase, the Settings section) is no longer offered. Old `mathnotes://today` links open the notebook you last wrote in.
 - The LaTeX sheets are restyled to the app's look; the conversion logic is unchanged.
 
 ## Ink, toolbar and pages update
@@ -25,7 +25,7 @@ MathNotes started from the open-source OwlLuna project (MIT licence, see `LICENS
 - **Pages sidebar.** The sidebar button in the bar shows every page down the left as a thumbnail that follows the writing: tap to turn to it, drag to reorder, the plus to add a page, and touch and hold to insert, duplicate, move or delete.
 - **Needs a check on a device:** this update was written without a build; the learned pen measure and the Pencil-or-finger rules need trying with a real Apple Pencil.
 
-## Original OwlLuna feature list
+## Original MathNotes feature list
 
 
 **Writing**
@@ -130,7 +130,7 @@ MathNotes started from the open-source OwlLuna project (MIT licence, see `LICENS
 
 ## Privacy
 
-OwlLuna has no accounts and no analytics. Handwriting and speech are recognised on the device: a recording is only transcribed when you ask, and only if the iPad can do it without sending it anywhere. Translation uses Apple's translator on the iPad. Study guides are written by Apple's language model on the iPad, from the words already read from your pages; without that model there is no study guide. Your calendar is read only when you ask for today's events, or when you have turned on printing them in the journal, and the events are printed on the page, where they are part of the notebook like anything else written in it. The camera is used only while you scan. On a device that has never synced, iCloud sync copies nothing until you allow it there (Settings › iCloud has the switch); a device that was already syncing with an earlier build carries on without being asked. With it on, your notebooks, folders and stickers are copied to the app's private container in your own iCloud storage, which Apple syncs between your devices. The writing history is never synced. The writing history behind the week strip and calendar is a small file on your device (`Library/activity.json`) listing the days you wrote and which pages. Every backup file you make holds it, and Settings › Writing History turns it off or clears it.
+MathNotes has no accounts and no analytics. Handwriting and speech are recognised on the device: a recording is only transcribed when you ask, and only if the iPad can do it without sending it anywhere. Translation uses Apple's translator on the iPad. Study guides are written by Apple's language model on the iPad, from the words already read from your pages; without that model there is no study guide. Your calendar is read only when you ask for today's events, or when you have turned on printing them in the journal, and the events are printed on the page, where they are part of the notebook like anything else written in it. The camera is used only while you scan. On a device that has never synced, iCloud sync copies nothing until you allow it there (Settings › iCloud has the switch); a device that was already syncing with an earlier build carries on without being asked. With it on, your notebooks, folders and stickers are copied to the app's private container in your own iCloud storage, which Apple syncs between your devices. The writing history is never synced. The writing history behind the week strip and calendar is a small file on your device (`Library/activity.json`) listing the days you wrote and which pages. Every backup file you make holds it, and Settings › Writing History turns it off or clears it.
 
 The widgets read a small snapshot the app writes to its own shared container on the device (the last notebook's title, page and cover, page counts for recent days, and whether today's journal page has been written). With writing history off, no days are written there. A locked notebook's title and cover are never in that snapshot, nor whether a locked journal has been written in today, though the page counts include pages written in it. Nor is it in Spotlight's index, which iPadOS keeps on the device and which Settings › Search switches off. While the iPad is locked, iPadOS hides the title and cover in Continue Writing.
 
@@ -139,14 +139,14 @@ A locked notebook is closed to anyone using the app without Face ID, Touch ID or
 ## Getting started
 
 ```bash
-git clone https://github.com/owaisazmal/OwlLuna.git
+git clone https://github.com/gmanes-1/MathNotes.git
 ```
 
 ```bash
-open OwlLuna/OwlLuna.xcodeproj
+open MathNotes/MathNotes.xcodeproj
 ```
 
-Select an iPad simulator and run. To run on a device, choose your team for both the `OwlLuna` and `OwlLunaWidgets` targets; they share the App Group `group.com.owais.OwlLuna`, which you may need to rename to one your team owns (it's set in `Config/*.entitlements` and `Shared/WidgetSnapshot.swift`). iCloud sync needs the iCloud capability, so the OwlLuna target is signed with `Config/OwlLuna-iCloud.entitlements`; rename its container `iCloud.com.owais.OwlLuna` to one your team owns. A free developer account can't sign that capability: set the target's `CODE_SIGN_ENTITLEMENTS` to `Config/OwlLuna.entitlements` instead, and the app builds and runs as before with Settings saying sync is unavailable. Only the Apple Pencil draws until you choose otherwise: **⋯ → Draw With → Pencil and Finger** lets a finger draw, and the mouse in the simulator.
+Select an iPad simulator and run. To run on a device, choose your team for both the `MathNotes` and `MathNotesWidgets` targets; they share the App Group `group.com.owais.MathNotes`, which you may need to rename to one your team owns (it's set in `Config/*.entitlements` and `Shared/WidgetSnapshot.swift`). iCloud sync needs the iCloud capability, so the MathNotes target is signed with `Config/MathNotes-iCloud.entitlements`; rename its container `iCloud.com.owais.MathNotes` to one your team owns. A free developer account can't sign that capability: set the target's `CODE_SIGN_ENTITLEMENTS` to `Config/MathNotes.entitlements` instead, and the app builds and runs as before with Settings saying sync is unavailable. Only the Apple Pencil draws until you choose otherwise: **⋯ → Draw With → Pencil and Finger** lets a finger draw, and the mouse in the simulator.
 
 Run the tests with ⌘U or from Terminal. Any iPad simulator works; this lists the ones you have:
 
@@ -157,13 +157,13 @@ xcrun simctl list devices available | grep iPad
 Put the name of one (without the ID after it) after `name=`:
 
 ```bash
-xcodebuild test -project OwlLuna.xcodeproj -scheme OwlLuna -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M5)'
+xcodebuild test -project MathNotes.xcodeproj -scheme MathNotes -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M5)'
 ```
 
 ## Architecture
 
 ```
-OwlLuna/
+MathNotes/
 ├── App/          App entry, launch (index refresh, the splash's overlay), test-only seeds and probes
 ├── Launch/       The launch splash: its clock, its grid of tiles and what each tile draws
 ├── Models/       Manifest types (NotebookManifest, NotebookPage, CoverSpec), paper types
@@ -176,14 +176,14 @@ OwlLuna/
 │                 scanning, translation, the calendar, notebook locks, Spotlight
 ├── Settings/     Settings and acknowledgements
 └── Resources/    Bundled fonts with their licences, privacy manifest, string catalogs
-OwlLunaWidgets/   The widget extension: Continue Writing, This Week, Today's Page, Quick Note, and the Control Center buttons
+MathNotesWidgets/   The widget extension: Continue Writing, This Week, Today's Page, Quick Note, and the Control Center buttons
 Shared/           The owl on its moon (the app icon and the mark in Settings), the snapshot the app writes and the widgets read, and what a Control Center button hands the app
 ```
 
 Key design decisions (details and measurements in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); visual system in [docs/DESIGN.md](docs/DESIGN.md)):
 
 - **One package per notebook.**
-  - Each notebook is `Library/<id>.owlluna/`: a `manifest.json`, one ink file per page in page-local points, plus assets, thumbnails and recognised text. Packages and backups from before the rename (`.scribe`, `.scribebackup`) are still read and renamed on the way in.
+  - Each notebook is `Library/<id>.mathnotes/`: a `manifest.json`, one ink file per page in page-local points, plus assets, thumbnails and recognised text. Packages and backups from before the rename (`.scribe`, `.scribebackup`) are still read and renamed on the way in.
   - Saves write only changed pages, each atomically, and the manifest last, all off the main thread.
   - Files that can't be read are set aside as `.corrupt` and never overwritten.
 - **One canvas per visible page.**
@@ -210,12 +210,12 @@ Contributions toward any of these are very welcome:
 
 ## Website
 
-The app's site, with its Privacy Policy and Support page, is in [`website/`](website/README.md) and is published to GitHub Pages at <https://owaisazmal.github.io/OwlLuna/>.
+The app's site, with its Privacy Policy and Support page, is in [`website/`](website/README.md) and is published to GitHub Pages at <https://gmanes-1.github.io/MathNotes/>.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests go in [GitHub Issues](https://github.com/owaisazmal/OwlLuna/issues).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests go in [GitHub Issues](https://github.com/owaisazmal/MathNotes/issues).
 
 ## License
 
-OwlLuna is released under the [MIT License](LICENSE).
+MathNotes is released under the [MIT License](LICENSE).

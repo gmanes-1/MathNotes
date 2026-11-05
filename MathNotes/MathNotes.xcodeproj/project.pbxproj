@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		57A1DE70000000000000000C /* OwlLunaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57A1DE700000000000000001 /* OwlLunaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		57A1DE70000000000000000C /* MathNotesWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57A1DE700000000000000001 /* MathNotesWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E3AAC6A23090F7C3002849D3 /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3AED2D23090ED9700868E02 /* llama.xcframework */; };
 		E3AAC6A33090F7C3002849D3 /* llama.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E3AED2D23090ED9700868E02 /* llama.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E3AED3D03090ED9700868E02 /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3AED2D23090ED9700868E02 /* llama.xcframework */; };
@@ -19,21 +19,21 @@
 			containerPortal = 96D9BDA72C13E3AC00726199 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 57A1DE700000000000000004;
-			remoteInfo = OwlLunaWidgets;
+			remoteInfo = MathNotesWidgets;
 		};
 		96D9BDC02C13E3B100726199 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 96D9BDA72C13E3AC00726199 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 96D9BDAE2C13E3AC00726199;
-			remoteInfo = OwlLuna;
+			remoteInfo = MathNotes;
 		};
 		96D9BDCA2C13E3B100726199 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 96D9BDA72C13E3AC00726199 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 96D9BDAE2C13E3AC00726199;
-			remoteInfo = OwlLuna;
+			remoteInfo = MathNotes;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -44,7 +44,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				57A1DE70000000000000000C /* OwlLunaWidgets.appex in Embed Foundation Extensions */,
+				57A1DE70000000000000000C /* MathNotesWidgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -63,15 +63,15 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		57A1DE700000000000000001 /* OwlLunaWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OwlLunaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		96D9BDAF2C13E3AC00726199 /* OwlLuna.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OwlLuna.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		96D9BDBF2C13E3B100726199 /* OwlLunaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OwlLunaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		96D9BDC92C13E3B100726199 /* OwlLunaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OwlLunaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		57A1DE700000000000000001 /* MathNotesWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MathNotesWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		96D9BDAF2C13E3AC00726199 /* MathNotes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MathNotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		96D9BDBF2C13E3B100726199 /* MathNotesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MathNotesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		96D9BDC92C13E3B100726199 /* MathNotesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MathNotesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3AED2D23090ED9700868E02 /* llama.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = llama.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		E3AAC6723090F4C2002849D3 /* Exceptions for "OwlLunaTests" folder in "OwlLuna" target */ = {
+		E3AAC6723090F4C2002849D3 /* Exceptions for "MathNotesTests" folder in "MathNotes" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				ActivityStatsTests.swift,
@@ -137,9 +137,9 @@
 				WritingActivityTests.swift,
 				ZoomWindowTests.swift,
 			);
-			target = 96D9BDAE2C13E3AC00726199 /* OwlLuna */;
+			target = 96D9BDAE2C13E3AC00726199 /* MathNotes */;
 		};
-		E3AAC6733090F4C2002849D3 /* Exceptions for "OwlLunaTests" folder in "OwlLunaTests" target */ = {
+		E3AAC6733090F4C2002849D3 /* Exceptions for "MathNotesTests" folder in "MathNotesTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				ActivityStatsTests.swift,
@@ -205,9 +205,9 @@
 				WritingActivityTests.swift,
 				ZoomWindowTests.swift,
 			);
-			target = 96D9BDBE2C13E3B100726199 /* OwlLunaTests */;
+			target = 96D9BDBE2C13E3B100726199 /* MathNotesTests */;
 		};
-		E3AAC6743090F4C2002849D3 /* Exceptions for "OwlLunaTests" folder in "OwlLunaWidgets" target */ = {
+		E3AAC6743090F4C2002849D3 /* Exceptions for "MathNotesTests" folder in "MathNotesWidgets" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				ActivityStatsTests.swift,
@@ -273,9 +273,9 @@
 				WritingActivityTests.swift,
 				ZoomWindowTests.swift,
 			);
-			target = 57A1DE700000000000000004 /* OwlLunaWidgets */;
+			target = 57A1DE700000000000000004 /* MathNotesWidgets */;
 		};
-		E3AAC6753090F534002849D3 /* Exceptions for "OwlLuna" folder in "OwlLunaWidgets" target */ = {
+		E3AAC6753090F534002849D3 /* Exceptions for "MathNotes" folder in "MathNotesWidgets" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				App/AppActions.swift,
@@ -416,9 +416,9 @@
 				Study/StudyGuide.swift,
 				Study/StudyGuideSheet.swift,
 			);
-			target = 57A1DE700000000000000004 /* OwlLunaWidgets */;
+			target = 57A1DE700000000000000004 /* MathNotesWidgets */;
 		};
-		E3AAC6963090F593002849D3 /* Exceptions for "OwlLunaUITests" folder in "OwlLuna" target */ = {
+		E3AAC6963090F593002849D3 /* Exceptions for "MathNotesUITests" folder in "MathNotes" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AccessibilityAuditUITests.swift,
@@ -432,8 +432,8 @@
 				LocalizationUITests.swift,
 				LockUITests.swift,
 				NotebookTabsUITests.swift,
-				OwlLunaUITests.swift,
-				OwlLunaUITestsLaunchTests.swift,
+				MathNotesUITests.swift,
+				MathNotesUITestsLaunchTests.swift,
 				ParityUITests.swift,
 				PDFTextUITests.swift,
 				PencilGestureUITests.swift,
@@ -454,9 +454,9 @@
 				WhiteboardUITests.swift,
 				ZoomWindowUITests.swift,
 			);
-			target = 96D9BDAE2C13E3AC00726199 /* OwlLuna */;
+			target = 96D9BDAE2C13E3AC00726199 /* MathNotes */;
 		};
-		E3AAC6973090F593002849D3 /* Exceptions for "OwlLunaUITests" folder in "OwlLunaUITests" target */ = {
+		E3AAC6973090F593002849D3 /* Exceptions for "MathNotesUITests" folder in "MathNotesUITests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AccessibilityAuditUITests.swift,
@@ -470,8 +470,8 @@
 				LocalizationUITests.swift,
 				LockUITests.swift,
 				NotebookTabsUITests.swift,
-				OwlLunaUITests.swift,
-				OwlLunaUITestsLaunchTests.swift,
+				MathNotesUITests.swift,
+				MathNotesUITestsLaunchTests.swift,
 				ParityUITests.swift,
 				PDFTextUITests.swift,
 				PencilGestureUITests.swift,
@@ -492,9 +492,9 @@
 				WhiteboardUITests.swift,
 				ZoomWindowUITests.swift,
 			);
-			target = 96D9BDC82C13E3B100726199 /* OwlLunaUITests */;
+			target = 96D9BDC82C13E3B100726199 /* MathNotesUITests */;
 		};
-		E3AAC6983090F593002849D3 /* Exceptions for "OwlLunaUITests" folder in "OwlLunaWidgets" target */ = {
+		E3AAC6983090F593002849D3 /* Exceptions for "MathNotesUITests" folder in "MathNotesWidgets" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AccessibilityAuditUITests.swift,
@@ -508,8 +508,8 @@
 				LocalizationUITests.swift,
 				LockUITests.swift,
 				NotebookTabsUITests.swift,
-				OwlLunaUITests.swift,
-				OwlLunaUITestsLaunchTests.swift,
+				MathNotesUITests.swift,
+				MathNotesUITestsLaunchTests.swift,
 				ParityUITests.swift,
 				PDFTextUITests.swift,
 				PencilGestureUITests.swift,
@@ -530,42 +530,42 @@
 				WhiteboardUITests.swift,
 				ZoomWindowUITests.swift,
 			);
-			target = 57A1DE700000000000000004 /* OwlLunaWidgets */;
+			target = 57A1DE700000000000000004 /* MathNotesWidgets */;
 		};
-		E3AAC69A3090F5A1002849D3 /* Exceptions for "OwlLunaWidgets" folder in "OwlLuna" target */ = {
+		E3AAC69A3090F5A1002849D3 /* Exceptions for "MathNotesWidgets" folder in "MathNotes" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				OwlLunaWidgets.swift,
+				MathNotesWidgets.swift,
 			);
-			target = 96D9BDAE2C13E3AC00726199 /* OwlLuna */;
+			target = 96D9BDAE2C13E3AC00726199 /* MathNotes */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		E3AED26A3090ED9700868E02 /* OwlLuna */ = {
+		E3AED26A3090ED9700868E02 /* MathNotes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E3AAC6753090F534002849D3 /* Exceptions for "OwlLuna" folder in "OwlLunaWidgets" target */,
+				E3AAC6753090F534002849D3 /* Exceptions for "MathNotes" folder in "MathNotesWidgets" target */,
 			);
-			path = OwlLuna;
+			path = MathNotes;
 			sourceTree = "<group>";
 		};
-		E3AED2CA3090ED9700868E02 /* OwlLunaUITests */ = {
+		E3AED2CA3090ED9700868E02 /* MathNotesUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E3AAC6963090F593002849D3 /* Exceptions for "OwlLunaUITests" folder in "OwlLuna" target */,
-				E3AAC6973090F593002849D3 /* Exceptions for "OwlLunaUITests" folder in "OwlLunaUITests" target */,
-				E3AAC6983090F593002849D3 /* Exceptions for "OwlLunaUITests" folder in "OwlLunaWidgets" target */,
+				E3AAC6963090F593002849D3 /* Exceptions for "MathNotesUITests" folder in "MathNotes" target */,
+				E3AAC6973090F593002849D3 /* Exceptions for "MathNotesUITests" folder in "MathNotesUITests" target */,
+				E3AAC6983090F593002849D3 /* Exceptions for "MathNotesUITests" folder in "MathNotesWidgets" target */,
 			);
-			path = OwlLunaUITests;
+			path = MathNotesUITests;
 			sourceTree = "<group>";
 		};
-		E3AED2CE3090ED9700868E02 /* OwlLunaWidgets */ = {
+		E3AED2CE3090ED9700868E02 /* MathNotesWidgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E3AAC69A3090F5A1002849D3 /* Exceptions for "OwlLunaWidgets" folder in "OwlLuna" target */,
+				E3AAC69A3090F5A1002849D3 /* Exceptions for "MathNotesWidgets" folder in "MathNotes" target */,
 			);
-			path = OwlLunaWidgets;
+			path = MathNotesWidgets;
 			sourceTree = "<group>";
 		};
 		E3AED2D13090ED9700868E02 /* Shared */ = {
@@ -573,14 +573,14 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
-		E3AED5CF3090EF7A00868E02 /* OwlLunaTests */ = {
+		E3AED5CF3090EF7A00868E02 /* MathNotesTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E3AAC6723090F4C2002849D3 /* Exceptions for "OwlLunaTests" folder in "OwlLuna" target */,
-				E3AAC6733090F4C2002849D3 /* Exceptions for "OwlLunaTests" folder in "OwlLunaTests" target */,
-				E3AAC6743090F4C2002849D3 /* Exceptions for "OwlLunaTests" folder in "OwlLunaWidgets" target */,
+				E3AAC6723090F4C2002849D3 /* Exceptions for "MathNotesTests" folder in "MathNotes" target */,
+				E3AAC6733090F4C2002849D3 /* Exceptions for "MathNotesTests" folder in "MathNotesTests" target */,
+				E3AAC6743090F4C2002849D3 /* Exceptions for "MathNotesTests" folder in "MathNotesWidgets" target */,
 			);
-			path = OwlLunaTests;
+			path = MathNotesTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -623,22 +623,22 @@
 			isa = PBXGroup;
 			children = (
 				96D9BDB02C13E3AC00726199 /* Products */,
-				E3AED26A3090ED9700868E02 /* OwlLuna */,
-				E3AED2CA3090ED9700868E02 /* OwlLunaUITests */,
-				E3AED2CE3090ED9700868E02 /* OwlLunaWidgets */,
+				E3AED26A3090ED9700868E02 /* MathNotes */,
+				E3AED2CA3090ED9700868E02 /* MathNotesUITests */,
+				E3AED2CE3090ED9700868E02 /* MathNotesWidgets */,
 				E3AED2D13090ED9700868E02 /* Shared */,
 				E3AED2D33090ED9700868E02 /* Frameworks */,
-				E3AED5CF3090EF7A00868E02 /* OwlLunaTests */,
+				E3AED5CF3090EF7A00868E02 /* MathNotesTests */,
 			);
 			sourceTree = "<group>";
 		};
 		96D9BDB02C13E3AC00726199 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				96D9BDAF2C13E3AC00726199 /* OwlLuna.app */,
-				96D9BDBF2C13E3B100726199 /* OwlLunaTests.xctest */,
-				96D9BDC92C13E3B100726199 /* OwlLunaUITests.xctest */,
-				57A1DE700000000000000001 /* OwlLunaWidgets.appex */,
+				96D9BDAF2C13E3AC00726199 /* MathNotes.app */,
+				96D9BDBF2C13E3B100726199 /* MathNotesTests.xctest */,
+				96D9BDC92C13E3B100726199 /* MathNotesUITests.xctest */,
+				57A1DE700000000000000001 /* MathNotesWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -654,9 +654,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		57A1DE700000000000000004 /* OwlLunaWidgets */ = {
+		57A1DE700000000000000004 /* MathNotesWidgets */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 57A1DE700000000000000008 /* Build configuration list for PBXNativeTarget "OwlLunaWidgets" */;
+			buildConfigurationList = 57A1DE700000000000000008 /* Build configuration list for PBXNativeTarget "MathNotesWidgets" */;
 			buildPhases = (
 				57A1DE700000000000000005 /* Sources */,
 				57A1DE700000000000000006 /* Frameworks */,
@@ -667,20 +667,20 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				E3AED26A3090ED9700868E02 /* OwlLuna */,
-				E3AED2CA3090ED9700868E02 /* OwlLunaUITests */,
-				E3AED2CE3090ED9700868E02 /* OwlLunaWidgets */,
+				E3AED26A3090ED9700868E02 /* MathNotes */,
+				E3AED2CA3090ED9700868E02 /* MathNotesUITests */,
+				E3AED2CE3090ED9700868E02 /* MathNotesWidgets */,
 				E3AED2D13090ED9700868E02 /* Shared */,
-				E3AED5CF3090EF7A00868E02 /* OwlLunaTests */,
+				E3AED5CF3090EF7A00868E02 /* MathNotesTests */,
 			);
-			name = OwlLunaWidgets;
-			productName = OwlLunaWidgets;
-			productReference = 57A1DE700000000000000001 /* OwlLunaWidgets.appex */;
+			name = MathNotesWidgets;
+			productName = MathNotesWidgets;
+			productReference = 57A1DE700000000000000001 /* MathNotesWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		96D9BDAE2C13E3AC00726199 /* OwlLuna */ = {
+		96D9BDAE2C13E3AC00726199 /* MathNotes */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 96D9BDD32C13E3B100726199 /* Build configuration list for PBXNativeTarget "OwlLuna" */;
+			buildConfigurationList = 96D9BDD32C13E3B100726199 /* Build configuration list for PBXNativeTarget "MathNotes" */;
 			buildPhases = (
 				96D9BDAB2C13E3AC00726199 /* Sources */,
 				96D9BDAC2C13E3AC00726199 /* Frameworks */,
@@ -694,20 +694,20 @@
 				57A1DE70000000000000000D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				E3AED26A3090ED9700868E02 /* OwlLuna */,
-				E3AED2CA3090ED9700868E02 /* OwlLunaUITests */,
-				E3AED2CE3090ED9700868E02 /* OwlLunaWidgets */,
+				E3AED26A3090ED9700868E02 /* MathNotes */,
+				E3AED2CA3090ED9700868E02 /* MathNotesUITests */,
+				E3AED2CE3090ED9700868E02 /* MathNotesWidgets */,
 				E3AED2D13090ED9700868E02 /* Shared */,
-				E3AED5CF3090EF7A00868E02 /* OwlLunaTests */,
+				E3AED5CF3090EF7A00868E02 /* MathNotesTests */,
 			);
-			name = OwlLuna;
-			productName = OwlLuna;
-			productReference = 96D9BDAF2C13E3AC00726199 /* OwlLuna.app */;
+			name = MathNotes;
+			productName = MathNotes;
+			productReference = 96D9BDAF2C13E3AC00726199 /* MathNotes.app */;
 			productType = "com.apple.product-type.application";
 		};
-		96D9BDBE2C13E3B100726199 /* OwlLunaTests */ = {
+		96D9BDBE2C13E3B100726199 /* MathNotesTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 96D9BDD62C13E3B100726199 /* Build configuration list for PBXNativeTarget "OwlLunaTests" */;
+			buildConfigurationList = 96D9BDD62C13E3B100726199 /* Build configuration list for PBXNativeTarget "MathNotesTests" */;
 			buildPhases = (
 				96D9BDBB2C13E3B100726199 /* Sources */,
 				96D9BDBC2C13E3B100726199 /* Frameworks */,
@@ -718,14 +718,14 @@
 			dependencies = (
 				96D9BDC12C13E3B100726199 /* PBXTargetDependency */,
 			);
-			name = OwlLunaTests;
-			productName = OwlLunaTests;
-			productReference = 96D9BDBF2C13E3B100726199 /* OwlLunaTests.xctest */;
+			name = MathNotesTests;
+			productName = MathNotesTests;
+			productReference = 96D9BDBF2C13E3B100726199 /* MathNotesTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		96D9BDC82C13E3B100726199 /* OwlLunaUITests */ = {
+		96D9BDC82C13E3B100726199 /* MathNotesUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 96D9BDD92C13E3B100726199 /* Build configuration list for PBXNativeTarget "OwlLunaUITests" */;
+			buildConfigurationList = 96D9BDD92C13E3B100726199 /* Build configuration list for PBXNativeTarget "MathNotesUITests" */;
 			buildPhases = (
 				96D9BDC52C13E3B100726199 /* Sources */,
 				96D9BDC62C13E3B100726199 /* Frameworks */,
@@ -736,9 +736,9 @@
 			dependencies = (
 				96D9BDCB2C13E3B100726199 /* PBXTargetDependency */,
 			);
-			name = OwlLunaUITests;
-			productName = OwlLunaUITests;
-			productReference = 96D9BDC92C13E3B100726199 /* OwlLunaUITests.xctest */;
+			name = MathNotesUITests;
+			productName = MathNotesUITests;
+			productReference = 96D9BDC92C13E3B100726199 /* MathNotesUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -767,7 +767,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 96D9BDAA2C13E3AC00726199 /* Build configuration list for PBXProject "OwlLuna" */;
+			buildConfigurationList = 96D9BDAA2C13E3AC00726199 /* Build configuration list for PBXProject "MathNotes" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -783,10 +783,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				96D9BDAE2C13E3AC00726199 /* OwlLuna */,
-				96D9BDBE2C13E3B100726199 /* OwlLunaTests */,
-				96D9BDC82C13E3B100726199 /* OwlLunaUITests */,
-				57A1DE700000000000000004 /* OwlLunaWidgets */,
+				96D9BDAE2C13E3AC00726199 /* MathNotes */,
+				96D9BDBE2C13E3B100726199 /* MathNotesTests */,
+				96D9BDC82C13E3B100726199 /* MathNotesUITests */,
+				57A1DE700000000000000004 /* MathNotesWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -856,17 +856,17 @@
 /* Begin PBXTargetDependency section */
 		57A1DE70000000000000000D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 57A1DE700000000000000004 /* OwlLunaWidgets */;
+			target = 57A1DE700000000000000004 /* MathNotesWidgets */;
 			targetProxy = 57A1DE70000000000000000E /* PBXContainerItemProxy */;
 		};
 		96D9BDC12C13E3B100726199 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 96D9BDAE2C13E3AC00726199 /* OwlLuna */;
+			target = 96D9BDAE2C13E3AC00726199 /* MathNotes */;
 			targetProxy = 96D9BDC02C13E3B100726199 /* PBXContainerItemProxy */;
 		};
 		96D9BDCB2C13E3B100726199 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 96D9BDAE2C13E3AC00726199 /* OwlLuna */;
+			target = 96D9BDAE2C13E3AC00726199 /* MathNotes */;
 			targetProxy = 96D9BDCA2C13E3B100726199 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -875,13 +875,13 @@
 		57A1DE700000000000000009 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/OwlLunaWidgets.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Config/MathNotesWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = FFK7226456;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/OwlLunaWidgets-Info.plist";
+				INFOPLIST_FILE = "Config/MathNotesWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = MathNotes;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -890,7 +890,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.OwlLuna.OwlLunaWidgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.MathNotes.MathNotesWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -902,13 +902,13 @@
 		57A1DE70000000000000000A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/OwlLunaWidgets.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Config/MathNotesWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = FFK7226456;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/OwlLunaWidgets-Info.plist";
+				INFOPLIST_FILE = "Config/MathNotesWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = MathNotes;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -917,7 +917,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.OwlLuna.OwlLunaWidgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.MathNotes.MathNotesWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1057,7 +1057,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/MathNotes.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_ASSET_PATHS = "\"OwlLuna/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"MathNotes/Preview Content\"";
 				DEVELOPMENT_TEAM = FFK7226456;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1081,7 +1081,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.OwlLuna;
+				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.MathNotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
@@ -1097,7 +1097,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/MathNotes.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_ASSET_PATHS = "\"OwlLuna/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"MathNotes/Preview Content\"";
 				DEVELOPMENT_TEAM = FFK7226456;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1121,7 +1121,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.OwlLuna;
+				PRODUCT_BUNDLE_IDENTIFIER = com.giuseppe.MathNotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
@@ -1132,36 +1132,36 @@
 		96D9BDD72C13E3B100726199 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/OwlLuna.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OwlLuna";
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/MathNotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MathNotes";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.owais.OwlLunaTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.owais.MathNotesTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 2;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OwlLuna.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OwlLuna";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MathNotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MathNotes";
 			};
 			name = Debug;
 		};
 		96D9BDD82C13E3B100726199 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/OwlLuna.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OwlLuna";
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/MathNotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MathNotes";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.owais.OwlLunaTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.owais.MathNotesTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 2;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OwlLuna.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OwlLuna";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MathNotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MathNotes";
 			};
 			name = Release;
 		};
@@ -1172,12 +1172,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.owais.OwlLunaUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.owais.MathNotesUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 2;
-				TEST_TARGET_NAME = OwlLuna;
+				TEST_TARGET_NAME = MathNotes;
 			};
 			name = Debug;
 		};
@@ -1188,19 +1188,19 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.owais.OwlLunaUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.owais.MathNotesUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 2;
-				TEST_TARGET_NAME = OwlLuna;
+				TEST_TARGET_NAME = MathNotes;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		57A1DE700000000000000008 /* Build configuration list for PBXNativeTarget "OwlLunaWidgets" */ = {
+		57A1DE700000000000000008 /* Build configuration list for PBXNativeTarget "MathNotesWidgets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				57A1DE700000000000000009 /* Debug */,
@@ -1209,7 +1209,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		96D9BDAA2C13E3AC00726199 /* Build configuration list for PBXProject "OwlLuna" */ = {
+		96D9BDAA2C13E3AC00726199 /* Build configuration list for PBXProject "MathNotes" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				96D9BDD12C13E3B100726199 /* Debug */,
@@ -1218,7 +1218,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		96D9BDD32C13E3B100726199 /* Build configuration list for PBXNativeTarget "OwlLuna" */ = {
+		96D9BDD32C13E3B100726199 /* Build configuration list for PBXNativeTarget "MathNotes" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				96D9BDD42C13E3B100726199 /* Debug */,
@@ -1227,7 +1227,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		96D9BDD62C13E3B100726199 /* Build configuration list for PBXNativeTarget "OwlLunaTests" */ = {
+		96D9BDD62C13E3B100726199 /* Build configuration list for PBXNativeTarget "MathNotesTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				96D9BDD72C13E3B100726199 /* Debug */,
@@ -1236,7 +1236,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		96D9BDD92C13E3B100726199 /* Build configuration list for PBXNativeTarget "OwlLunaUITests" */ = {
+		96D9BDD92C13E3B100726199 /* Build configuration list for PBXNativeTarget "MathNotesUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				96D9BDDA2C13E3B100726199 /* Debug */,

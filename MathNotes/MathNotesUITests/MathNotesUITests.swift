@@ -1,6 +1,6 @@
 //
-//  OwlLunaUITests.swift
-//  OwlLunaUITests
+//  MathNotesUITests.swift
+//  MathNotesUITests
 //
 //  Created by Khan, Owais on 6/7/24.
 //
@@ -8,7 +8,7 @@
 import XCTest
 
 @MainActor
-final class OwlLunaUITests: XCTestCase {
+final class MathNotesUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

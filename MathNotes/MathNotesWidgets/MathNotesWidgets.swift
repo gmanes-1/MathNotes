@@ -16,7 +16,7 @@ struct MathNotesWidgetBundle: WidgetBundle {
 /// A button for Control Center, the Lock Screen or the Action button: a new note, ready to write.
 struct QuickNoteControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "com.owais.OwlLuna.control.quicknote") {
+        StaticControlConfiguration(kind: "com.owais.MathNotes.control.quicknote") {
             ControlWidgetButton(action: QuickNoteControlIntent()) {
                 Label("Quick Note", systemImage: "square.and.pencil")
             }
@@ -28,7 +28,7 @@ struct QuickNoteControl: ControlWidget {
 
 struct TodayPageControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "com.owais.OwlLuna.control.today") {
+        StaticControlConfiguration(kind: "com.owais.MathNotes.control.today") {
             ControlWidgetButton(action: TodayPageControlIntent()) {
                 Label("Today's Page", systemImage: "calendar")
             }
@@ -148,7 +148,7 @@ struct QuickNoteView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
         }
-        .widgetURL(URL(string: "owlluna://quicknote"))
+        .widgetURL(URL(string: "mathnotes://quicknote"))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Quick Note"))
     }
@@ -163,7 +163,7 @@ struct ContinueWritingView: View {
             Group {
                 if family == .systemMedium { medium(notebook) } else { small(notebook) }
             }
-            .widgetURL(URL(string: "owlluna://notebook/\(notebook.id.uuidString)"))
+            .widgetURL(URL(string: "mathnotes://notebook/\(notebook.id.uuidString)"))
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 Image(systemName: "square.and.pencil").font(.title2).foregroundStyle(Color.widgetAccent).widgetAccentable()
@@ -172,7 +172,7 @@ struct ContinueWritingView: View {
                 Text("Tap to write a quick note.").font(.caption).foregroundStyle(Color.widgetSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .widgetURL(URL(string: "owlluna://quicknote"))
+            .widgetURL(URL(string: "mathnotes://quicknote"))
         }
     }
 
@@ -232,7 +232,7 @@ struct WritingWeekView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
         }
-        .widgetURL(URL(string: "owlluna://continue"))
+        .widgetURL(URL(string: "mathnotes://continue"))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("This week: \(pages) pages on \(written) days"))
     }
@@ -270,7 +270,7 @@ struct TodayPageView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
         }
-        .widgetURL(URL(string: "owlluna://today"))
+        .widgetURL(URL(string: "mathnotes://today"))
     }
 }
 

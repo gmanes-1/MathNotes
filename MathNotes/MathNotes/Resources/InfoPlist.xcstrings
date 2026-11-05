@@ -20,7 +20,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "OwlLuna"
+            "value" : "MathNotes"
           }
         }
       }
@@ -319,7 +319,7 @@
         }
       }
     },
-    "OwlLuna tab" : {
+    "MathNotes tab" : {
 
     }
   },

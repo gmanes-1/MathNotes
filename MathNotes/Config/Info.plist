@@ -6,10 +6,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.owais.OwlLuna</string>
+			<string>com.owais.MathNotes</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>owlluna</string>
+				<string>mathnotes</string>
 			</array>
 		</dict>
 	</array>
@@ -28,12 +28,12 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes backup</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.owlluna.backup</string>
+			<string>com.owais.mathnotes.backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
-					<string>owllunabackup</string>
+					<string>mathnotesbackup</string>
 					<string>scribebackup</string>
 				</array>
 			</dict>
@@ -47,12 +47,12 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes notebook</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.owlluna.notebook</string>
+			<string>com.owais.mathnotes.notebook</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
-					<string>owlluna</string>
+					<string>mathnotes</string>
 				</array>
 			</dict>
 		</dict>
@@ -64,7 +64,7 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes notebook</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.owlluna.notebook-reference</string>
+			<string>com.owais.mathnotes.notebook-reference</string>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
@@ -74,7 +74,7 @@
 			<key>UTTypeDescription</key>
 			<string>MathNotes page</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.owlluna.page-reference</string>
+			<string>com.owais.mathnotes.page-reference</string>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
@@ -82,9 +82,9 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>OwlLuna tab</string>
+			<string>MathNotes tab</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.owais.owlluna.tab-reference</string>
+			<string>com.owais.mathnotes.tab-reference</string>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>

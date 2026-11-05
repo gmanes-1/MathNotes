@@ -32,7 +32,7 @@ struct MathNotesRoot: View {
     @State private var app = AppModel.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @SceneStorage("owlluna.openNotebook") private var restoredNotebook = ""
+    @SceneStorage("mathnotes.openNotebook") private var restoredNotebook = ""
     @State private var curtain = LaunchCurtain()
     /// The launch overlay has begun handing over, so the library is there under it.
     @State private var libraryShown = false
