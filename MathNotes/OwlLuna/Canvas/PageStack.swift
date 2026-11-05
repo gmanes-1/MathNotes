@@ -981,7 +981,18 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func syncTool(_ canvas: PageCanvasView) {
-        canvas.tool = toolbox.tool
+        let selected = toolbox.tool
+        if canvas === zoomCanvas, let ink = selected as? PKInkingTool {
+            // PKCanvasView records widths in its own content coordinates. The zoom window has a
+            // different points-per-page-point scale from the main canvas, so compensate the tool
+            // width to keep the resulting stroke the same size in the notebook.
+            let scale = canvas.zoomScale / max(bakedScale, 0.001)
+            let range = ink.inkType.validWidthRange
+            let width = min(max(ink.width * scale, range.lowerBound), range.upperBound)
+            canvas.tool = PKInkingTool(ink.inkType, color: ink.color, width: width)
+        } else {
+            canvas.tool = selected
+        }
         canvas.isRulerActive = toolbox.isRulerActive
     }
 
@@ -1093,7 +1104,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if !unreadWriting.isEmpty { readWritingAfterARest() }
             return
         }
-        if canvas !== zoomCanvas, let before, canvas.drawing.strokes.count == before.strokes.count + 1,
+        if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last, let tool = canvas.tool as? PKInkingTool {
             InkCalibration.learn(from: drawn, writtenWith: tool)
         }
@@ -2706,6 +2717,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if canvas.contentSize != size { canvas.contentSize = size }
         let offset = CGPoint(x: window.rect.minX * scale, y: window.rect.minY * scale)
         if canvas.contentOffset != offset { canvas.contentOffset = offset }
+        syncTool(canvas)
         canvas.overrideUserInterfaceStyle = page.inkAppearance(night: night)
         canvas.accessibilityLabel = String(localized: "Zoom window, page \(index + 1)")
         if canvas.pageID != page.id { loadZoomInk(page.id, into: canvas) }
