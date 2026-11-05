@@ -2190,9 +2190,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     func restyleInkSelection(to preset: ToolPreset) {
         guard !inkSelection.isEmpty, !document.isReadOnly else { return }
         if restyleBaseline == nil { restyleBaseline = selectedInkStyle() }
-        guard let baseline = restyleBaseline else { return }
-        let tint = preset.tint == baseline.tint ? nil : preset.tint
-        let change = InkRestyleChange(tint: tint)
+        guard restyleBaseline != nil else { return }
+        // Apply the chosen colour to every selected stroke, even if the first stroke already has it.
+        let change = InkRestyleChange(tint: preset.tint)
         guard change != pendingRestyle else { return }
         pendingRestyle = change
         pendingRestyleStyle = preset
