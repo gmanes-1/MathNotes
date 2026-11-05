@@ -814,19 +814,23 @@ fileprivate struct EditorContent: View {
             .overlay {
                 if isToolTrayDragging {
                     GeometryReader { geometry in
+                        let currentDock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
+                        let trayLength = currentDock.isVertical ? toolTraySize.height : toolTraySize.width
+                        let horizontalWidth = min(trayLength, max(0, geometry.size.width - 16))
+                        let verticalLength = min(trayLength, max(0, geometry.size.height - 16))
                         ZStack {
                             dropZone(active: toolTrayDropEdge == .top)
-                                .frame(width: 168, height: 58)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                                .frame(width: horizontalWidth, height: ToolTray.height)
+                                .position(x: geometry.size.width / 2, y: 8 + ToolTray.height / 2)
                             dropZone(active: toolTrayDropEdge == .bottom)
-                                .frame(width: 168, height: 58)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                                .frame(width: horizontalWidth, height: ToolTray.height)
+                                .position(x: geometry.size.width / 2, y: geometry.size.height - 8 - ToolTray.height / 2)
                             dropZone(active: toolTrayDropEdge == .left)
-                                .frame(width: 58, height: 168)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                                .frame(width: ToolTray.height, height: verticalLength)
+                                .position(x: 8 + ToolTray.height / 2, y: geometry.size.height / 2)
                             dropZone(active: toolTrayDropEdge == .right)
-                                .frame(width: 58, height: 168)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                                .frame(width: ToolTray.height, height: verticalLength)
+                                .position(x: geometry.size.width - 8 - ToolTray.height / 2, y: geometry.size.height / 2)
                         }
                         .frame(width: geometry.size.width, height: geometry.size.height)
                     }
@@ -859,18 +863,23 @@ fileprivate struct EditorContent: View {
                                      : stackSize.height / 2
                                  let x = baseX + nextX
                                  let y = baseY + nextY
-                                 func distance(_ point: CGPoint, _ target: CGPoint) -> CGFloat {
-                                     hypot(point.x - target.x, point.y - target.y)
-                                 }
                                  let center = CGPoint(x: x, y: y)
-                                 let candidates: [(ToolTray.DockEdge, CGFloat)] = [
-                                     (.top, distance(center, CGPoint(x: stackSize.width / 2, y: 29))),
-                                     (.right, distance(center, CGPoint(x: stackSize.width - 29, y: stackSize.height / 2))),
-                                     (.bottom, distance(center, CGPoint(x: stackSize.width / 2, y: stackSize.height - 29))),
-                                     (.left, distance(center, CGPoint(x: 29, y: stackSize.height / 2)))
+                                 let trayLength = dock.isVertical ? toolTraySize.height : toolTraySize.width
+                                 let horizontalWidth = min(trayLength, max(0, stackSize.width - 16))
+                                 let verticalLength = min(trayLength, max(0, stackSize.height - 16))
+                                 let zones: [(ToolTray.DockEdge, CGRect)] = [
+                                     (.top, CGRect(x: (stackSize.width - horizontalWidth) / 2, y: 8,
+                                                   width: horizontalWidth, height: ToolTray.height)),
+                                     (.bottom, CGRect(x: (stackSize.width - horizontalWidth) / 2,
+                                                      y: stackSize.height - 8 - ToolTray.height,
+                                                      width: horizontalWidth, height: ToolTray.height)),
+                                     (.left, CGRect(x: 8, y: (stackSize.height - verticalLength) / 2,
+                                                    width: ToolTray.height, height: verticalLength)),
+                                     (.right, CGRect(x: stackSize.width - 8 - ToolTray.height,
+                                                     y: (stackSize.height - verticalLength) / 2,
+                                                     width: ToolTray.height, height: verticalLength))
                                  ]
-                                 if let nearest = candidates.min(by: { $0.1 < $1.1 }), nearest.1 <= 120 { toolTrayDropEdge = nearest.0 }
-                                 else { toolTrayDropEdge = nil }
+                                 toolTrayDropEdge = zones.first(where: { $0.1.contains(center) })?.0
                              },
                              dragging: { isDragging in
                                  isToolTrayDragging = isDragging
@@ -924,7 +933,6 @@ fileprivate struct EditorContent: View {
                     .strokeBorder(active ? Color.accentColor : Color.accentColor.opacity(0.45),
                                   style: StrokeStyle(lineWidth: active ? 3 : 1.5, dash: active ? [] : [6, 5]))
             }
-            .padding(6)
             .overlay {
                 if active {
                     Image(systemName: "arrow.down.to.line")
