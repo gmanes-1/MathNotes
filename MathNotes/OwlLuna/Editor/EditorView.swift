@@ -612,8 +612,8 @@ fileprivate struct EditorContent: View {
     @State private var paneWidth: CGFloat = 1024
     @State private var stackSize = CGSize(width: 1024, height: 768)
     @AppStorage("editor.toolTray.dockEdge") private var toolTrayDockEdge = "bottom"
-    @AppStorage("editor.toolTray.positionX") private var toolTrayPositionX = 0.0
-    @AppStorage("editor.toolTray.positionY") private var toolTrayPositionY = 0.0
+    @AppStorage("editor.toolTray.offsetX") private var toolTrayPositionX = 0.0
+    @AppStorage("editor.toolTray.offsetY") private var toolTrayPositionY = 0.0
     @State private var isToolTrayDragging = false
     @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
@@ -813,10 +813,12 @@ fileprivate struct EditorContent: View {
                 if session.mode != .presenting, session.mode != .replaying,
                    (session.showsToolTray || session.mode == .selecting), !isCovered {
                     let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
-                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use) { delta in
-                        toolTrayPositionX += Double(delta.width)
-                        toolTrayPositionY += Double(delta.height)
-                    } dragging: { isToolTrayDragging = $0 }
+                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use,
+                             move: { delta in
+                                 toolTrayPositionX += Double(delta.width)
+                                 toolTrayPositionY += Double(delta.height)
+                             },
+                             dragging: { isToolTrayDragging = $0 })
                         // Keep the tray at its natural content width when horizontal. The previous
                         // full-pane frame made it impossible to move sideways in the editor.
                         .frame(width: dock.isVertical ? stackSize.height : nil, height: ToolTray.height)
@@ -833,16 +835,34 @@ fileprivate struct EditorContent: View {
             .onGeometryChange(for: CGSize.self) { $0.size } action: { stackSize = $0 }
             .overlay {
                 if isToolTrayDragging {
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color.accentColor.opacity(0.045))
-                        .overlay {
+                    GeometryReader { geometry in
+                        let size = geometry.size
+                        ZStack {
                             RoundedRectangle(cornerRadius: 18)
-                                .strokeBorder(Color.accentColor.opacity(0.65),
-                                              style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                                .fill(Color.accentColor.opacity(0.045))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 18)
+                                        .strokeBorder(Color.accentColor.opacity(0.65),
+                                                      style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                                }
+                            Path { path in
+                                for fraction in [1.0 / 3.0, 2.0 / 3.0] {
+                                    let x = size.width * fraction
+                                    let y = size.height * fraction
+                                    path.move(to: CGPoint(x: x, y: 0))
+                                    path.addLine(to: CGPoint(x: x, y: size.height))
+                                    path.move(to: CGPoint(x: 0, y: y))
+                                    path.addLine(to: CGPoint(x: size.width, y: y))
+                                }
+                            }
+                            .stroke(Color.accentColor.opacity(0.22),
+                                    style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
+                            .padding(Space.x2)
                         }
-                        .padding(Space.x2)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
+                    }
+                    .padding(Space.x2)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
                 }
             }
             .overlay(alignment: .topLeading) { inkSelectionOverlay }
