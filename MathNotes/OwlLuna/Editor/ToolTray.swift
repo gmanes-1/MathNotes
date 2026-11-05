@@ -41,6 +41,18 @@ struct ToolTray: View {
         }
     }
     private var edge: DockEdge { DockEdge(rawValue: dockEdge) ?? .top }
+    /// The editor rotates the complete tray to dock it vertically. Counter-rotate each control
+    /// so its symbol and label remain upright and readable.
+    private var uprightAngle: Angle {
+        .degrees(edge == .left ? 90 : edge == .right ? -90 : 0)
+    }
+
+    private func upright<Content: View>(_ content: Content) -> some View {
+        content
+            .rotationEffect(uprightAngle)
+            .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: edge)
+    }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let height: CGFloat = 48
@@ -78,24 +90,26 @@ struct ToolTray: View {
         // layout, when the tray has no width yet, isn't always taken back.
         let scrolls = plan.pens < CGFloat(pens.count + (toolbox.shelf.isFull ? 0 : 1)) * Self.slot - 0.5
         HStack(spacing: 0) {
-            penRow(pens)
-                .frame(width: plan.pens, height: Self.button)
-                .mask {
-                    HStack(spacing: 0) {
-                        LinearGradient(colors: [.black.opacity(scrolls && hidden.contains(.leading) ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: Self.fade)
-                        Color.black
-                        LinearGradient(colors: [.black, .black.opacity(scrolls && hidden.contains(.trailing) ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: Self.fade)
+            upright(
+                penRow(pens)
+                    .frame(width: plan.pens, height: Self.button)
+                    .mask {
+                        HStack(spacing: 0) {
+                            LinearGradient(colors: [.black.opacity(scrolls && hidden.contains(.leading) ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: Self.fade)
+                            Color.black
+                            LinearGradient(colors: [.black, .black.opacity(scrolls && hidden.contains(.trailing) ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: Self.fade)
+                        }
                     }
-                }
-            rule
-            eraserButton
-            lassoButton
-            rule
-            ForEach(extras.prefix(plan.extras)) { extraButton($0) }
-            customiseButton
-            moveHandle
+            )
+            upright(rule)
+            upright(eraserButton)
+            upright(lassoButton)
+            upright(rule)
+            ForEach(extras.prefix(plan.extras)) { extra in upright(extraButton(extra)) }
+            upright(customiseButton)
+            upright(moveHandle)
         }
         .padding(.horizontal, Self.inset)
         .frame(height: Self.height)
@@ -121,6 +135,7 @@ struct ToolTray: View {
             } label: {
                 Image(systemName: "rectangle.inset.filled.and.arrow.down.left")
                     .font(.system(size: 10, weight: .semibold))
+                    .rotationEffect(uprightAngle)
                     .foregroundStyle(Color.textSecondary)
                     .padding(5)
                     .background(.regularMaterial, in: Circle())
