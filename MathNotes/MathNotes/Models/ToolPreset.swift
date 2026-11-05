@@ -91,8 +91,8 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         let pressureMode = inkType == .monoline && pressureSensitive == true
         let renderedInk: PKInkingTool.InkType = pressureMode ? .pen : inkType
         // Keep the stroke native to PencilKit so it remains visible after the Pencil lifts.
-        // A very small base width retains pressure variation without a destructive post-processing pass.
-        let renderedWidth = pressureMode ? max(CGFloat(width) * 0.1, 0.03)
+        // An extra-fine base width retains pressure variation without a destructive post-processing pass.
+        let renderedWidth = pressureMode ? max(CGFloat(width) * 0.05, 0.015)
                                          : CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         return PKInkingTool(renderedInk, color: uiColor, width: renderedWidth)
     }
