@@ -153,8 +153,8 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
     }
 
-    /// Explicit widths keep the fine choices distinct instead of rounding several nearby steps
-    /// to the same displayed value. Fineliner ends at 0.3, 0.5 and 0.7; pen includes 0.7 then 0.9.
+    /// Explicit widths keep every choice distinct. Fineliner starts at 0.3 and pen at 0.5;
+    /// both retain a full set of eight choices across their usable range.
     static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
         let range = widthRange(of: ink)
         if ink == .monoline {
