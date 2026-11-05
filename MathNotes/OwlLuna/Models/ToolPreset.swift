@@ -22,7 +22,9 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     init?(_ tool: PKTool) {
         guard let inking = tool as? PKInkingTool else { return nil }
         // A tool is written at the width the pen is set to, less what its kind of ink is scaled by.
-        self.init(ink: inking.inkType, color: Self.bytes(of: inking.color), width: Double(inking.width / Self.writingScale(of: inking.inkType)))
+        self.init(ink: inking.inkType, color: Self.bytes(of: inking.color),
+                  width: Self.clamped(Double(inking.width / Self.writingScale(of: inking.inkType)),
+                                      to: Self.widthRange(of: inking.inkType)))
     }
 
     /// A colour as it is on light paper, a byte each for red, green, blue and alpha.
@@ -65,7 +67,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// The widths a kind of ink can be set to: the range PencilKit allows for it.
     static func widthRange(of ink: PKInkingTool.InkType) -> ClosedRange<Double> {
         let valid = ink.validWidthRange
-        return Double(valid.lowerBound)...Double(valid.upperBound)
+        let scale = writingScale(of: ink)
+        // Preset widths are expressed in the app's displayed units. Fineliner's drawing width is
+        // scaled down before it reaches PencilKit, so expose the matching preset range here too.
+        return Double(valid.lowerBound / scale)...Double(valid.upperBound / scale)
     }
 
     static func clamped(_ width: Double, to range: ClosedRange<Double>) -> Double {
@@ -87,7 +92,9 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
     var widthFraction: Double {
-        guard let range = inkType?.validWidthRange, range.upperBound > range.lowerBound else { return 0.5 }
+        guard let inkType else { return 0.5 }
+        let range = Self.widthRange(of: inkType)
+        guard range.upperBound > range.lowerBound else { return 0.5 }
         return min(max((width - range.lowerBound) / (range.upperBound - range.lowerBound), 0), 1)
     }
 
@@ -145,7 +152,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// Where a width at `fraction` of the way lies for a kind of ink. The thin end has most of the travel, where
     /// writing is done.
     static func width(at fraction: Double, of ink: PKInkingTool.InkType) -> Double {
-        let range = ink.validWidthRange, clamped = min(max(fraction, 0), 1)
+        let range = widthRange(of: ink), clamped = min(max(fraction, 0), 1)
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
     }
 
