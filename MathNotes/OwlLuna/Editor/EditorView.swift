@@ -840,8 +840,15 @@ fileprivate struct EditorContent: View {
                                  let nextY = min(max(toolTrayPositionY + Double(delta.height), minY), maxY)
                                  toolTrayPositionX = nextX
                                  toolTrayPositionY = nextY
-                                 let x = stackSize.width / 2 + nextX
-                                 let y = stackSize.height / 2 + nextY
+                                 let edgeInset: CGFloat = 8
+                                 let baseX = dock == .left ? toolTraySize.width / 2 + edgeInset
+                                     : dock == .right ? stackSize.width - toolTraySize.width / 2 - edgeInset
+                                     : stackSize.width / 2
+                                 let baseY = dock == .top ? toolTraySize.height / 2 + edgeInset
+                                     : dock == .bottom ? stackSize.height - toolTraySize.height / 2 - edgeInset
+                                     : stackSize.height / 2
+                                 let x = baseX + nextX
+                                 let y = baseY + nextY
                                  let candidates: [(ToolTray.DockEdge, CGFloat)] = [(.top, y), (.right, stackSize.width - x), (.bottom, stackSize.height - y), (.left, x)]
                                  if let nearest = candidates.min(by: { $0.1 < $1.1 }), nearest.1 <= 76 { toolTrayDropEdge = nearest.0 }
                                  else { toolTrayDropEdge = nil }
