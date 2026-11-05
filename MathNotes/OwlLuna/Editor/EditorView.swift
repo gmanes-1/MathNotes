@@ -858,6 +858,12 @@ fileprivate struct EditorContent: View {
                                  toolTrayPositionY = min(max(toolTrayPositionY + Double(delta.height), minY), maxY)
                              },
                              dragging: { isToolTrayDragging = $0 })
+                        // Measure the actual controls before the side-dock frame stretches the rotated tray.
+                        .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                            toolTraySize = dock.isVertical
+                                ? CGSize(width: ToolTray.height, height: size.width)
+                                : size
+                        }
                         // Keep the tray at its natural content width when horizontal. The previous
                         // full-pane frame made it impossible to move sideways in the editor.
                         .frame(width: dock.isVertical ? stackSize.height : nil, height: ToolTray.height)
@@ -867,7 +873,6 @@ fileprivate struct EditorContent: View {
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
                                  dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
                         .offset(x: toolTrayPositionX, y: toolTrayPositionY)
-                        .onGeometryChange(for: CGSize.self) { $0.size } action: { toolTraySize = $0 }
                         .ignoresSafeArea(.keyboard, edges: .bottom)
                         .transition(.opacity)
                 }
