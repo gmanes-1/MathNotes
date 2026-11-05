@@ -32,18 +32,59 @@ enum InkLasso {
         return [first, CGPoint(x: last.x, y: first.y), last, CGPoint(x: first.x, y: last.y)]
     }
 
-    /// The strokes with most of themselves inside the outline. `polygon` is in the page's own points.
+    /// Distance from a point to a finite line segment.
+    private static func distance(_ point: CGPoint, toSegmentFrom start: CGPoint, to end: CGPoint) -> CGFloat {
+        let dx = end.x - start.x, dy = end.y - start.y
+        let lengthSquared = dx * dx + dy * dy
+        guard lengthSquared > 0 else { return hypot(point.x - start.x, point.y - start.y) }
+        let projection = min(max(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0), 1)
+        return hypot(point.x - (start.x + projection * dx), point.y - (start.y + projection * dy))
+    }
+
+    /// The largest scale applied by a stroke's affine transform.
+    private static func maximumScale(of transform: CGAffineTransform) -> CGFloat {
+        let xx = transform.a * transform.a + transform.b * transform.b
+        let yy = transform.c * transform.c + transform.d * transform.d
+        let xy = transform.a * transform.c + transform.b * transform.d
+        let discriminant = max(0, (xx - yy) * (xx - yy) + 4 * xy * xy)
+        return sqrt(max(0, (xx + yy + sqrt(discriminant)) / 2))
+    }
+
+    /// True only when the complete visible stroke, including its width, is enclosed by the lasso.
+    /// Dense path sampling catches curved sections; the distance-to-edge test keeps the stroke's
+    /// outer edge inside too, rather than merely checking its centreline.
+    private static func isFullyEnclosed(_ stroke: PKStroke, by polygon: [CGPoint]) -> Bool {
+        guard polygon.count >= 3 else { return false }
+        let scale = maximumScale(of: stroke.transform)
+        let samples = stroke.path.interpolatedPoints(by: .distance(0.5))
+        var sampledAny = false
+
+        for sample in samples {
+            sampledAny = true
+            let center = sample.location.applying(stroke.transform)
+            guard contains(polygon, center) else { return false }
+
+            let radius = max(sample.size.width, sample.size.height) * 0.5 * scale
+            if radius > 0 {
+                var nearestEdge = CGFloat.greatestFiniteMagnitude
+                for edge in polygon.indices {
+                    let next = (edge + 1) % polygon.count
+                    nearestEdge = min(nearestEdge, distance(center, toSegmentFrom: polygon[edge], to: polygon[next]))
+                    if nearestEdge < radius { return false }
+                }
+            }
+        }
+        return sampledAny
+    }
+
+    /// Only strokes wholly enclosed by the outline. `polygon` is in the page's own points.
     static func strokes(in drawing: PKDrawing, inside polygon: [CGPoint]) -> [Int] {
         guard polygon.count >= 3 else { return [] }
         let box = ShapeRecognizer.bounds(of: polygon)
         return drawing.strokes.enumerated().compactMap { index, stroke in
-            guard stroke.renderBounds.intersects(box) else { return nil }
-            var total = 0, inside = 0
-            for sample in stroke.path.interpolatedPoints(by: .distance(8)) {
-                total += 1
-                if contains(polygon, sample.location.applying(stroke.transform)) { inside += 1 }
-            }
-            return total > 0 && Double(inside) >= 0.6 * Double(total) ? index : nil
+            guard box.contains(stroke.renderBounds),
+                  isFullyEnclosed(stroke, by: polygon) else { return nil }
+            return index
         }
     }
 
