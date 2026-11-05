@@ -79,9 +79,6 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// Reduce the rendered width of each native pressure sample while retaining PencilKit's pen ink.
-    static let pressureStrokeScale: CGFloat = 0.8
-
     /// App widths are sent to PencilKit directly, without applying its picker-range clamp.
     static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat { 1 }
 
