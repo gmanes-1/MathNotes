@@ -1106,19 +1106,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last,
-           let tool = canvas.tool as? PKInkingTool, canvas !== zoomCanvas {
-            if let preset = toolbox.pen, preset.pressureSensitive == true {
-                let corrected = InkCalibration.correctedFinePenStroke(drawn, preset: preset)
-                var strokes = canvas.drawing.strokes
-                strokes[strokes.count - 1] = corrected
-                isApplyingDrawing = true
-                canvas.drawing = PKDrawing(strokes: strokes)
-                isApplyingDrawing = false
-            } else {
-                // Learn from the exact tool PencilKit received. Never scale the stroke transform:
-                // that changes the path's length as well as its thickness.
-                InkCalibration.learn(from: drawn, writtenWith: tool)
-            }
+           let tool = canvas.tool as? PKInkingTool, canvas !== zoomCanvas,
+           toolbox.pen?.pressureSensitive != true {
+            // Learn from the exact tool PencilKit received. Never scale the stroke transform:
+            // that changes the path's length as well as its thickness.
+            InkCalibration.learn(from: drawn, writtenWith: tool)
         }
 
         document.canvasDidChangeInk(id, to: canvas.drawing)
