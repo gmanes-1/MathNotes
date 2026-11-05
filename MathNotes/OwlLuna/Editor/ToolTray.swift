@@ -77,59 +77,54 @@ struct ToolTray: View {
         // Pens that all fit have no edge to fade at, whatever the scroll view last said: its word on a first
         // layout, when the tray has no width yet, isn't always taken back.
         let scrolls = plan.pens < CGFloat(pens.count + (toolbox.shelf.isFull ? 0 : 1)) * Self.slot - 0.5
-        HStack(spacing: 0) {
-            penRow(pens)
-                .frame(width: plan.pens, height: Self.button)
-                .mask {
-                    HStack(spacing: 0) {
-                        LinearGradient(colors: [.black.opacity(scrolls && hidden.contains(.leading) ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: Self.fade)
-                        Color.black
-                        LinearGradient(colors: [.black, .black.opacity(scrolls && hidden.contains(.trailing) ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: Self.fade)
-                    }
+        Group {
+            if edge.isVertical {
+                VStack(spacing: 0) {
+                    penColumn(pens)
+                        .frame(height: plan.pens, width: Self.button)
+                    horizontalRule
+                    eraserButton
+                    lassoButton
+                    horizontalRule
+                    ForEach(extras.prefix(plan.extras)) { extraButton($0) }
+                    customiseButton
+                    moveHandle
                 }
-            rule
-            eraserButton
-            lassoButton
-            rule
-            ForEach(extras.prefix(plan.extras)) { extraButton($0) }
-            customiseButton
-            moveHandle
+                .padding(.vertical, Self.inset)
+                .frame(width: Self.height)
+            } else {
+                HStack(spacing: 0) {
+                    penRow(pens)
+                        .frame(width: plan.pens, height: Self.button)
+                        .mask {
+                            HStack(spacing: 0) {
+                                LinearGradient(colors: [.black.opacity(scrolls && hidden.contains(.leading) ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
+                                    .frame(width: Self.fade)
+                                Color.black
+                                LinearGradient(colors: [.black, .black.opacity(scrolls && hidden.contains(.trailing) ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
+                                    .frame(width: Self.fade)
+                            }
+                        }
+                    rule
+                    eraserButton
+                    lassoButton
+                    rule
+                    ForEach(extras.prefix(plan.extras)) { extraButton($0) }
+                    customiseButton
+                    moveHandle
+                }
+                .padding(.horizontal, Self.inset)
+                .frame(height: Self.height)
+            }
         }
-        .padding(.horizontal, Self.inset)
-        .frame(height: Self.height)
         .board(in: RoundedRectangle.bar)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Tools"))
         .accessibilityIdentifier("editor.tools.tray")
-        .overlay(alignment: .topTrailing) {
-            Menu {
-                ForEach(DockEdge.allCases) { destination in
-                    Button {
-                        withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) {
-                            dockEdge = destination.rawValue
-                        }
-                    } label: {
-                        if destination == edge {
-                            Label(destination.title, systemImage: "checkmark")
-                        } else {
-                            Text(destination.title)
-                        }
-                    }
-                }
-            } label: {
-                Image(systemName: "rectangle.inset.filled.and.arrow.down.left")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.textSecondary)
-                    .padding(5)
-                    .background(.regularMaterial, in: Circle())
-                    .contentShape(Circle())
-            }
-            .offset(x: 5, y: -7)
-            .accessibilityLabel(Text("Dock tool tray"))
-            .accessibilityHint(Text("Choose top, bottom, left or right edge"))
-        }
+    }
+
+    private var horizontalRule: some View {
+        Rectangle().fill(Color.hairline).frame(height: 1).padding(.vertical, Space.x2)
     }
 
     private var rule: some View {
@@ -161,6 +156,34 @@ struct ToolTray: View {
                 let x = geometry.contentOffset.x, end = geometry.contentSize.width - geometry.containerSize.width
                 return (x > 1 ? Edge.Set.leading : []).union(x < end - 1 ? .trailing : [])
             } action: { _, edges in hidden = edges }
+            .onChange(of: toolbox.choice) { _, choice in
+                guard case .pen(let id) = choice else { return }
+                withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) { proxy.scrollTo(id) }
+            }
+            .onChange(of: pens.map(\.id)) {
+                guard case .pen(let id) = toolbox.choice else { return }
+                withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) { proxy.scrollTo(id) }
+            }
+        }
+    }
+
+    private func penColumn(_ pens: [ToolPreset]) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
+                    ForEach(Array(pens.enumerated()), id: \.element.id) { index, pen in
+                        penButton(pen, at: index, of: pens.count).id(pen.id)
+                    }
+                    if !toolbox.shelf.isFull {
+                        Button(action: addPen) { Label("New Pen", systemImage: "plus") }
+                            .buttonStyle(NewPenButtonStyle())
+                            .accessibilityHint(Text("Adds a pen like the one in hand, in another colour"))
+                            .accessibilityIdentifier("editor.tools.add")
+                    }
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+            .scrollIndicators(.hidden)
             .onChange(of: toolbox.choice) { _, choice in
                 guard case .pen(let id) = choice else { return }
                 withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) { proxy.scrollTo(id) }
