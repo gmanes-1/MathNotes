@@ -15,7 +15,6 @@ struct MathNotesSettingsView: View {
     @AppStorage(SettingsKey.snapsShapes) private var snapsShapes = true
     @AppStorage(SettingsKey.snapsHighlighter) private var snapsHighlighter = true
     @AppStorage(SettingsKey.scribbleErases) private var scribbleErases = true
-    @AppStorage(SettingsKey.inkThickness) private var inkThickness = InkThickness.standard
     @AppStorage(SettingsKey.circleSelects) private var circleSelects = true
     @AppStorage(SettingsKey.pencilDoubleTap) private var pencilDoubleTap: PencilAction = .system
     @AppStorage(SettingsKey.pencilSqueeze) private var pencilSqueeze: PencilAction = .system
@@ -173,22 +172,6 @@ struct MathNotesSettingsView: View {
 
     private var pencilSection: some View {
         SettingsSection("Apple Pencil", note: "Draw a line, circle, rectangle or triangle and hold still before lifting to straighten it, or draw a loop round ink and hold still to select it. Scribble back and forth over ink with a pen to erase it; Undo brings it back. A highlighter drawn along a line of a PDF's text is laid straight over that line. For Double-Tap and Squeeze, “System Setting” follows Settings › Apple Pencil.") {
-            VStack(alignment: .leading, spacing: Space.x1) {
-                HStack {
-                    Text("Ink Thickness")
-                    Spacer()
-                    Text(inkThickness.formatted(.percent.precision(.fractionLength(0))))
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                Slider(value: $inkThickness, in: InkThickness.range, step: 0.05)
-                    .accessibilityLabel(Text("Ink Thickness"))
-                    .accessibilityIdentifier("settings.pencil.thickness")
-                Text("How thick pens write, against the width each is set to. Lower is finer; a line finer than PencilKit allows is drawn as you lift the Pencil. A highlighter keeps its breadth.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            .settingsRow()
             Toggle("Straighten Shapes", isOn: $snapsShapes).settingsRow()
             Toggle("Snap Highlighter to PDF Text", isOn: $snapsHighlighter).settingsRow()
             Toggle("Circle and Hold to Select", isOn: $circleSelects)

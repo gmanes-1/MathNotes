@@ -3,8 +3,9 @@ import PencilKit
 
 /// The menu that stands beside the ink the lasso has selected, and nowhere else on screen: Style, Copy, Cut,
 /// Duplicate, Paste, Turn into Text, Make Flashcard and Delete. Style opens inline, below the buttons, with a colour,
-/// a thickness and an opacity for the selected strokes. Thickness is how many times thicker or thinner than the ink is
-/// now, so it can go as fine as the line is wanted; the ink changes as the knob moves and is kept when it is let go.
+/// a width and an opacity for the selected strokes. The width is on a fixed scale, as Notability's is: the knob stands
+/// at how thick the ink is, and moving it makes every selected stroke that thick. The ink changes as the knob moves and
+/// is kept when it is let go.
 struct InkSelectionMenu: View {
     /// The style of the selected ink, read when the menu appears and whenever other ink is selected.
     let initialStyle: () -> ToolPreset?
@@ -25,11 +26,10 @@ struct InkSelectionMenu: View {
     let onSettle: () -> Void
 
     @State private var styling = false
-    /// The colour and opacity the ink has, as the menu last read or set them.
+    /// The colour, opacity and width the ink has, as the menu last read or set them.
     @State private var style = ToolPreset(ink: .pen, color: 0x1B22_30FF, width: 2.7)
-    /// What has been asked for since the ink was last kept: a multiple of its thickness, and a colour and opacity.
-    @State private var scale: CGFloat = 1
-    @State private var thickness = 0.5
+    /// What has been asked for since the ink was last kept.
+    @State private var pickedWidth: CGFloat?
     @State private var pickedTint: UInt32?
     @State private var pickedOpacity: Double?
     @Environment(\.colorScheme) private var scheme
@@ -57,20 +57,19 @@ struct InkSelectionMenu: View {
     }
 
     private func forgetAsked() {
-        scale = 1
-        thickness = 0.5
+        pickedWidth = nil
         pickedTint = nil
         pickedOpacity = nil
     }
 
-    /// Keeps what was asked for. The ink is then as asked, and what is asked next is against that.
+    /// Keeps what was asked for.
     private func settle() {
         onSettle()
         forgetAsked()
     }
 
     private func ask() {
-        onRestyle(InkRestyleChange(widthScale: scale, tint: pickedTint, opacity: pickedOpacity))
+        onRestyle(InkRestyleChange(width: pickedWidth, tint: pickedTint, opacity: pickedOpacity))
     }
 
     // MARK: Buttons
@@ -122,15 +121,13 @@ struct InkSelectionMenu: View {
             LazyVGrid(columns: Self.columns, spacing: 0) {
                 ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color) }
             }
-            // From a quarter to four times the thickness it has: the middle leaves it as it is.
-            WidthBar(travel: Binding(get: { thickness }, set: { travel in
-                         thickness = travel
-                         scale = abs(travel - 0.5) < 0.02 ? 1 : CGFloat(pow(4, travel * 2 - 1))
-                         ask()
-                     }),
-                     ink: solid, paper: paper, night: night,
-                     value: "×" + Double(scale).formatted(.number.precision(.fractionLength(0...2))),
-                     identifier: "editor.ink.menu.width", onSettle: settle)
+            // The width the selected ink has, on the graded scale: the grade nearest it is marked.
+            InkGradeRow(width: style.width, identifier: "editor.ink.menu.width") { step in
+                style.width = step
+                pickedWidth = CGFloat(step)
+                ask()
+                settle()
+            }
             WidthBar(measure: .opacity,
                      travel: Binding(get: { (style.opacity - ToolPreset.leastOpacity) / (1 - ToolPreset.leastOpacity) }, set: { travel in
                          let opacity = ((ToolPreset.leastOpacity + (1 - ToolPreset.leastOpacity) * travel) * 20).rounded() / 20
@@ -165,5 +162,58 @@ struct InkSelectionMenu: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(ToolPreset.colorName(color)))
         .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+}
+
+/// The graded scale of ink thicknesses as a row of dots, each as thick as its grade. The grade nearest `width` is marked
+/// and the figure beside the title is the thickness itself, which may lie between two grades.
+struct InkGradeRow: View {
+    /// How thick the ink is, in points of the page.
+    let width: Double
+    let identifier: String
+    let onPick: (Double) -> Void
+
+    var body: some View {
+        let nearest = InkGrade.nearest(to: width)
+        VStack(alignment: .leading, spacing: Space.x1) {
+            HStack {
+                Text("Width")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.ink)
+                Spacer(minLength: 0)
+                Text(InkGrade.label(width) + " pt")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(Color.textSecondary)
+            }
+            HStack(spacing: 0) {
+                ForEach(InkGrade.steps, id: \.self) { step in
+                    Button { onPick(step) } label: {
+                        Circle()
+                            .fill(Color.ink)
+                            .frame(width: dot(step), height: dot(step))
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .background {
+                                if step == nearest { RoundedRectangle(cornerRadius: 8).fill(Color.accentColor.opacity(0.18)) }
+                            }
+                            .overlay {
+                                if step == nearest { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 2) }
+                            }
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Width \(InkGrade.label(step)) points"))
+                    .accessibilityAddTraits(step == nearest ? .isSelected : [])
+                    .accessibilityIdentifier("\(identifier).\(InkGrade.label(step))")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(identifier)
+    }
+
+    /// The dot grows with the square root of the grade, so the fine grades are told apart.
+    private func dot(_ step: Double) -> CGFloat {
+        let lo = InkGrade.steps.first ?? 0, hi = InkGrade.steps.last ?? 1
+        return 3 + 14 * CGFloat(((step - lo) / (hi - lo)).squareRoot())
     }
 }

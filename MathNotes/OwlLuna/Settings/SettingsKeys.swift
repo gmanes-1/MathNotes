@@ -41,7 +41,6 @@ enum SettingsKey {
     static let keepsWritingHistory = "keepsWritingHistory"
     static let snapsShapes = "snapsShapes"
     static let scribbleErases = "scribbleErases"
-    static let inkThickness = "inkThickness"
     static let circleSelects = "circleSelects"
     static let pencilDoubleTap = "pencilDoubleTap"
     static let pencilSqueeze = "pencilSqueeze"

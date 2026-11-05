@@ -190,8 +190,8 @@ final class ToolShelf {
     static let limit = 8
 
     /// A new shelf starts with the app's own inks.
-    static let starters = [ToolPreset(ink: .pen, color: 0x1B22_30FF, width: 2.7), ToolPreset(ink: .pen, color: 0x2747_B8FF, width: 2.7),
-                           ToolPreset(ink: .pen, color: 0xC945_2FFF, width: 2.7), ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20)]
+    static let starters = [ToolPreset(ink: .pen, color: 0x1B22_30FF, width: 1), ToolPreset(ink: .pen, color: 0x2747_B8FF, width: 1),
+                           ToolPreset(ink: .pen, color: 0xC945_2FFF, width: 1), ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20)]
 
     private(set) var presets: [ToolPreset]
     @ObservationIgnored private let defaults: UserDefaults?

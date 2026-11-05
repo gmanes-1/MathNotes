@@ -346,7 +346,7 @@ private struct PenOptions: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             PenRoll(kind: Binding(get: { ink }, set: { kind in
-                toolbox.changePen(id) { $0.ink = kind.rawValue; $0.width = Double(kind.defaultWidth) }
+                toolbox.changePen(id) { $0.ink = kind.rawValue; $0.width = InkGrade.applies(to: kind) ? InkGrade.standard : Double(kind.defaultWidth) }
             }), ink: solid, paper: paper, night: night)
                 .accessibilityIdentifier("editor.tools.pen.kind")
             LazyVGrid(columns: Self.columns, spacing: 0) {
@@ -355,9 +355,16 @@ private struct PenOptions: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text("Colour"))
-            WidthBar(travel: Binding(get: { pen.widthTravel }, set: { travel in
-                toolbox.changePen(id) { $0.width = ToolPreset.width(at: travel, of: ink) }
-            }), ink: solid, paper: paper, night: night, value: width, identifier: "editor.tools.pen.width")
+            if InkGrade.applies(to: ink) {
+                // A line is one of a graded scale of thicknesses, in points of the page, as Preview's are.
+                InkGradeRow(width: pen.width, identifier: "editor.tools.pen.width") { step in
+                    toolbox.changePen(id) { $0.width = step }
+                }
+            } else {
+                WidthBar(travel: Binding(get: { pen.widthTravel }, set: { travel in
+                    toolbox.changePen(id) { $0.width = ToolPreset.width(at: travel, of: ink) }
+                }), ink: solid, paper: paper, night: night, value: width, identifier: "editor.tools.pen.width")
+            }
             // Opacity moves in steps of a twentieth, so the figure beside it is a round one.
             WidthBar(measure: .opacity, travel: Binding(get: { (pen.opacity - faintest) / (1 - faintest) }, set: { travel in
                 toolbox.changePen(id) { $0.opacity = ((faintest + (1 - faintest) * travel) * 20).rounded() / 20 }

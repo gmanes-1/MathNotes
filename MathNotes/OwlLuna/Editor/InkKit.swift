@@ -2,49 +2,41 @@ import UIKit
 import PencilKit
 import Observation
 
-/// What a restyle changes in the selected ink. The width is a multiple of what it is now, never a width worked out
-/// from a guess, so the ink grows and shrinks from what it is; colour and opacity are the ones asked for, and are
-/// left as they were when they are nil.
+/// What a restyle changes in the selected ink. The width is on a fixed scale, as Notability's is: it is how thick the
+/// strokes are to be, in points of the page, the same for every stroke selected. Colour and opacity are the ones asked
+/// for. Whatever is nil is left as it was.
 struct InkRestyleChange: Equatable {
-    var widthScale: CGFloat = 1
+    var width: CGFloat?
     var tint: UInt32?
     var opacity: Double?
 
-    var isIdentity: Bool { abs(widthScale - 1) < 0.001 && tint == nil && opacity == nil }
+    var isIdentity: Bool { width == nil && tint == nil && opacity == nil }
 }
 
-/// How thick the ink is written, against the width the pen is set to: PencilKit draws a page about twice as large as its
-/// points, so its own widths look heavy beside Notes or Freeform. A highlighter keeps its breadth.
-enum InkThickness {
-    static let standard = 0.5
-    static let range = 0.2...1.0
+/// Ink thickness on a fixed, graded scale, as the line widths of Preview are, in points of the page. A pen is set to a
+/// grade, the lasso reads the thickness of the ink it holds and shows the grade nearest it, and Style sets one.
+enum InkGrade {
+    /// From the finest line PencilKit's own tools write to a broad stroke: close together where a little matters, wider
+    /// apart where it does not. A pen is set to a grade and PencilKit writes it, held to the range it allows that pen.
+    static let steps: [Double] = [0.5, 0.7, 1, 1.4, 2, 2.8, 4, 6, 9, 14, 20, 30]
+    /// The grade a new pen starts at.
+    static let standard = 1.0
 
-    /// What Settings › Apple Pencil › Ink Thickness is set to.
-    static var setting: Double {
-        let saved = UserDefaults.standard.object(forKey: SettingsKey.inkThickness) as? Double ?? standard
-        return min(max(saved, range.lowerBound), range.upperBound)
-    }
-
-    static func factor(for ink: PKInkingTool.InkType) -> CGFloat {
+    /// The inks that write a line of this thickness. A marker, crayon or watercolour is as broad as its tool is.
+    static func applies(to ink: PKInkingTool.InkType) -> Bool {
         switch ink {
-        case .marker, .crayon, .watercolor: 1
-        default: CGFloat(setting)
+        case .pen, .monoline, .fountainPen, .pencil: true
+        default: false
         }
     }
-}
 
-extension PKStroke {
-    /// The same stroke along the same path, `scale` times as thick.
-    func scaledWidth(by scale: CGFloat) -> PKStroke {
-        guard scale > 0, abs(scale - 1) > 0.001 else { return self }
-        let points = path.map { p in
-            PKStrokePoint(location: p.location, timeOffset: p.timeOffset,
-                          size: CGSize(width: p.size.width * scale, height: p.size.height * scale),
-                          opacity: p.opacity, force: p.force, azimuth: p.azimuth, altitude: p.altitude,
-                          secondaryScale: p.secondaryScale)
-        }
-        return PKStroke(ink: ink, path: PKStrokePath(controlPoints: points, creationDate: path.creationDate),
-                        transform: transform, mask: mask, randomSeed: randomSeed)
+    static func nearest(to width: Double) -> Double {
+        steps.min { abs($0 - width) < abs($1 - width) } ?? standard
+    }
+
+    /// "1.2": the thickness as it is shown, with no figure that is not worth the room.
+    static func label(_ width: Double) -> String {
+        width.formatted(.number.precision(.fractionLength(0...2)))
     }
 }
 
@@ -109,32 +101,33 @@ final class PageScrollView: UIScrollView {
 }
 
 extension PKDrawing {
-    /// The strokes at `indices`, made thicker or thinner by `widthScale`, and given a new colour and opacity if those
-    /// are asked for. Each stroke keeps its own kind of ink and the way its width swells along it; whatever is not
-    /// asked for stays as it was.
+    /// The strokes at `indices`, made `width` thick, and given a new colour and opacity if those are asked for. A
+    /// stroke keeps its own kind of ink and the way its width swells along it: it is made as thick, in the middle of
+    /// it, as `width` says. Whatever is not asked for stays as it was.
     @MainActor
-    func restyled(_ indices: Set<Int>, widthScale: CGFloat, tint: UInt32?, opacity: Double?) -> PKDrawing {
+    func restyled(_ indices: Set<Int>, width: CGFloat?, tint: UInt32?, opacity: Double?) -> PKDrawing {
         guard !indices.isEmpty else { return self }
         var strokes = self.strokes
         for i in indices where strokes.indices.contains(i) {
-            strokes[i] = Self.restyledStroke(strokes[i], widthScale: widthScale, tint: tint, opacity: opacity)
+            strokes[i] = Self.restyledStroke(strokes[i], width: width, tint: tint, opacity: opacity)
         }
         return PKDrawing(strokes: strokes)
     }
 
     @MainActor
-    private static func restyledStroke(_ stroke: PKStroke, widthScale: CGFloat, tint: UInt32?, opacity: Double?) -> PKStroke {
+    private static func restyledStroke(_ stroke: PKStroke, width: CGFloat?, tint: UInt32?, opacity: Double?) -> PKStroke {
         var path = stroke.path
-        if abs(widthScale - 1) > 0.001, stroke.path.count > 0 {
-            let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue) ?? .pen
-            let least = InkCalibration.leastPoint(for: kind)
-            let points = stroke.path.map { p -> PKStrokePoint in
-                // Never thinner than is still seen, and never thicker than it was if it was already finer than that.
-                let width = max(p.size.width * widthScale, min(p.size.width, least))
-                let height = max(p.size.height * widthScale, min(p.size.height, least))
-                return PKStrokePoint(location: p.location, timeOffset: p.timeOffset, size: CGSize(width: width, height: height),
-                                     opacity: p.opacity, force: p.force, azimuth: p.azimuth, altitude: p.altitude,
-                                     secondaryScale: p.secondaryScale)
+        if let width, width > 0, stroke.path.count > 0, let middle = InkCalibration.middleSize(of: stroke), middle > 0,
+           abs(width / middle - 1) > 0.001 {
+            let ratio = width / middle
+            let finest: CGFloat = 0.5
+            let points = stroke.path.map { p in
+                // No point is made finer than PencilKit's own finest line, unless it was finer already.
+                PKStrokePoint(location: p.location, timeOffset: p.timeOffset,
+                              size: CGSize(width: max(p.size.width * ratio, min(p.size.width, finest)),
+                                           height: max(p.size.height * ratio, min(p.size.height, finest))),
+                              opacity: p.opacity, force: p.force, azimuth: p.azimuth, altitude: p.altitude,
+                              secondaryScale: p.secondaryScale)
             }
             path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
         }

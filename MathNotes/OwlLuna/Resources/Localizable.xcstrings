@@ -29693,6 +29693,9 @@
         }
       }
     },
+    "Width %@ points" : {
+
+    },
     "Width %@, opacity %@" : {
       "localizations" : {
         "de" : {

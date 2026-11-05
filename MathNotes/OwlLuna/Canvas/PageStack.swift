@@ -320,11 +320,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var canvasWindow: ClosedRange<Int>?
     private var night = false
     private var isApplyingDrawing = false
-    /// Strokes written finer than PencilKit allows its tools, by page: the notebook has them as the pen means them, and
-    /// the canvas is made to match as soon as no stroke is being written.
-    private var finerInk: [UUID: [Date: CGFloat]] = [:]
-    private var isWriting = false
-    private var appliedInkThickness = InkThickness.setting
     private var isBaking = false
     private var paperLevel = 0
     private var lastBounds: CGRect = .zero
@@ -884,10 +879,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         Task { @MainActor [weak self] in
             self?.updateNight()
             self?.zoomPanel?.isLeftHanded = UserDefaults.standard.bool(forKey: SettingsKey.leftHanded)
-            if let self, InkThickness.setting != self.appliedInkThickness {
-                self.appliedInkThickness = InkThickness.setting
-                for canvas in self.allCanvases + self.pool { self.syncTool(canvas) }
-            }
         }
     }
 
@@ -986,16 +977,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         return canvas
     }
 
-    /// The pen as a canvas takes it: its width times the Ink Thickness setting, held to what PencilKit allows the tool.
-    private func inkTool(from tool: PKTool) -> PKTool {
-        guard let ink = tool as? PKInkingTool else { return tool }
-        let range = ink.inkType.validWidthRange
-        let width = min(max(ink.width * InkThickness.factor(for: ink.inkType), range.lowerBound), range.upperBound)
-        return PKInkingTool(ink.inkType, color: ink.color, width: width)
-    }
-
     private func syncTool(_ canvas: PageCanvasView) {
-        canvas.tool = inkTool(from: toolbox.tool)
+        canvas.tool = toolbox.tool
         canvas.isRulerActive = toolbox.isRulerActive
     }
 
@@ -1030,7 +1013,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func show(_ ink: PKDrawing, in canvas: PageCanvasView) {
-        finerInk[canvas.pageID] = nil
         isApplyingDrawing = true
         canvas.drawing = replayed(ink, on: canvas.pageID)
         canvas.strokeCount = nil
@@ -1108,9 +1090,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if !unreadWriting.isEmpty { readWritingAfterARest() }
             return
         }
-        var written = canvas.drawing
-        if canvas !== zoomCanvas { written = finerInkIfAsked(written, on: canvas, pageID: id, before: before) }
-        document.canvasDidChangeInk(id, to: written)
+        document.canvasDidChangeInk(id, to: canvas.drawing)
         mirrorInk(from: canvas, pageID: id)
         let typing = noteWriting(on: canvas, pageID: id, before: before)
         let straighten = { [weak self, weak canvas] in
@@ -1244,10 +1224,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         return true
     }
 
-    private func replaceLastStroke(_ drawn: PKStroke, with replacement: PKStroke, on canvas: PageCanvasView, pageID: UUID, actionName: String, announcement: String) {
+    private func replaceLastStroke(_ drawn: PKStroke, with tidied: PKStroke, on canvas: PageCanvasView, pageID: UUID, actionName: String, announcement: String) {
         let count = canvas.drawing.strokes.count, stamp = drawn.path.creationDate
-        // The stroke just written may be finer than PencilKit drew it: what replaces it is as fine.
-        let tidied = replacement.scaledWidth(by: finerInk[pageID]?[stamp] ?? 1)
         func apply(tries: Int) {
             guard canvas.pageID == pageID, canvas.drawing.strokes.count == count, canvas.drawing.strokes.last?.path.creationDate == stamp else { return }
             guard document.undoManager.groupingLevel == 0 || tries == 0 else {
@@ -1268,42 +1246,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: 5) }
     }
 
-    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
-        isWriting = false
-        for pageID in Array(finerInk.keys) { applyFinerInk(pageID: pageID) }
-    }
-
-    /// PencilKit holds each tool to a least width, so where the Ink Thickness setting asks for a line finer than that,
-    /// the stroke just written is made finer. The notebook is given it at once, in the one undo step of the stroke.
-    private func finerInkIfAsked(_ drawing: PKDrawing, on canvas: PageCanvasView, pageID: UUID, before: PKDrawing?) -> PKDrawing {
-        if let before, drawing.strokes.count == before.strokes.count + 1, let drawn = drawing.strokes.last,
-           let live = canvas.tool as? PKInkingTool, live.width > 0,
-           let pen = toolbox.pen?.tool, pen.inkType == live.inkType {
-            let ratio = pen.width * InkThickness.factor(for: pen.inkType) / live.width
-            if abs(ratio - 1) > 0.08 { finerInk[pageID, default: [:]][drawn.path.creationDate] = ratio }
-        }
-        guard let waiting = finerInk[pageID], !waiting.isEmpty else { return drawing }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self] in self?.applyFinerInk(pageID: pageID) }
-        return PKDrawing(strokes: drawing.strokes.map { stroke in
-            waiting[stroke.path.creationDate].map { stroke.scaledWidth(by: $0) } ?? stroke
-        })
-    }
-
-    /// Makes the canvas show the finer strokes the notebook already has, once no stroke is being written under them.
-    private func applyFinerInk(pageID: UUID) {
-        guard !isWriting, let waiting = finerInk[pageID], let canvas = canvases[pageID], canvas.pageID == pageID else { return }
-        finerInk[pageID] = nil
-        let strokes = canvas.drawing.strokes.map { stroke in
-            waiting[stroke.path.creationDate].map { stroke.scaledWidth(by: $0) } ?? stroke
-        }
-        isApplyingDrawing = true
-        canvas.drawing = PKDrawing(strokes: strokes)
-        isApplyingDrawing = false
-        mirrorInk(from: canvas, pageID: pageID)
-    }
-
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
-        if canvasView !== zoomCanvas { isWriting = true }
         if session.selection != nil { select(nil) }
         if !unreadWriting.isEmpty { typingTimer?.cancel() }
         guard canvasView === zoomCanvas else { return }
@@ -2230,7 +2173,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         for (id, indices) in inkSelection {
             guard let base = document.loadedInk(id), let canvas = canvases[id] else { continue }
             isApplyingDrawing = true
-            canvas.drawing = base.restyled(Set(indices), widthScale: change.widthScale, tint: change.tint, opacity: change.opacity)
+            canvas.drawing = base.restyled(Set(indices), width: change.width, tint: change.tint, opacity: change.opacity)
             canvas.strokeCount = nil
             isApplyingDrawing = false
         }
@@ -2254,7 +2197,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         var changed: [UUID: PKDrawing] = [:]
         for (id, indices) in inkSelection {
             guard let ink = document.loadedInk(id) else { continue }
-            changed[id] = ink.restyled(Set(indices), widthScale: change.widthScale, tint: change.tint, opacity: change.opacity)
+            changed[id] = ink.restyled(Set(indices), width: change.width, tint: change.tint, opacity: change.opacity)
         }
         guard !changed.isEmpty else { return revertRestylePreview() }
         isMovingInk = true
@@ -2271,7 +2214,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             for i in indices.sorted() where ink.strokes.indices.contains(i) {
                 let stroke = ink.strokes[i]
                 guard let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue) else { continue }
-                return ToolPreset(ink: kind, color: InkCalibration.bytes(of: stroke.ink.color), width: ToolPreset.defaultWidth(of: kind))
+                // The width is how thick the stroke is on the page, the scale the Style panel's width runs on.
+                let width = InkCalibration.middleSize(of: stroke).map { Double($0) } ?? ToolPreset.defaultWidth(of: kind)
+                return ToolPreset(ink: kind, color: InkCalibration.bytes(of: stroke.ink.color), width: width)
             }
         }
         return nil

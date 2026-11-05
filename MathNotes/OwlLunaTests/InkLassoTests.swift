@@ -11,55 +11,57 @@ final class InkLassoTests: XCTestCase {
         stroke(from: CGPoint(x: 100, y: y), to: CGPoint(x: 300, y: y))
     }
 
-    func testRestylingScalesTheWidthFromWhatItIsAndLeavesWhatWasNotAskedFor() {
+    func testRestylingSetsTheWidthOnAFixedScaleAndLeavesWhatWasNotAskedFor() {
         let pen = line(y: 10)
         let before = InkCalibration.middleSize(of: pen) ?? 0
         XCTAssertGreaterThan(before, 0)
         let drawing = PKDrawing(strokes: [pen, pen])
 
-        let thick = drawing.restyled([0], widthScale: 2, tint: nil, opacity: nil)
+        let thick = drawing.restyled([0], width: before * 2, tint: nil, opacity: nil)
         XCTAssertEqual(InkCalibration.middleSize(of: thick.strokes[0]) ?? 0, before * 2, accuracy: 0.01)
         XCTAssertEqual(InkCalibration.middleSize(of: thick.strokes[1]) ?? 0, before, accuracy: 0.001, "ink that was not selected is left alone")
         XCTAssertEqual(thick.strokes[0].ink.inkType, pen.ink.inkType, "the kind of ink is kept")
         XCTAssertEqual(thick.strokes[0].path.count, pen.path.count)
         XCTAssertEqual(InkCalibration.bytes(of: thick.strokes[0].ink.color), InkCalibration.bytes(of: pen.ink.color), "the colour is not touched")
 
-        let tinted = drawing.restyled([1], widthScale: 1, tint: 0xC945_2FFF, opacity: 0.5)
+        let tinted = drawing.restyled([1], width: nil, tint: 0xC945_2FFF, opacity: 0.5)
         let bytes = InkCalibration.bytes(of: tinted.strokes[1].ink.color)
         XCTAssertEqual(bytes >> 8, 0xC945_2F)
         XCTAssertEqual(Double(bytes & 0xFF), 127.5, accuracy: 1)
         XCTAssertEqual(InkCalibration.middleSize(of: tinted.strokes[1]) ?? 0, before, accuracy: 0.001)
 
-        XCTAssertEqual(drawing.restyled([], widthScale: 3, tint: nil, opacity: nil).strokes.count, 2)
+        XCTAssertEqual(drawing.restyled([], width: 9, tint: nil, opacity: nil).strokes.count, 2)
+
+        let both = PKDrawing(strokes: [pen, stroke(from: CGPoint(x: 100, y: 40), to: CGPoint(x: 300, y: 40), width: 9)]).restyled([0, 1], width: 5, tint: nil, opacity: nil)
+        XCTAssertEqual(InkCalibration.middleSize(of: both.strokes[0]) ?? 0, 5, accuracy: 0.01, "every stroke is made the width on the scale")
+        XCTAssertEqual(InkCalibration.middleSize(of: both.strokes[1]) ?? 0, 5, accuracy: 0.01)
     }
 
-    func testInkThicknessScalesPensAndLeavesTheHighlighterBreadthAlone() {
-        let defaults = UserDefaults.standard, key = SettingsKey.inkThickness
-        let saved = defaults.object(forKey: key)
-        defer { if let saved { defaults.set(saved, forKey: key) } else { defaults.removeObject(forKey: key) } }
-
-        defaults.removeObject(forKey: key)
-        XCTAssertEqual(InkThickness.setting, InkThickness.standard)
-        defaults.set(0.3, forKey: key)
-        XCTAssertEqual(InkThickness.factor(for: .pen), 0.3, accuracy: 0.0001)
-        XCTAssertEqual(InkThickness.factor(for: .monoline), 0.3, accuracy: 0.0001)
-        XCTAssertEqual(InkThickness.factor(for: .marker), 1, "a highlighter keeps its breadth")
-        defaults.set(40, forKey: key)
-        XCTAssertEqual(InkThickness.setting, InkThickness.range.upperBound, "a setting out of range is brought in")
-        defaults.set(0.0, forKey: key)
-        XCTAssertEqual(InkThickness.setting, InkThickness.range.lowerBound)
+    func testTheGradesOfInkThicknessRiseFromTheFinestLineAndTheNearestOneIsFound() {
+        XCTAssertEqual(InkGrade.steps, InkGrade.steps.sorted())
+        XCTAssertEqual(Set(InkGrade.steps).count, InkGrade.steps.count)
+        XCTAssertTrue(InkGrade.steps.contains(InkGrade.standard))
+        XCTAssertEqual(InkGrade.steps.first, 0.5, "the finest is the finest line PencilKit's own tools write")
+        XCTAssertEqual(InkGrade.nearest(to: 1.3), 1.4)
+        XCTAssertEqual(InkGrade.nearest(to: 1.8), 2)
+        XCTAssertEqual(InkGrade.nearest(to: 0), InkGrade.steps.first)
+        XCTAssertEqual(InkGrade.nearest(to: 999), InkGrade.steps.last)
+        for step in InkGrade.steps { XCTAssertEqual(InkGrade.nearest(to: step), step) }
+        XCTAssertEqual(InkGrade.label(1.4), "1.4")
+        XCTAssertEqual(InkGrade.label(3), "3")
     }
 
-    func testAStrokeMadeFinerKeepsItsPathItsInkAndItsPlaceInTheDrawing() {
+    func testOnlyTheInksThatWriteALineHaveGrades() {
+        for kind in [PKInkingTool.InkType.pen, .monoline, .fountainPen, .pencil] { XCTAssertTrue(InkGrade.applies(to: kind)) }
+        for kind in [PKInkingTool.InkType.marker, .crayon, .watercolor] { XCTAssertFalse(InkGrade.applies(to: kind), "\(kind) is as broad as its tool") }
+    }
+
+    func testRestylingNeverMakesAPointFinerThanPencilKitsFinestLine() {
         let pen = line(y: 10)
-        let before = InkCalibration.middleSize(of: pen) ?? 0
-        let finer = pen.scaledWidth(by: 0.5)
-        XCTAssertEqual(InkCalibration.middleSize(of: finer) ?? 0, before * 0.5, accuracy: 0.001)
-        XCTAssertEqual(finer.path.count, pen.path.count)
-        XCTAssertEqual(finer.path.creationDate, pen.path.creationDate, "it is found by when it was written")
-        XCTAssertEqual(finer.path.first?.location, pen.path.first?.location)
-        XCTAssertEqual(finer.ink.inkType, pen.ink.inkType)
-        XCTAssertEqual(pen.scaledWidth(by: 1).path.count, pen.path.count)
+        let finest = InkGrade.steps.first ?? 0.5
+        let fine = PKDrawing(strokes: [pen]).restyled([0], width: CGFloat(finest), tint: nil, opacity: nil)
+        let smallest = fine.strokes[0].path.map(\.size.width).min() ?? 0
+        XCTAssertGreaterThanOrEqual(Double(smallest), finest - 0.0001, "a stroke made as fine as it can be is still drawn")
     }
 
     func testALoopCatchesTheInkInsideItAndAStraightDragIsABox() {
