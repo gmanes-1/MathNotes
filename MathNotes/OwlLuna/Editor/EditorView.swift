@@ -814,14 +814,24 @@ fileprivate struct EditorContent: View {
             .overlay {
                 if isToolTrayDragging {
                     GeometryReader { geometry in
-                        let zone: CGFloat = 64
                         ZStack {
-                            VStack(spacing: 0) { dropZone(.top, active: toolTrayDropEdge == .top).frame(height: zone); Spacer(minLength: 0) }
-                            HStack(spacing: 0) { dropZone(.left, active: toolTrayDropEdge == .left).frame(width: zone); Spacer(minLength: 0) }
-                            VStack(spacing: 0) { Spacer(minLength: 0); dropZone(.bottom, active: toolTrayDropEdge == .bottom).frame(height: zone) }
-                            HStack(spacing: 0) { Spacer(minLength: 0); dropZone(.right, active: toolTrayDropEdge == .right).frame(width: zone) }
-                        }.frame(width: geometry.size.width, height: geometry.size.height)
-                    }.allowsHitTesting(false).transition(.opacity)
+                            dropZone(.top, active: toolTrayDropEdge == .top)
+                                .frame(width: 168, height: 58)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            dropZone(.bottom, active: toolTrayDropEdge == .bottom)
+                                .frame(width: 168, height: 58)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                            dropZone(.left, active: toolTrayDropEdge == .left)
+                                .frame(width: 58, height: 168)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                            dropZone(.right, active: toolTrayDropEdge == .right)
+                                .frame(width: 58, height: 168)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                        }
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                    }
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
                 }
             }
             .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
@@ -849,8 +859,17 @@ fileprivate struct EditorContent: View {
                                      : stackSize.height / 2
                                  let x = baseX + nextX
                                  let y = baseY + nextY
-                                 let candidates: [(ToolTray.DockEdge, CGFloat)] = [(.top, y), (.right, stackSize.width - x), (.bottom, stackSize.height - y), (.left, x)]
-                                 if let nearest = candidates.min(by: { $0.1 < $1.1 }), nearest.1 <= 76 { toolTrayDropEdge = nearest.0 }
+                                 func distance(_ point: CGPoint, _ target: CGPoint) -> CGFloat {
+                                     hypot(point.x - target.x, point.y - target.y)
+                                 }
+                                 let center = CGPoint(x: x, y: y)
+                                 let candidates: [(ToolTray.DockEdge, CGFloat)] = [
+                                     (.top, distance(center, CGPoint(x: stackSize.width / 2, y: 29))),
+                                     (.right, distance(center, CGPoint(x: stackSize.width - 29, y: stackSize.height / 2))),
+                                     (.bottom, distance(center, CGPoint(x: stackSize.width / 2, y: stackSize.height - 29))),
+                                     (.left, distance(center, CGPoint(x: 29, y: stackSize.height / 2)))
+                                 ]
+                                 if let nearest = candidates.min(by: { $0.1 < $1.1 }), nearest.1 <= 120 { toolTrayDropEdge = nearest.0 }
                                  else { toolTrayDropEdge = nil }
                              },
                              dragging: { isDragging in
