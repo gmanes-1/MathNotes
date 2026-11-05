@@ -809,30 +809,6 @@ fileprivate struct EditorContent: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
-                if session.mode != .presenting, session.mode != .replaying,
-                   (session.showsToolTray || session.mode == .selecting), !isCovered {
-                    let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
-                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use,
-                             move: { delta in
-                                 toolTrayPositionX += Double(delta.width)
-                                 toolTrayPositionY += Double(delta.height)
-                             },
-                             dragging: { isToolTrayDragging = $0 })
-                        // Keep the tray at its natural content width when horizontal. The previous
-                        // full-pane frame made it impossible to move sideways in the editor.
-                        .frame(width: dock.isVertical ? stackSize.height : nil, height: ToolTray.height)
-                        .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0))
-                        .frame(width: dock.isVertical ? ToolTray.height : nil,
-                               height: dock.isVertical ? stackSize.height : ToolTray.height)
-                        .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
-                                 dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
-                        .offset(x: toolTrayPositionX, y: toolTrayPositionY)
-                        .ignoresSafeArea(.keyboard, edges: .bottom)
-                        .transition(.opacity)
-                }
-            }
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { stackSize = $0 }
             .overlay {
                 if isToolTrayDragging {
                     GeometryReader { geometry in
@@ -865,6 +841,30 @@ fileprivate struct EditorContent: View {
                     .transition(.opacity)
                 }
             }
+            .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
+                if session.mode != .presenting, session.mode != .replaying,
+                   (session.showsToolTray || session.mode == .selecting), !isCovered {
+                    let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
+                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use,
+                             move: { delta in
+                                 toolTrayPositionX += Double(delta.width)
+                                 toolTrayPositionY += Double(delta.height)
+                             },
+                             dragging: { isToolTrayDragging = $0 })
+                        // Keep the tray at its natural content width when horizontal. The previous
+                        // full-pane frame made it impossible to move sideways in the editor.
+                        .frame(width: dock.isVertical ? stackSize.height : nil, height: ToolTray.height)
+                        .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0))
+                        .frame(width: dock.isVertical ? ToolTray.height : nil,
+                               height: dock.isVertical ? stackSize.height : ToolTray.height)
+                        .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
+                                 dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
+                        .offset(x: toolTrayPositionX, y: toolTrayPositionY)
+                        .ignoresSafeArea(.keyboard, edges: .bottom)
+                        .transition(.opacity)
+                }
+            }
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { stackSize = $0 }
             .overlay(alignment: .topLeading) { inkSelectionOverlay }
             .overlay {
                 if let point = session.dish, session.mode == .writing || session.mode == .focus, !isCovered {
