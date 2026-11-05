@@ -814,6 +814,17 @@ fileprivate struct EditorContent: View {
                 if isToolTrayDragging {
                     GeometryReader { geometry in
                         let size = geometry.size
+                        let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
+                        let horizontalTravel = Double(max(0, (stackSize.width - toolTraySize.width) / 2))
+                        let verticalTravel = Double(max(0, (stackSize.height - toolTraySize.height) / 2))
+                        let minX = dock == .left ? 0.0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
+                        let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0.0 : horizontalTravel
+                        let minY = dock == .top ? 0.0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
+                        let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0.0 : verticalTravel
+                        let xProgress = max(0, min(1, (toolTrayPositionX - minX) / max(maxX - minX, 1)))
+                        let yProgress = max(0, min(1, (toolTrayPositionY - minY) / max(maxY - minY, 1)))
+                        let column = abs(maxX - minX) < 1 ? 1 : min(2, max(0, Int(xProgress * 3)))
+                        let row = abs(maxY - minY) < 1 ? 1 : min(2, max(0, Int(yProgress * 3)))
                         ZStack {
                             RoundedRectangle(cornerRadius: 18)
                                 .fill(Color.accentColor.opacity(0.045))
@@ -822,6 +833,15 @@ fileprivate struct EditorContent: View {
                                         .strokeBorder(Color.accentColor.opacity(0.65),
                                                       style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
                                 }
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.accentColor.opacity(0.17))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .strokeBorder(Color.accentColor.opacity(0.95), lineWidth: 2)
+                                }
+                                .frame(width: max(0, size.width / 3 - 10), height: max(0, size.height / 3 - 10))
+                                .position(x: (CGFloat(column) + 0.5) * size.width / 3,
+                                          y: (CGFloat(row) + 0.5) * size.height / 3)
                             Path { path in
                                 for fraction in [1.0 / 3.0, 2.0 / 3.0] {
                                     let x = size.width * fraction
@@ -832,7 +852,7 @@ fileprivate struct EditorContent: View {
                                     path.addLine(to: CGPoint(x: size.width, y: y))
                                 }
                             }
-                            .stroke(Color.accentColor.opacity(0.22),
+                            .stroke(Color.accentColor.opacity(0.35),
                                     style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
                             .padding(Space.x2)
                         }
@@ -850,14 +870,31 @@ fileprivate struct EditorContent: View {
                              move: { delta in
                                  let horizontalTravel = Double(max(0, (stackSize.width - toolTraySize.width) / 2))
                                  let verticalTravel = Double(max(0, (stackSize.height - toolTraySize.height) / 2))
-                                 let minX = dock == .left ? 0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
-                                 let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0 : horizontalTravel
-                                 let minY = dock == .top ? 0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
-                                 let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0 : verticalTravel
+                                 let minX = dock == .left ? 0.0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
+                                 let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0.0 : horizontalTravel
+                                 let minY = dock == .top ? 0.0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
+                                 let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0.0 : verticalTravel
                                  toolTrayPositionX = min(max(toolTrayPositionX + Double(delta.width), minX), maxX)
                                  toolTrayPositionY = min(max(toolTrayPositionY + Double(delta.height), minY), maxY)
                              },
-                             dragging: { isToolTrayDragging = $0 })
+                             dragging: { isDragging in
+                                 isToolTrayDragging = isDragging
+                                 guard !isDragging else { return }
+                                 let horizontalTravel = Double(max(0, (stackSize.width - toolTraySize.width) / 2))
+                                 let verticalTravel = Double(max(0, (stackSize.height - toolTraySize.height) / 2))
+                                 let minX = dock == .left ? 0.0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
+                                 let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0.0 : horizontalTravel
+                                 let minY = dock == .top ? 0.0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
+                                 let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0.0 : verticalTravel
+                                 let xProgress = max(0, min(1, (toolTrayPositionX - minX) / max(maxX - minX, 1)))
+                                 let yProgress = max(0, min(1, (toolTrayPositionY - minY) / max(maxY - minY, 1)))
+                                 let column = abs(maxX - minX) < 1 ? 1 : min(2, max(0, Int(xProgress * 3)))
+                                 let row = abs(maxY - minY) < 1 ? 1 : min(2, max(0, Int(yProgress * 3)))
+                                 withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) {
+                                     toolTrayPositionX = minX + (Double(column) + 0.5) / 3 * (maxX - minX)
+                                     toolTrayPositionY = minY + (Double(row) + 0.5) / 3 * (maxY - minY)
+                                 }
+                             })
                         // Measure the actual controls before the side-dock frame stretches the rotated tray.
                         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
                             toolTraySize = dock.isVertical
