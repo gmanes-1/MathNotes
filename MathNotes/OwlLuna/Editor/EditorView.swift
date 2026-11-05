@@ -612,6 +612,8 @@ fileprivate struct EditorContent: View {
     @State private var paneWidth: CGFloat = 1024
     @State private var stackSize = CGSize(width: 1024, height: 768)
     @AppStorage("editor.toolTray.dockEdge") private var toolTrayDockEdge = "bottom"
+    @AppStorage("editor.toolTray.positionX") private var toolTrayPositionX = 0.0
+    @AppStorage("editor.toolTray.positionY") private var toolTrayPositionY = 0.0
     @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
     @State private var pickingBeside = false
@@ -810,13 +812,26 @@ fileprivate struct EditorContent: View {
                 if session.mode != .presenting, session.mode != .replaying,
                    (session.showsToolTray || session.mode == .selecting), !isCovered {
                     let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
-                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use)
+                    let trayWidth = dock.isVertical ? ToolTray.height : paneWidth
+                    let trayHeight = dock.isVertical ? stackSize.height : ToolTray.height
+                    let horizontalTravel = max(0, (stackSize.width - trayWidth) / 2)
+                    let verticalTravel = max(0, (stackSize.height - trayHeight) / 2)
+                    let offsetX = min(max(toolTrayPositionX,
+                                          dock == .right ? -horizontalTravel : dock == .left ? 0 : -horizontalTravel),
+                                      dock == .left ? horizontalTravel : dock == .right ? 0 : horizontalTravel)
+                    let offsetY = min(max(toolTrayPositionY,
+                                          dock == .bottom ? -verticalTravel : dock == .top ? 0 : -verticalTravel),
+                                      dock == .top ? verticalTravel : dock == .bottom ? 0 : verticalTravel)
+                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use) { delta in
+                        toolTrayPositionX += Double(delta.width)
+                        toolTrayPositionY += Double(delta.height)
+                    }
                         .frame(width: dock.isVertical ? stackSize.height : paneWidth, height: ToolTray.height)
                         .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0))
-                        .frame(width: dock.isVertical ? ToolTray.height : paneWidth,
-                               height: dock.isVertical ? stackSize.height : ToolTray.height)
+                        .frame(width: trayWidth, height: trayHeight)
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
                                  dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
+                        .offset(x: offsetX, y: offsetY)
                         .ignoresSafeArea(.keyboard, edges: .bottom)
                         .transition(.opacity)
                 }
