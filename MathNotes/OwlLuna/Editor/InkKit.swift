@@ -55,6 +55,26 @@ enum InkCalibration {
         return byte(red) << 24 | byte(green) << 16 | byte(blue) << 8 | byte(alpha)
     }
 
+    /// Re-centres pressure-sensitive Fineliner strokes on the selected width while preserving their pressure variation.
+    /// PencilKit's .pen renderer can produce a noticeably broader median stroke than the same numeric .monoline width.
+    static func correctedFinePenStroke(_ stroke: PKStroke, preset: ToolPreset) -> PKStroke {
+        guard preset.inkType == .monoline, preset.pressureSensitive == true,
+              stroke.ink.inkType == .pen,
+              let middle = middleSize(of: stroke), middle > 0 else { return stroke }
+        let scale = CGFloat(preset.width) / middle
+        guard abs(scale - 1) > 0.001 else { return stroke }
+        let points = stroke.path.map { point -> PKStrokePoint in
+            let size = CGSize(width: max(point.size.width * scale, 0.2),
+                              height: max(point.size.height * scale, 0.2))
+            return PKStrokePoint(location: point.location, timeOffset: point.timeOffset, size: size,
+                                 opacity: point.opacity, force: point.force, azimuth: point.azimuth,
+                                 altitude: point.altitude, secondaryScale: point.secondaryScale)
+        }
+        let path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
+        return PKStroke(ink: stroke.ink, path: path, transform: stroke.transform,
+                        mask: stroke.mask, randomSeed: stroke.randomSeed)
+    }
+
     static func learn(from stroke: PKStroke, writtenWith tool: PKInkingTool) {
         guard stroke.path.count >= 4, tool.width > 0,
               stroke.ink.inkType.rawValue == tool.inkType.rawValue,
