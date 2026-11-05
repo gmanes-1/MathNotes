@@ -46,6 +46,25 @@ final class ToolPresetTests: XCTestCase {
         }
     }
 
+    func testFinelinerPressureCanBeToggledAndSurvivesSaving() throws {
+        var fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 0.6)
+        XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "off keeps the current uniform Fineliner")
+        fineliner.pressureSensitive = true
+        let pressureTool = try XCTUnwrap(fineliner.tool)
+        XCTAssertEqual(pressureTool.inkType, .pen, "on uses PencilKit's pressure-sensitive pen rendering")
+        XCTAssertEqual(pressureTool.color, fineliner.uiColor)
+        XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.01)
+
+        let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
+        XCTAssertEqual(restored.pressureSensitive, true)
+        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .pen)
+
+        let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":0.6}"#.data(using: .utf8)!
+        let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
+        XCTAssertFalse(oldPreset.pressureSensitive ?? false, "saved presets from before the toggle stay off")
+        XCTAssertEqual(try XCTUnwrap(oldPreset.tool).inkType, .monoline)
+    }
+
     func testFinePenWidthsAreAppliedToTheCompletedStroke() throws {
         let points = (0..<5).map { index in
             PKStrokePoint(location: CGPoint(x: index, y: 0), timeOffset: TimeInterval(index),
