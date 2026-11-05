@@ -271,6 +271,30 @@ final class ToolTrayUITests: XCTestCase {
         XCTAssertTrue(black.isSelected)
     }
 
+    func testTrayGripMovesAndSnapsToAVisiblePosition() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-storageRoot", "tray-movement", "-resetStorage", "-seedLibrary", "3",
+                               "-drawingInput", "anyInput", "-freshToolPresets"]
+        app.launch()
+        let notebook = app.buttons["notebook.Studio Notes 2"]
+        XCTAssertTrue(notebook.waitForExistence(timeout: 30))
+        notebook.tap()
+
+        let window = app.windows.firstMatch
+        let tray = app.element("editor.tools.tray")
+        let grip = app.descendants(matching: .any)["editor.tools.move"]
+        XCTAssertTrue(tray.waitForExistence(timeout: 10))
+        XCTAssertTrue(grip.waitForExistence(timeout: 5))
+        let original = tray.frame
+        let start = grip.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let destination = window.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: destination)
+
+        let moved = tray.frame
+        XCTAssertLessThan(moved.midX, original.midX - 60, "the tray follows the grip toward the highlighted left position")
+        XCTAssertTrue(window.frame.contains(CGPoint(x: moved.midX, y: moved.midY)), "the snapped tray stays on screen")
+    }
+
     func testThePensTheEraserAndTheShortcutsStandInTheTray() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-storageRoot", "tools", "-resetStorage", "-seedLibrary", "3", "-drawingInput", "anyInput", "-freshToolPresets"]
