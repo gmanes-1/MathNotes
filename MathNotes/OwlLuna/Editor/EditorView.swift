@@ -816,7 +816,7 @@ fileprivate struct EditorContent: View {
                         .frame(width: dock.isVertical ? ToolTray.height : paneWidth,
                                height: dock.isVertical ? stackSize.height : ToolTray.height)
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
-                                 dock.isVertical ? Space.x2 : ToolTray.gap + session.zoomPanelLift)
+                                 dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
                         .ignoresSafeArea(.keyboard, edges: .bottom)
                         .transition(.opacity)
                 }
