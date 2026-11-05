@@ -67,10 +67,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// The widths a kind of ink can be set to: the range PencilKit allows for it.
     static func widthRange(of ink: PKInkingTool.InkType) -> ClosedRange<Double> {
         let valid = ink.validWidthRange
-        let scale = writingScale(of: ink)
-        // Preset widths are expressed in the app's displayed units. Fineliner's drawing width is
-        // scaled down before it reaches PencilKit, so expose the matching preset range here too.
-        return Double(valid.lowerBound / scale)...Double(valid.upperBound / scale)
+        // These are app-authored widths, not PencilKit's picker limits. Keep the requested fine
+        // values available even when PencilKit reports a higher minimum for its standard picker.
+        let minimum: Double = ink == .monoline ? 0.3 : ink == .pen ? 0.5 : Double(valid.lowerBound)
+        return minimum...Double(valid.upperBound)
     }
 
     static func clamped(_ width: Double, to range: ClosedRange<Double>) -> Double {
@@ -79,15 +79,13 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     /// How much of its set width a kind of ink is written with. The fineliner is written a quarter thinner than
     /// PencilKit's own monoline, which is too heavy for fine handwriting; the width shown and set stays the pen's.
-    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
-        ink == .monoline ? 0.75 : 1
-    }
+    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat { 1 }
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        let range = inkType.validWidthRange
-        let written = width * Double(Self.writingScale(of: inkType))
-        return PKInkingTool(inkType, color: uiColor, width: min(max(written, range.lowerBound), range.upperBound))
+        // Do not clamp to validWidthRange: the app's fine presets intentionally go below
+        // PencilKit's standard picker minimum, and PKInkingTool accepts an explicit width.
+        return PKInkingTool(inkType, color: uiColor, width: CGFloat(width))
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
@@ -160,19 +158,14 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// to the same displayed value. Fineliner ends at 0.3, 0.5 and 0.7; pen includes 0.7 then 0.9.
     static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
         let range = widthRange(of: ink)
-        let requested: [Double] = ink == .monoline
-            ? [range.lowerBound, 0.15, 0.20, 0.25, 0.30, 0.50, 0.70]
-            : ink == .pen
-                ? [range.lowerBound, 0.15, 0.25, 0.40, 0.50, 0.70, 0.90]
-                : [range.lowerBound, 0.15, 0.25, 0.40, 0.55, 0.70, 0.90]
-        var steps: [Double] = []
-        for value in requested + [range.upperBound] {
-            let bounded = clamped(value, to: range)
-            if steps.last.map({ abs($0 - bounded) > 0.01 }) ?? true {
-                steps.append(bounded)
-            }
+        if ink == .monoline {
+            return [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, range.upperBound]
         }
-        return steps
+        if ink == .pen {
+            return [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, range.upperBound]
+        }
+        let fractions: [Double] = [0, 0.025, 0.07, 0.16, 0.30, 0.50, 0.73, 1]
+        return fractions.map { range.lowerBound + (range.upperBound - range.lowerBound) * $0 * $0 }
     }
 
     /// The reverse of `width(at:of:)`.
