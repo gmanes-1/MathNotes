@@ -614,6 +614,7 @@ fileprivate struct EditorContent: View {
     @AppStorage("editor.toolTray.dockEdge") private var toolTrayDockEdge = "bottom"
     @AppStorage("editor.toolTray.positionX") private var toolTrayPositionX = 0.0
     @AppStorage("editor.toolTray.positionY") private var toolTrayPositionY = 0.0
+    @State private var isToolTrayDragging = false
     @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
     @State private var pickingBeside = false
@@ -812,31 +813,38 @@ fileprivate struct EditorContent: View {
                 if session.mode != .presenting, session.mode != .replaying,
                    (session.showsToolTray || session.mode == .selecting), !isCovered {
                     let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
-                    let trayWidth = dock.isVertical ? ToolTray.height : paneWidth
-                    let trayHeight = dock.isVertical ? stackSize.height : ToolTray.height
-                    let horizontalTravel = max(0, (stackSize.width - trayWidth) / 2)
-                    let verticalTravel = max(0, (stackSize.height - trayHeight) / 2)
-                    let offsetX = min(max(toolTrayPositionX,
-                                          dock == .right ? -horizontalTravel : dock == .left ? 0 : -horizontalTravel),
-                                      dock == .left ? horizontalTravel : dock == .right ? 0 : horizontalTravel)
-                    let offsetY = min(max(toolTrayPositionY,
-                                          dock == .bottom ? -verticalTravel : dock == .top ? 0 : -verticalTravel),
-                                      dock == .top ? verticalTravel : dock == .bottom ? 0 : verticalTravel)
                     ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use) { delta in
                         toolTrayPositionX += Double(delta.width)
                         toolTrayPositionY += Double(delta.height)
-                    }
-                        .frame(width: dock.isVertical ? stackSize.height : paneWidth, height: ToolTray.height)
+                    } dragging: { isToolTrayDragging = $0 }
+                        // Keep the tray at its natural content width when horizontal. The previous
+                        // full-pane frame made it impossible to move sideways in the editor.
+                        .frame(width: dock.isVertical ? stackSize.height : nil, height: ToolTray.height)
                         .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0))
-                        .frame(width: trayWidth, height: trayHeight)
+                        .frame(width: dock.isVertical ? ToolTray.height : nil,
+                               height: dock.isVertical ? stackSize.height : ToolTray.height)
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
                                  dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
-                        .offset(x: offsetX, y: offsetY)
+                        .offset(x: toolTrayPositionX, y: toolTrayPositionY)
                         .ignoresSafeArea(.keyboard, edges: .bottom)
                         .transition(.opacity)
                 }
             }
             .onGeometryChange(for: CGSize.self) { $0.size } action: { stackSize = $0 }
+            .overlay {
+                if isToolTrayDragging {
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color.accentColor.opacity(0.045))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18)
+                                .strokeBorder(Color.accentColor.opacity(0.65),
+                                              style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                        }
+                        .padding(Space.x2)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
             .overlay(alignment: .topLeading) { inkSelectionOverlay }
             .overlay {
                 if let point = session.dish, session.mode == .writing || session.mode == .focus, !isCovered {
