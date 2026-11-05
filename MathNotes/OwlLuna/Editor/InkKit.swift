@@ -78,9 +78,9 @@ enum InkCalibration {
               !stroke.path.isEmpty, !stroke.renderBounds.isNull else { return stroke }
         let scale = CGFloat(preset.width / referenceWidth)
         let center = CGPoint(x: stroke.renderBounds.midX, y: stroke.renderBounds.midY)
-        let scaleAroundCenter = CGAffineTransform(translationX: -center.x, y: -center.y)
+        let scaleAroundCenter = CGAffineTransform(translationX: center.x, y: center.y)
             .scaledBy(x: scale, y: scale)
-            .translatedBy(x: center.x, y: center.y)
+            .translatedBy(x: -center.x, y: -center.y)
         let transform = scaleAroundCenter.concatenating(stroke.transform)
         return PKStroke(ink: stroke.ink, path: stroke.path, transform: transform,
                         mask: stroke.mask, randomSeed: stroke.randomSeed)
