@@ -90,64 +90,17 @@ struct InkSelectionMenu: View {
 
     private var stylePanel: some View {
         let ink = style.inkType ?? .pen
-        let solid = Color(uiColor: ToolPreset.uiColor(style.tint))
-        let night = scheme == .dark
-        let paper = night ? Color.well : Color.labelCream
         return VStack(alignment: .leading, spacing: Space.x2) {
-            PenRoll(kind: Binding(get: { style.inkType ?? .pen }, set: { kind in
-                var next = style
-                next.ink = kind.rawValue
-                next.width = ToolPreset.clamped(next.width, to: ToolPreset.widthRange(of: kind))
-                change(next)
-                onSettle()
-            }), ink: solid, paper: paper, night: night)
+            Text("Color")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.ink)
             LazyVGrid(columns: Self.columns, spacing: 0) {
                 ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color) }
             }
-            VStack(alignment: .leading, spacing: Space.x2) {
-                HStack {
-                    Text("Width").font(.subheadline.weight(.semibold)).foregroundStyle(Color.ink)
-                    Spacer()
-                    Text(style.width.formatted(.number.precision(.fractionLength(0...1))))
-                        .font(.subheadline.monospacedDigit()).foregroundStyle(Color.textSecondary)
-                }
-                HStack(spacing: Space.x1) {
-                    ForEach(Array(ToolPreset.widthSteps(of: ink).enumerated()), id: \.offset) { index, step in
-                        let chosen = abs(style.width - step) < 0.02
-                        Button {
-                            var next = style
-                            next.width = step
-                            change(next)
-                            onSettle()
-                        } label: {
-                            Circle().fill(solid)
-                                .frame(width: CGFloat(3 + 7 * Double(index) / 7),
-                                       height: CGFloat(3 + 7 * Double(index) / 7))
-                                .frame(maxWidth: .infinity, minHeight: 34)
-                                .contentShape(Rectangle())
-                                .overlay { if chosen { Circle().strokeBorder(Color.accentColor, lineWidth: 2).frame(width: 34, height: 34) } }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text("Width \(step.formatted(.number.precision(.fractionLength(0...1))))"))
-                        .accessibilityAddTraits(chosen ? .isSelected : [])
-                        .accessibilityIdentifier("editor.ink.menu.width.\(index + 1)")
-                    }
-                }
-            }
-            WidthBar(measure: .opacity,
-                     travel: Binding(get: { (style.opacity - ToolPreset.leastOpacity) / (1 - ToolPreset.leastOpacity) }, set: { travel in
-                         var next = style
-                         next.opacity = ((ToolPreset.leastOpacity + (1 - ToolPreset.leastOpacity) * travel) * 20).rounded() / 20
-                         change(next)
-                     }),
-                     ink: solid, paper: paper, night: night,
-                     value: style.opacityName,
-                     identifier: "editor.ink.menu.opacity", onSettle: onSettle)
         }
         .padding(Space.x3)
         .frame(width: Self.panelWidth)
     }
-
     private func colourButton(_ color: UInt32) -> some View {
         let chosen = style.tint == color
         return Button {
