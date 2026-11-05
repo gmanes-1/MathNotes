@@ -10,6 +10,7 @@ struct ToolTray: View {
     let room: CGFloat
     let use: (ToolExtra) -> Void
     let move: (CGSize) -> Void
+    let dragging: (Bool) -> Void
     @State private var toolbox = Toolbox.shared
     @State private var dragTranslation: CGSize = .zero
     @State private var hidden: Edge.Set = []
@@ -297,9 +298,13 @@ struct ToolTray: View {
                     let delta = CGSize(width: value.translation.width - dragTranslation.width,
                                        height: value.translation.height - dragTranslation.height)
                     move(delta)
+                    dragging(true)
                     dragTranslation = value.translation
                 }
-                .onEnded { _ in dragTranslation = .zero })
+                .onEnded { _ in
+                    dragTranslation = .zero
+                    dragging(false)
+                })
             .accessibilityElement()
             .accessibilityLabel(Text("Move tool tray"))
             .accessibilityHint(Text("Drag to position the tray within the page area"))
