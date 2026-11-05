@@ -14,6 +14,9 @@ struct ToolTray: View {
     @State private var editing: UUID?
     @State private var editingEraser = false
     @State private var customising = false
+    @State private var dragTranslation: CGSize = .zero
+    @AppStorage("editor.toolTray.offsetX") private var savedOffsetX = 0.0
+    @AppStorage("editor.toolTray.offsetY") private var savedOffsetY = 0.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let height: CGFloat = 48
@@ -74,6 +77,25 @@ struct ToolTray: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Tools"))
         .accessibilityIdentifier("editor.tools.tray")
+        .overlay(alignment: .topTrailing) {
+            Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.textSecondary)
+                .padding(5)
+                .background(.regularMaterial, in: Circle())
+                .contentShape(Circle())
+                .offset(x: 5, y: -7)
+                .gesture(DragGesture(minimumDistance: 2)
+                    .onChanged { value in
+                        savedOffsetX += Double(value.translation.width - dragTranslation.width)
+                        savedOffsetY += Double(value.translation.height - dragTranslation.height)
+                        dragTranslation = value.translation
+                    }
+                    .onEnded { _ in dragTranslation = .zero })
+                .accessibilityLabel(Text("Move tool tray"))
+                .accessibilityHint(Text("Drag to position the tool tray anywhere over the page"))
+        }
+        .offset(x: savedOffsetX, y: savedOffsetY)
     }
 
     private var rule: some View {

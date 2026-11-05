@@ -22,12 +22,12 @@ enum InkCalibration {
 
     static func leastPoint(for ink: PKInkingTool.InkType) -> CGFloat {
         switch ink {
-        case .pen, .fountainPen: 2.0
-        case .marker: 3.0
-        case .crayon, .watercolor: 2.0
-        case .pencil: 1.0
-        case .monoline: 0.5
-        default: 2.0
+        case .pen, .fountainPen: 0.35
+        case .marker: 0.75
+        case .crayon, .watercolor: 0.5
+        case .pencil: 0.35
+        case .monoline: 0.2
+        default: 0.35
         }
     }
 
@@ -37,7 +37,7 @@ enum InkCalibration {
 
     static func width(forPointSize size: CGFloat, of ink: PKInkingTool.InkType) -> Double {
         let raw = Double(size / max(factor(for: ink), 0.01))
-        return ToolPreset.clamped((raw * 10).rounded() / 10, to: ToolPreset.widthRange(of: ink))
+        return ToolPreset.clamped(raw, to: ToolPreset.widthRange(of: ink))
     }
 
     nonisolated static func middleSize(of stroke: PKStroke) -> CGFloat? {
@@ -105,25 +105,24 @@ extension PKDrawing {
     /// are asked for. Each stroke keeps its own kind of ink and the way its width swells along it; whatever is not
     /// asked for stays as it was.
     @MainActor
-    func restyled(_ indices: Set<Int>, widthScale: CGFloat, tint: UInt32?, opacity: Double?) -> PKDrawing {
+    func restyled(_ indices: Set<Int>, widthScale: CGFloat, inkType: PKInkingTool.InkType? = nil, tint: UInt32?, opacity: Double?) -> PKDrawing {
         guard !indices.isEmpty else { return self }
         var strokes = self.strokes
         for i in indices where strokes.indices.contains(i) {
-            strokes[i] = Self.restyledStroke(strokes[i], widthScale: widthScale, tint: tint, opacity: opacity)
+            strokes[i] = Self.restyledStroke(strokes[i], widthScale: widthScale, inkType: inkType, tint: tint, opacity: opacity)
         }
         return PKDrawing(strokes: strokes)
     }
 
     @MainActor
-    private static func restyledStroke(_ stroke: PKStroke, widthScale: CGFloat, tint: UInt32?, opacity: Double?) -> PKStroke {
+    private static func restyledStroke(_ stroke: PKStroke, widthScale: CGFloat, inkType: PKInkingTool.InkType?, tint: UInt32?, opacity: Double?) -> PKStroke {
         var path = stroke.path
         if abs(widthScale - 1) > 0.001, stroke.path.count > 0 {
-            let kind = PKInkingTool.InkType(rawValue: stroke.ink.inkType.rawValue) ?? .pen
-            let least = InkCalibration.leastPoint(for: kind)
             let points = stroke.path.map { p -> PKStrokePoint in
-                // Never thinner than is still seen, and never thicker than it was if it was already finer than that.
-                let width = max(p.size.width * widthScale, min(p.size.width, least))
-                let height = max(p.size.height * widthScale, min(p.size.height, least))
+                // Keep sub-point handwriting visible. A fixed 1–3 pt floor made fine strokes jump back to a
+                // thicker width during restyling, especially after zooming into the page.
+                let width = max(p.size.width * widthScale, 0.2)
+                let height = max(p.size.height * widthScale, 0.2)
                 return PKStrokePoint(location: p.location, timeOffset: p.timeOffset, size: CGSize(width: width, height: height),
                                      opacity: p.opacity, force: p.force, azimuth: p.azimuth, altitude: p.altitude,
                                      secondaryScale: p.secondaryScale)
@@ -135,7 +134,9 @@ extension PKDrawing {
             let current = InkCalibration.bytes(of: stroke.ink.color)
             let rgb = (tint ?? current) & 0xFFFF_FF00
             let alpha = opacity.map { UInt32((min(max($0, ToolPreset.leastOpacity), 1) * 255).rounded()) } ?? (current & 0xFF)
-            ink = PKInk(stroke.ink.inkType, color: ToolPreset.uiColor(rgb | alpha))
+            ink = PKInk(inkType ?? stroke.ink.inkType, color: ToolPreset.uiColor(rgb | alpha))
+        } else if let inkType {
+            ink = PKInk(inkType, color: stroke.ink.color)
         }
         return PKStroke(ink: ink, path: path, transform: stroke.transform, mask: stroke.mask, randomSeed: stroke.randomSeed)
     }

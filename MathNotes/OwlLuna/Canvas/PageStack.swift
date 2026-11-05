@@ -2170,10 +2170,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     /// the ink never jumps to a width worked out from a guess: it grows and shrinks from what it is.
     private struct InkRestyleChange: Equatable {
         var widthScale: CGFloat
+        var ink: String?
         var tint: UInt32?
         var opacity: Double?
 
-        var isIdentity: Bool { abs(widthScale - 1) < 0.001 && tint == nil && opacity == nil }
+        var isIdentity: Bool { abs(widthScale - 1) < 0.001 && ink == nil && tint == nil && opacity == nil }
     }
 
     func restyleInkSelection(to preset: ToolPreset) {
@@ -2182,6 +2183,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         guard let baseline = restyleBaseline else { return }
         let change = InkRestyleChange(
             widthScale: baseline.width > 0.001 ? CGFloat(preset.width / baseline.width) : 1,
+            ink: preset.ink == baseline.ink ? nil : preset.ink,
             tint: preset.tint == baseline.tint ? nil : preset.tint,
             opacity: abs(preset.opacity - baseline.opacity) < 0.001 ? nil : preset.opacity)
         guard change != pendingRestyle else { return }
@@ -2208,7 +2210,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         for (id, indices) in inkSelection {
             guard let base = document.loadedInk(id), let canvas = canvases[id] else { continue }
             isApplyingDrawing = true
-            canvas.drawing = base.restyled(Set(indices), widthScale: change.widthScale, tint: change.tint, opacity: change.opacity)
+            canvas.drawing = base.restyled(Set(indices), widthScale: change.widthScale,
+                          inkType: change.ink.flatMap(PKInkingTool.InkType.init(rawValue:)),
+                          tint: change.tint, opacity: change.opacity)
             canvas.strokeCount = nil
             isApplyingDrawing = false
         }
@@ -2236,7 +2240,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         var changed: [UUID: PKDrawing] = [:]
         for (id, indices) in inkSelection {
             guard let ink = document.loadedInk(id) else { continue }
-            changed[id] = ink.restyled(Set(indices), widthScale: change.widthScale, tint: change.tint, opacity: change.opacity)
+            changed[id] = ink.restyled(Set(indices), widthScale: change.widthScale,
+                                         inkType: change.ink.flatMap(PKInkingTool.InkType.init(rawValue:)),
+                                         tint: change.tint, opacity: change.opacity)
         }
         guard !changed.isEmpty else { return revertRestylePreview() }
         isMovingInk = true

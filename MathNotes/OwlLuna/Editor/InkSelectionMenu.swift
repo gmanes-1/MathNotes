@@ -94,6 +94,13 @@ struct InkSelectionMenu: View {
         let night = scheme == .dark
         let paper = night ? Color.well : Color.labelCream
         return VStack(alignment: .leading, spacing: Space.x2) {
+            PenRoll(kind: Binding(get: { style.inkType ?? .pen }, set: { kind in
+                var next = style
+                next.ink = kind.rawValue
+                next.width = ToolPreset.clamped(next.width, to: ToolPreset.widthRange(of: kind))
+                change(next)
+                onSettle()
+            }), ink: solid, paper: paper, night: night)
             LazyVGrid(columns: Self.columns, spacing: 0) {
                 ForEach(ToolPreset.palette(for: ink), id: \.self) { color in colourButton(color) }
             }
