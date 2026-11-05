@@ -615,6 +615,7 @@ fileprivate struct EditorContent: View {
     @AppStorage("editor.toolTray.offsetX") private var toolTrayPositionX = 0.0
     @AppStorage("editor.toolTray.offsetY") private var toolTrayPositionY = 0.0
     @State private var isToolTrayDragging = false
+    @State private var toolTrayDropEdge: ToolTray.DockEdge?
     @State private var toolTraySize = CGSize(width: 320, height: ToolTray.height)
     @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
@@ -813,53 +814,14 @@ fileprivate struct EditorContent: View {
             .overlay {
                 if isToolTrayDragging {
                     GeometryReader { geometry in
-                        let size = geometry.size
-                        let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
-                        let horizontalTravel = Double(max(0, (stackSize.width - toolTraySize.width) / 2))
-                        let verticalTravel = Double(max(0, (stackSize.height - toolTraySize.height) / 2))
-                        let minX = dock == .left ? 0.0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
-                        let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0.0 : horizontalTravel
-                        let minY = dock == .top ? 0.0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
-                        let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0.0 : verticalTravel
-                        let xProgress = max(0, min(1, (toolTrayPositionX - minX) / max(maxX - minX, 1)))
-                        let yProgress = max(0, min(1, (toolTrayPositionY - minY) / max(maxY - minY, 1)))
-                        let column = abs(maxX - minX) < 1 ? 1 : min(2, max(0, Int(xProgress * 3)))
-                        let row = abs(maxY - minY) < 1 ? 1 : min(2, max(0, Int(yProgress * 3)))
+                        let zone: CGFloat = 64
                         ZStack {
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(Color.accentColor.opacity(0.045))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 18)
-                                        .strokeBorder(Color.accentColor.opacity(0.65),
-                                                      style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
-                                }
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.accentColor.opacity(0.17))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .strokeBorder(Color.accentColor.opacity(0.95), lineWidth: 2)
-                                }
-                                .frame(width: max(0, size.width / 3 - 10), height: max(0, size.height / 3 - 10))
-                                .position(x: (CGFloat(column) + 0.5) * size.width / 3,
-                                          y: (CGFloat(row) + 0.5) * size.height / 3)
-                            Path { path in
-                                for fraction in [1.0 / 3.0, 2.0 / 3.0] {
-                                    let x = size.width * fraction
-                                    let y = size.height * fraction
-                                    path.move(to: CGPoint(x: x, y: 0))
-                                    path.addLine(to: CGPoint(x: x, y: size.height))
-                                    path.move(to: CGPoint(x: 0, y: y))
-                                    path.addLine(to: CGPoint(x: size.width, y: y))
-                                }
-                            }
-                            .stroke(Color.accentColor.opacity(0.35),
-                                    style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
-                            .padding(Space.x2)
-                        }
-                    }
-                    .padding(Space.x2)
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
+                            VStack(spacing: 0) { dropZone(.top, active: toolTrayDropEdge == .top).frame(height: zone); Spacer(minLength: 0) }
+                            HStack(spacing: 0) { dropZone(.left, active: toolTrayDropEdge == .left).frame(width: zone); Spacer(minLength: 0) }
+                            VStack(spacing: 0) { Spacer(minLength: 0); dropZone(.bottom, active: toolTrayDropEdge == .bottom).frame(height: zone) }
+                            HStack(spacing: 0) { Spacer(minLength: 0); dropZone(.right, active: toolTrayDropEdge == .right).frame(width: zone) }
+                        }.frame(width: geometry.size.width, height: geometry.size.height)
+                    }.allowsHitTesting(false).transition(.opacity)
                 }
             }
             .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
@@ -874,27 +836,29 @@ fileprivate struct EditorContent: View {
                                  let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0.0 : horizontalTravel
                                  let minY = dock == .top ? 0.0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
                                  let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0.0 : verticalTravel
-                                 toolTrayPositionX = min(max(toolTrayPositionX + Double(delta.width), minX), maxX)
-                                 toolTrayPositionY = min(max(toolTrayPositionY + Double(delta.height), minY), maxY)
+                                 let nextX = min(max(toolTrayPositionX + Double(delta.width), minX), maxX)
+                                 let nextY = min(max(toolTrayPositionY + Double(delta.height), minY), maxY)
+                                 toolTrayPositionX = nextX
+                                 toolTrayPositionY = nextY
+                                 let x = stackSize.width / 2 + nextX
+                                 let y = stackSize.height / 2 + nextY
+                                 let candidates: [(ToolTray.DockEdge, CGFloat)] = [(.top, y), (.right, stackSize.width - x), (.bottom, stackSize.height - y), (.left, x)]
+                                 if let nearest = candidates.min(by: { $0.1 < $1.1 }), nearest.1 <= 76 { toolTrayDropEdge = nearest.0 }
+                                 else { toolTrayDropEdge = nil }
                              },
                              dragging: { isDragging in
                                  isToolTrayDragging = isDragging
-                                 guard !isDragging else { return }
-                                 let horizontalTravel = Double(max(0, (stackSize.width - toolTraySize.width) / 2))
-                                 let verticalTravel = Double(max(0, (stackSize.height - toolTraySize.height) / 2))
-                                 let minX = dock == .left ? 0.0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
-                                 let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0.0 : horizontalTravel
-                                 let minY = dock == .top ? 0.0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
-                                 let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0.0 : verticalTravel
-                                 let xProgress = max(0, min(1, (toolTrayPositionX - minX) / max(maxX - minX, 1)))
-                                 let yProgress = max(0, min(1, (toolTrayPositionY - minY) / max(maxY - minY, 1)))
-                                 let column = abs(maxX - minX) < 1 ? 1 : min(2, max(0, Int(xProgress * 3)))
-                                 let row = abs(maxY - minY) < 1 ? 1 : min(2, max(0, Int(yProgress * 3)))
-                                 withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) {
-                                     toolTrayPositionX = minX + (Double(column) + 0.5) / 3 * (maxX - minX)
-                                     toolTrayPositionY = minY + (Double(row) + 0.5) / 3 * (maxY - minY)
+                                 if !isDragging {
+                                     if let target = toolTrayDropEdge {
+                                         withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) {
+                                             toolTrayDockEdge = target.rawValue
+                                             toolTrayPositionX = 0
+                                             toolTrayPositionY = 0
+                                         }
+                                     }
+                                     toolTrayDropEdge = nil
                                  }
-                             })
+                             }
                         // Measure the actual controls before the side-dock frame stretches the rotated tray.
                         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
                             toolTraySize = dock.isVertical
@@ -924,6 +888,25 @@ fileprivate struct EditorContent: View {
             .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: session.showsToolTray)
             .onChange(of: session.showsToolTray) { session.canvas?.toolTrayDidChange() }
             .onChange(of: session.mode) { session.dish = nil }
+    }
+
+    private func dropZone(_ edge: ToolTray.DockEdge, active: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(active ? Color.accentColor.opacity(0.30) : Color.accentColor.opacity(0.08))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(active ? Color.accentColor : Color.accentColor.opacity(0.45),
+                                  style: StrokeStyle(lineWidth: active ? 3 : 1.5, dash: active ? [] : [6, 5]))
+            }
+            .padding(6)
+            .overlay {
+                if active {
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+            .accessibilityHidden(true)
     }
 
     /// The menu over the lasso's selection, and the Paste chip where ink was held to paste. They sit on the page
