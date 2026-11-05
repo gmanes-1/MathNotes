@@ -92,7 +92,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         let renderedInk: PKInkingTool.InkType = pressureMode ? .pen : inkType
         // Keep the stroke native to PencilKit so it remains visible after the Pencil lifts.
         // The selected Fineliner width is the pressure pen's base width; PencilKit varies it with Pencil force.
-        let renderedWidth = pressureMode ? CGFloat(width)
+        let renderedWidth = pressureMode ? CGFloat(width) * 0.9
                                          : CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         return PKInkingTool(renderedInk, color: uiColor, width: renderedWidth)
     }
