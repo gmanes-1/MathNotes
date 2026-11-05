@@ -224,7 +224,15 @@ final class ToolShelf {
         if LaunchOptions.arguments.contains("-freshToolPresets") { store = nil }
         #endif
         self.defaults = store
-        presets = store?.data(forKey: SettingsKey.toolPresets).flatMap { try? JSONDecoder().decode([ToolPreset].self, from: $0) } ?? Self.starters
+        var loaded = store?.data(forKey: SettingsKey.toolPresets).flatMap { try? JSONDecoder().decode([ToolPreset].self, from: $0) } ?? Self.starters
+        // PencilKit renders sub-0.9 pt pen widths indistinguishably from its minimum.
+        // Normalize older saved presets so the displayed choice matches the tool actually used.
+        let original = loaded
+        for index in loaded.indices where loaded[index].inkType == .pen {
+            loaded[index].width = Self.clamped(loaded[index].width, to: Self.widthRange(of: .pen))
+        }
+        presets = loaded
+        if store != nil, loaded != original { save() }
     }
 
     /// The tools this build can use; one of a kind it doesn't know stays saved and isn't shown.
