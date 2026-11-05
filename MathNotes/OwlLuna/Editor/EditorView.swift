@@ -794,7 +794,7 @@ fileprivate struct EditorContent: View {
                     }
                 }
             }
-            .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
+            .overlay(alignment: .bottom) {
                 if session.mode == .presenting {
                     presentationBar
                 } else if session.mode == .replaying {
@@ -804,7 +804,11 @@ fileprivate struct EditorContent: View {
                         .floatingBar()
                         .padding(.bottom, Space.x5)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else if (session.showsToolTray || session.mode == .selecting), !isCovered {
+                }
+            }
+            .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
+                if session.mode != .presenting, session.mode != .replaying,
+                   (session.showsToolTray || session.mode == .selecting), !isCovered {
                     let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
                     ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use)
                         .frame(width: dock.isVertical ? stackSize.height : paneWidth, height: ToolTray.height)
