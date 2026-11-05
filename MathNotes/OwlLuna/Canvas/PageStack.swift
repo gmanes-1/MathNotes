@@ -1104,11 +1104,22 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if !unreadWriting.isEmpty { readWritingAfterARest() }
             return
         }
-        if canvas !== zoomCanvas, let before, canvas.drawing.strokes.count == before.strokes.count + 1,
-           let drawn = canvas.drawing.strokes.last, let tool = canvas.tool as? PKInkingTool {
-            InkCalibration.learn(from: drawn, writtenWith: tool)
+        if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
+           let drawn = canvas.drawing.strokes.last {
+            if canvas !== zoomCanvas, let tool = canvas.tool as? PKInkingTool {
+                InkCalibration.learn(from: drawn, writtenWith: tool)
+            }
+            if let preset = toolbox.pen, preset.inkType == .pen, preset.width < 0.9 {
+                var strokes = canvas.drawing.strokes
+                strokes[strokes.count - 1] = InkCalibration.correctedFinePenStroke(drawn, preset: preset)
+                let corrected = PKDrawing(strokes: strokes)
+                isApplyingDrawing = true
+                canvas.drawing = corrected
+                canvas.strokeCount = nil
+                isApplyingDrawing = false
+            }
         }
-        
+
         document.canvasDidChangeInk(id, to: canvas.drawing)
         mirrorInk(from: canvas, pageID: id)
         let typing = noteWriting(on: canvas, pageID: id, before: before)
