@@ -70,21 +70,19 @@ enum InkCalibration {
     }
 
     /// PencilKit can render sub-0.9 pt pen presets at nearly the same apparent width.
-    /// Correct the completed stroke's point sizes against the 0.9 pt reference while
-    /// preserving each point's pressure-driven variation and all other stroke attributes.
+    /// Scale the completed stroke through its affine transform instead of rebuilding its
+    /// PKStrokePath. This keeps PencilKit's original pressure/timing samples intact.
     static func correctedFinePenStroke(_ stroke: PKStroke, preset: ToolPreset) -> PKStroke {
         let referenceWidth = 0.9
-        guard preset.inkType == .pen, preset.width < referenceWidth, !stroke.path.isEmpty else { return stroke }
+        guard preset.inkType == .pen, preset.width < referenceWidth,
+              !stroke.path.isEmpty, !stroke.renderBounds.isNull else { return stroke }
         let scale = CGFloat(preset.width / referenceWidth)
-        let points = stroke.path.map { point -> PKStrokePoint in
-            let size = CGSize(width: max(point.size.width * scale, 0.2),
-                              height: max(point.size.height * scale, 0.2))
-            return PKStrokePoint(location: point.location, timeOffset: point.timeOffset, size: size,
-                                 opacity: point.opacity, force: point.force, azimuth: point.azimuth,
-                                 altitude: point.altitude, secondaryScale: point.secondaryScale)
-        }
-        let path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
-        return PKStroke(ink: stroke.ink, path: path, transform: stroke.transform,
+        let center = CGPoint(x: stroke.renderBounds.midX, y: stroke.renderBounds.midY)
+        let scaleAroundCenter = CGAffineTransform(translationX: -center.x, y: -center.y)
+            .scaledBy(x: scale, y: scale)
+            .translatedBy(x: center.x, y: center.y)
+        let transform = scaleAroundCenter.concatenating(stroke.transform)
+        return PKStroke(ink: stroke.ink, path: stroke.path, transform: transform,
                         mask: stroke.mask, randomSeed: stroke.randomSeed)
     }
 }
