@@ -611,7 +611,7 @@ fileprivate struct EditorContent: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var paneWidth: CGFloat = 1024
     @State private var stackSize = CGSize(width: 1024, height: 768)
-    @AppStorage("editor.toolTray.dockEdge") private var toolTrayDockEdge = "bottom"
+    @AppStorage("editor.toolTray.dockEdge") private var toolTrayDockEdge = "top"
     @AppStorage("editor.toolTray.offsetX") private var toolTrayPositionX = 0.0
     @AppStorage("editor.toolTray.offsetY") private var toolTrayPositionY = 0.0
     @State private var isToolTrayDragging = false
@@ -902,10 +902,13 @@ fileprivate struct EditorContent: View {
                         }
                         // Keep the tray at its natural content width when horizontal. The previous
                         // full-pane frame made it impossible to move sideways in the editor.
-                        .frame(width: dock.isVertical ? stackSize.height : nil, height: ToolTray.height)
-                        .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0))
+                        // Lay out the tray at its natural horizontal size first, then rotate that
+                        // complete tray. The vertical frame only centres it; it must not stretch it
+                        // before rotation.
+                        .fixedSize(horizontal: true, vertical: false)
+                        .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0), anchor: .center)
                         .frame(width: dock.isVertical ? ToolTray.height : nil,
-                               height: dock.isVertical ? stackSize.height : ToolTray.height)
+                               height: dock.isVertical ? stackSize.height : ToolTray.height, alignment: .center)
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
                                  dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
                         .offset(x: toolTrayPositionX, y: toolTrayPositionY)
