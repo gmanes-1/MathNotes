@@ -66,11 +66,11 @@ final class ToolPresetTests: XCTestCase {
     }
 
     func testPressureFinelinerWidthsAreExplicitAndStayFine() {
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0), 0.132, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0.5), 0.366, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 1), 0.6, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: -1), 0.132, accuracy: 0.001)
-        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 2), 0.6, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0), 0.048, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 0.5), 0.114, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 1), 0.18, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: -1), 0.048, accuracy: 0.001)
+        XCTAssertEqual(ToolPreset.pressureWidth(base: 0.6, force: 2), 0.18, accuracy: 0.001)
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
