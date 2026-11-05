@@ -917,6 +917,7 @@ fileprivate struct EditorContent: View {
                         // before rotation.
                         .fixedSize(horizontal: true, vertical: false)
                         .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0), anchor: .center)
+                        .animation(.spring(response: 0.42, dampingFraction: 0.84), value: dock)
                         .frame(width: dock.isVertical ? ToolTray.height : nil,
                                height: dock.isVertical ? toolTraySize.height : ToolTray.height, alignment: .center)
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
