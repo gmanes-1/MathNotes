@@ -884,8 +884,8 @@ fileprivate struct EditorContent: View {
                                  // centre lands just outside a zone's bounds.
                                  toolTrayDropEdge = zones.min { lhs, rhs in
                                      func distanceSquared(to rect: CGRect) -> CGFloat {
-                                         let dx = max(rect.minX - center.x, 0, center.x - rect.maxX)
-                                         let dy = max(rect.minY - center.y, 0, center.y - rect.maxY)
+                                         let dx = max(max(rect.minX - center.x, 0), center.x - rect.maxX)
+                                         let dy = max(max(rect.minY - center.y, 0), center.y - rect.maxY)
                                          return dx * dx + dy * dy
                                      }
                                      return distanceSquared(to: lhs.1) < distanceSquared(to: rhs.1)
