@@ -611,6 +611,7 @@ fileprivate struct EditorContent: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var paneWidth: CGFloat = 1024
     @State private var stackSize = CGSize(width: 1024, height: 768)
+    @AppStorage("editor.toolTray.dockEdge") private var toolTrayDockEdge = "bottom"
     @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
     @State private var pickingBeside = false
@@ -793,7 +794,7 @@ fileprivate struct EditorContent: View {
                     }
                 }
             }
-            .overlay(alignment: .bottom) {
+            .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
                 if session.mode == .presenting {
                     presentationBar
                 } else if session.mode == .replaying {
@@ -804,11 +805,16 @@ fileprivate struct EditorContent: View {
                         .padding(.bottom, Space.x5)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else if (session.showsToolTray || session.mode == .selecting), !isCovered {
-                    ToolTray(session: session, room: paneWidth, use: use)
-                        .padding(.bottom, ToolTray.gap + session.zoomPanelLift)
-                        .frame(maxHeight: .infinity, alignment: .bottom)
+                    let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
+                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use)
+                        .frame(width: dock.isVertical ? stackSize.height : paneWidth, height: ToolTray.height)
+                        .rotationEffect(.degrees(dock == .left ? -90 : dock == .right ? 90 : 0))
+                        .frame(width: dock.isVertical ? ToolTray.height : paneWidth,
+                               height: dock.isVertical ? stackSize.height : ToolTray.height)
+                        .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
+                                 dock.isVertical ? Space.x2 : ToolTray.gap + session.zoomPanelLift)
                         .ignoresSafeArea(.keyboard, edges: .bottom)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(.opacity)
                 }
             }
             .onGeometryChange(for: CGSize.self) { $0.size } action: { stackSize = $0 }
