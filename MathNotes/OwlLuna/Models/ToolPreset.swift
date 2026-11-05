@@ -69,7 +69,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         let valid = ink.validWidthRange
         // These are app-authored widths, not PencilKit's picker limits. Keep the requested fine
         // values available even when PencilKit reports a higher minimum for its standard picker.
-        let minimum: Double = ink == .monoline ? 0.3 : ink == .pen ? 0.5 : Double(valid.lowerBound)
+        let minimum: Double = ink == .monoline ? 0.3 : ink == .pen ? 0.9 : Double(valid.lowerBound)
         return minimum...Double(valid.upperBound)
     }
 
@@ -84,7 +84,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         guard let inkType else { return nil }
         // Do not clamp to validWidthRange: the app's fine presets intentionally go below
         // PencilKit's standard picker minimum, and PKInkingTool accepts an explicit width.
-        return PKInkingTool(inkType, color: uiColor, width: CGFloat(width))
+        return PKInkingTool(inkType, color: uiColor, width: CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))))
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
@@ -153,7 +153,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
     }
 
-    /// Explicit widths keep every choice distinct. Fineliner starts at 0.3 and pen at 0.5;
+    /// Explicit widths keep every choice distinct. Fineliner starts at 0.3 and pen at 0.9;
     /// both retain a full set of eight choices across their usable range.
     static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
         let range = widthRange(of: ink)
@@ -161,7 +161,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
             return [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, range.upperBound]
         }
         if ink == .pen {
-            return [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, range.upperBound]
+            return [0.9, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, range.upperBound]
         }
         let fractions: [Double] = [0, 0.025, 0.07, 0.16, 0.30, 0.50, 0.73, 1]
         return fractions.map { range.lowerBound + (range.upperBound - range.lowerBound) * $0 * $0 }
