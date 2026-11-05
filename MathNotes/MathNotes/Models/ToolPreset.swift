@@ -89,9 +89,9 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         let pressureMode = inkType == .monoline && pressureSensitive == true
         let renderedInk: PKInkingTool.InkType = pressureMode ? .pen : inkType
         // PencilKit's pressure-sensitive .pen renders much broader than .monoline.
-        // Use a deliberately tiny base width; Apple Pencil pressure still varies it,
-        // but keeps the whole stroke visibly fine compared with the regular Fineliner.
-        let renderedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))) * (pressureMode ? 0.12 : 1)
+        // Use an extremely small base width to compensate for PencilKit's broad pressure-pen rendering.
+        // Pressure still varies the stroke; the tiny base minimizes its starting size.
+        let renderedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))) * (pressureMode ? 0.01 : 1)
         return PKInkingTool(renderedInk, color: uiColor, width: renderedWidth)
     }
 
