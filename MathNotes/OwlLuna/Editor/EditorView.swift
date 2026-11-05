@@ -615,6 +615,7 @@ fileprivate struct EditorContent: View {
     @AppStorage("editor.toolTray.offsetX") private var toolTrayPositionX = 0.0
     @AppStorage("editor.toolTray.offsetY") private var toolTrayPositionY = 0.0
     @State private var isToolTrayDragging = false
+    @State private var toolTraySize = CGSize(width: 320, height: ToolTray.height)
     @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
     @State private var pickingBeside = false
@@ -847,8 +848,14 @@ fileprivate struct EditorContent: View {
                     let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
                     ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use,
                              move: { delta in
-                                 toolTrayPositionX += Double(delta.width)
-                                 toolTrayPositionY += Double(delta.height)
+                                 let horizontalTravel = max(0, (stackSize.width - toolTraySize.width) / 2)
+                                 let verticalTravel = max(0, (stackSize.height - toolTraySize.height) / 2)
+                                 let minX = dock == .left ? 0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
+                                 let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0 : horizontalTravel
+                                 let minY = dock == .top ? 0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
+                                 let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0 : verticalTravel
+                                 toolTrayPositionX = min(max(toolTrayPositionX + Double(delta.width), minX), maxX)
+                                 toolTrayPositionY = min(max(toolTrayPositionY + Double(delta.height), minY), maxY)
                              },
                              dragging: { isToolTrayDragging = $0 })
                         // Keep the tray at its natural content width when horizontal. The previous
@@ -860,6 +867,7 @@ fileprivate struct EditorContent: View {
                         .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
                                  dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
                         .offset(x: toolTrayPositionX, y: toolTrayPositionY)
+                        .onGeometryChange(for: CGSize.self) { $0.size } action: { toolTraySize = $0 }
                         .ignoresSafeArea(.keyboard, edges: .bottom)
                         .transition(.opacity)
                 }
