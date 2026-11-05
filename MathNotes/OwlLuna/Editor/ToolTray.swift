@@ -17,7 +17,7 @@ struct ToolTray: View {
     @State private var editing: UUID?
     @State private var editingEraser = false
     @State private var customising = false
-    @AppStorage("editor.toolTray.dockEdge") private var dockEdge = DockEdge.bottom.rawValue
+    @AppStorage("editor.toolTray.dockEdge") private var dockEdge = DockEdge.top.rawValue
 
     enum DockEdge: String, CaseIterable, Identifiable {
         case top, bottom, left, right
@@ -40,7 +40,7 @@ struct ToolTray: View {
             }
         }
     }
-    private var edge: DockEdge { DockEdge(rawValue: dockEdge) ?? .bottom }
+    private var edge: DockEdge { DockEdge(rawValue: dockEdge) ?? .top }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let height: CGFloat = 48
