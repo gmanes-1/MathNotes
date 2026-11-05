@@ -803,7 +803,7 @@ fileprivate struct EditorContent: View {
                         .floatingBar()
                         .padding(.bottom, Space.x5)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else if session.showsToolTray, !isCovered {
+                } else if (session.showsToolTray || session.mode == .selecting), !isCovered {
                     ToolTray(session: session, room: paneWidth, use: use)
                         .padding(.bottom, ToolTray.gap + session.zoomPanelLift)
                         .frame(maxHeight: .infinity, alignment: .bottom)
