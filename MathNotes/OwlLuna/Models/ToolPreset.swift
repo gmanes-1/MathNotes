@@ -156,12 +156,23 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
     }
 
-    /// A small, explicit set of widths. The first choice is PencilKit's true minimum for this ink;
-    /// subsequent choices are deliberately spaced more closely near the fine end.
+    /// Explicit widths keep the fine choices distinct instead of rounding several nearby steps
+    /// to the same displayed value. Fineliner ends at 0.3, 0.5 and 0.7; pen includes 0.7 then 0.9.
     static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
         let range = widthRange(of: ink)
-        let fractions: [Double] = [0, 0.025, 0.07, 0.16, 0.30, 0.50, 0.73, 1]
-        return fractions.map { range.lowerBound + (range.upperBound - range.lowerBound) * $0 * $0 }
+        let requested: [Double] = ink == .monoline
+            ? [range.lowerBound, 0.15, 0.20, 0.25, 0.30, 0.50, 0.70]
+            : ink == .pen
+                ? [range.lowerBound, 0.15, 0.25, 0.40, 0.50, 0.70, 0.90]
+                : [range.lowerBound, 0.15, 0.25, 0.40, 0.55, 0.70, 0.90]
+        var steps: [Double] = []
+        for value in requested + [range.upperBound] {
+            let bounded = clamped(value, to: range)
+            if steps.last.map({ abs($0 - bounded) > 0.01 }) ?? true {
+                steps.append(bounded)
+            }
+        }
+        return steps
     }
 
     /// The reverse of `width(at:of:)`.
