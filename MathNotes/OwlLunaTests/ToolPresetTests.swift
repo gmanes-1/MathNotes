@@ -35,8 +35,8 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0x0000_00FF, width: 1).widthFraction, 0)
     }
 
-    func testTheFinelinerWritesThinnerThanPencilKitsMonolineButEveryOtherInkIsAsSet() throws {
-        XCTAssertLessThan(ToolPreset.writingScale(of: .monoline), 1)
+    func testTheFinelinerUsesItsExplicitWidthAndEveryOtherInkIsAsSet() throws {
+        XCTAssertEqual(ToolPreset.writingScale(of: .monoline), 1)
         let fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 2)
         let tool = try XCTUnwrap(fineliner.tool)
         XCTAssertEqual(Double(tool.width), 2 * Double(ToolPreset.writingScale(of: .monoline)), accuracy: 0.01)
@@ -46,9 +46,26 @@ final class ToolPresetTests: XCTestCase {
         }
     }
 
+    func testFinePenWidthsAreAppliedToTheCompletedStroke() throws {
+        let points = (0..<5).map { index in
+            PKStrokePoint(location: CGPoint(x: index, y: 0), timeOffset: TimeInterval(index),
+                          size: CGSize(width: 1, height: 1), opacity: 1, force: 1,
+                          azimuth: 0, altitude: .pi / 2, secondaryScale: 1)
+        }
+        let path = PKStrokePath(controlPoints: points, creationDate: Date())
+        let stroke = PKStroke(ink: PKInk(.pen, color: .black), path: path)
+        let preset = ToolPreset(ink: .pen, color: 0x0000_00FF, width: 0.5)
+        let corrected = InkCalibration.correctedFinePenStroke(stroke, preset: preset)
+        XCTAssertEqual(corrected.path.count, stroke.path.count)
+        XCTAssertEqual(corrected.path[2].size.width, 0.5 / 0.9, accuracy: 0.001)
+        XCTAssertEqual(corrected.path[2].size.height, 0.5 / 0.9, accuracy: 0.001)
+        XCTAssertEqual(corrected.ink.inkType, stroke.ink.inkType)
+        XCTAssertEqual(corrected.path.creationDate, stroke.path.creationDate)
+    }
+
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
-        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.5...3)
-        XCTAssertEqual(ToolPreset.widthRange(of: .pen), 1...8)
+        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.3...3)
+        XCTAssertEqual(ToolPreset.widthRange(of: .pen), 0.5...8)
         XCTAssertEqual(ToolPreset.widthRange(of: .marker), 5...30)
         for kind in ToolPreset.kinds {
             let range = ToolPreset.widthRange(of: kind)
