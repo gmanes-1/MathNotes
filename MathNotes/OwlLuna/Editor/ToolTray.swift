@@ -48,6 +48,7 @@ struct ToolTray: View {
     static let slot: CGFloat = 38
     static let button: CGFloat = 44
     private static let inset = Space.x2
+    private static let moveGrip: CGFloat = 30
     private static let rule: CGFloat = 17
     private static let margin = Space.x4
     private static let fade: CGFloat = 20
@@ -61,7 +62,7 @@ struct ToolTray: View {
     /// The eraser, the lasso and the customise menu always show. Shortcuts give way, the last first, until three pens fit.
     static func plan(pens: Int, extras: Int, room: CGFloat) -> Plan {
         let need: CGFloat = CGFloat(pens + (pens < ToolShelf.limit ? 1 : 0)) * slot
-        let fixed: CGFloat = button * 3 + rule * 2 + inset * 2
+        let fixed: CGFloat = button * 3 + moveGrip + rule * 2 + inset * 2
         let space: CGFloat = room - margin * 2 - fixed
         var shown = extras
         while shown > 0, space - CGFloat(shown) * button < min(need, slot * 3) { shown -= 1 }
