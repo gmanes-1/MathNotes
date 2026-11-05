@@ -1117,7 +1117,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         document.canvasDidChangeInk(id, to: canvas.drawing)
         mirrorInk(from: canvas, pageID: id)
         if canvas !== zoomCanvas, !toolbox.typesHandwriting, let pen = toolbox.pen, pen.pressureSensitive == true,
-           let drawn = canvas.drawing.strokes.last, before.map({ canvas.drawing.strokes.count == $0.strokes.count + 1 }) == true {
+           let activeTool = canvas.tool as? PKInkingTool, activeTool.inkType == .pen,
+           let drawn = canvas.drawing.strokes.last {
             schedulePressureFineliner(drawn, on: canvas, pageID: id, baseWidth: CGFloat(pen.width))
         }
         let typing = noteWriting(on: canvas, pageID: id, before: before)
