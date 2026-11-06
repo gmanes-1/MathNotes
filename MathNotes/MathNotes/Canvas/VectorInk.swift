@@ -67,7 +67,7 @@ enum VectorInkRenderer {
         context.saveGState()
         context.setShouldAntialias(true)
         context.setAllowsAntialiasing(true)
-        context.setInterpolationQuality(.high)
+        context.interpolationQuality = .high
         for stroke in strokes where !stroke.points.isEmpty {
             let color = makeColor(stroke.color)
             let isHighlighter = stroke.kind == .highlighter
