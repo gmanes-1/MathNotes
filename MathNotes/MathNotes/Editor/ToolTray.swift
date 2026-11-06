@@ -477,7 +477,7 @@ private struct PenOptions: View {
             WidthBar(measure: .opacity, travel: Binding(get: { (pen.opacity - faintest) / (1 - faintest) }, set: { travel in
                 toolbox.changePen(id) { $0.opacity = ((faintest + (1 - faintest) * travel) * 20).rounded() / 20 }
             }), ink: solid, paper: paper, night: night, turned: turned, value: pen.opacityName, identifier: "editor.tools.pen.opacity")
-            if ink == .monoline {
+            if ink == .monoline || ink == .marker {
                 Toggle("Pressure", isOn: Binding(get: { pen.pressureSensitive == true }, set: { enabled in
                     toolbox.changePen(id) { $0.pressureSensitive = enabled }
                 }))

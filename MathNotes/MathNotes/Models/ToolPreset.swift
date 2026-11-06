@@ -10,7 +10,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// Red, green, blue and alpha, a byte each, as the ink is on light paper.
     var color: UInt32
     var width: Double
-    /// Fineliner can optionally use pressure-sensitive pen rendering; nil keeps older saved presets off.
+    /// Pen and Highlighter can optionally use custom vector pressure rendering; nil keeps older saved presets off.
     var pressureSensitive: Bool? = nil
 
     init(id: UUID = UUID(), ink: PKInkingTool.InkType, color: UInt32, width: Double) {
@@ -86,15 +86,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Do not clamp to validWidthRange: the app's fine presets intentionally go below
-        // PencilKit's standard picker minimum, and PKInkingTool accepts an explicit width.
-        let pressureMode = inkType == .monoline && pressureSensitive == true
-        let renderedInk: PKInkingTool.InkType = pressureMode ? .pen : inkType
-        // Keep the stroke native to PencilKit so it remains visible after the Pencil lifts.
-        // The selected Fineliner width is the pressure pen's base width; PencilKit varies it with Pencil force.
-        let renderedWidth = pressureMode ? CGFloat(width)
-                                         : CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        return PKInkingTool(renderedInk, color: uiColor, width: renderedWidth)
+        // Pen and Highlighter are captured by VectorInkInputView; PencilKit remains the renderer
+        // for every other ink kind. Never substitute PencilKit's pressure pen here.
+        let renderedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
+        return PKInkingTool(inkType, color: uiColor, width: renderedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
@@ -116,7 +111,6 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     static func name(of ink: PKInkingTool.InkType) -> String {
         switch ink {
-        case .pen: String(localized: "Pen")
         case .pencil: String(localized: "Pencil")
         case .marker: String(localized: "Highlighter")
         case .monoline, .pen: String(localized: "Pen")
@@ -129,7 +123,6 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     static func symbol(of ink: PKInkingTool.InkType) -> String {
         switch ink {
-        case .pen: "pencil.tip"
         case .pencil: "pencil"
         case .marker: "highlighter"
         case .monoline, .pen: "pencil.tip"

@@ -176,6 +176,10 @@ enum PageRenderer {
                 context.fill(CGRect(origin: .zero, size: size))
             }
             inkImage?.draw(in: CGRect(origin: .zero, size: size))
+            context.cgContext.saveGState()
+            context.cgContext.scaleBy(x: factor, y: factor)
+            VectorInkRenderer.draw(page.vectorInkStrokes, in: context.cgContext)
+            context.cgContext.restoreGState()
             if includeBackground { drawOverInk(page, assets: assets, in: context.cgContext, size: size, lifted: lifted) }
         }
     }

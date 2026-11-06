@@ -51,7 +51,7 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "off keeps the current uniform Fineliner")
         fineliner.pressureSensitive = true
         let pressureTool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(pressureTool.inkType, .pen, "on uses PencilKit's pressure-sensitive pen rendering")
+        XCTAssertEqual(pressureTool.inkType, .monoline, "pressure is rendered by the custom vector input layer")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
         XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.001, "pressure mode uses the selected Fineliner width as its native pressure base")
         fineliner.width = 0.3
@@ -60,7 +60,7 @@ final class ToolPresetTests: XCTestCase {
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)
-        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .pen)
+        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .monoline)
 
         let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":0.6}"#.data(using: .utf8)!
         let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
@@ -390,5 +390,31 @@ final class ToolPresetTests: XCTestCase {
         let manifest = NotebookManifest(title: "Tools", defaults: defaults, pages: [defaults.newPage()])
         let package = NotebookPackage(root: root, id: manifest.id)
         return NotebookDocument(package: package, load: ManifestLoad(manifest: manifest))
+    }
+}
+
+
+final class VectorInkPersistenceTests: XCTestCase {
+    func testVectorStrokeSamplesSurviveEncodingAndChangeThePageAppearanceKey() throws {
+        let stroke = VectorInkStroke(
+            kind: .pen, color: 0x2747_B8FF, width: 0.3, pressureSensitive: true,
+            points: [
+                VectorInkPoint(x: 12.5, y: 20.25, force: 0.4, time: 0),
+                VectorInkPoint(x: 18.0, y: 24.0, force: 0.7, time: 0.08),
+                VectorInkPoint(x: 25.0, y: 28.5, force: 0.6, time: 0.16)
+            ]
+        )
+        let encoded = try XCTUnwrap(VectorInkStroke.encode([stroke]))
+        XCTAssertEqual(VectorInkStroke.decode(encoded), [stroke])
+
+        var page = NotebookPage.template(.blank, color: .white, size: .letter)
+        let originalAppearance = page.appearanceKey
+        page.vectorInkStrokes = [stroke]
+        XCTAssertEqual(page.vectorInkStrokes, [stroke])
+        XCTAssertNotEqual(page.appearanceKey, originalAppearance)
+
+        page.vectorInkStrokes = []
+        XCTAssertTrue(page.vectorInkStrokes.isEmpty)
+        XCTAssertEqual(page.appearanceKey, originalAppearance)
     }
 }

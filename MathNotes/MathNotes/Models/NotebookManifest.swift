@@ -76,8 +76,9 @@ struct NotebookPage: Sendable, Hashable, Identifiable {
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         let dayKey = day.map { "|d:\($0)" } ?? ""
         let itemsKey = extra["items"].flatMap { try? $0.serialized(pretty: false) }.map { "|i:" + String(decoding: $0, as: UTF8.self) } ?? ""
+        let vectorInkKey = extra["vectorInk"].flatMap { try? $0.serialized(pretty: false) }.map { "|v:" + String(decoding: $0, as: UTF8.self) } ?? ""
         let rulingKey = extra["ruling"].flatMap { try? $0.serialized(pretty: false) }.map { "|r:" + String(decoding: $0, as: UTF8.self) } ?? ""
-        for byte in "\(backgroundKey)|\(paperColorRaw)|\(Int(size.width))x\(Int(size.height))\(dayKey)\(itemsKey)\(rulingKey)".utf8 {
+        for byte in "\(backgroundKey)|\(paperColorRaw)|\(Int(size.width))x\(Int(size.height))\(dayKey)\(itemsKey)\(rulingKey)\(vectorInkKey)".utf8 {
             hash = (hash ^ UInt64(byte)) &* 0x0100_0000_01b3
         }
         return String(hash, radix: 16).prefix(8).description
