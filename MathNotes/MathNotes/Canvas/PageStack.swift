@@ -1050,8 +1050,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             }
             self.document.canvasDidCommitVectorInk(pageID)
             if canvas.pageID == pageID, let updated = self.document.pages.first(where: { $0.id == pageID }) {
-                overlay.configure(canvas: canvas, pageID: updated.id, pageSize: updated.size,
-                                  strokes: updated.vectorInkStrokes, preset: self.vectorInkPreset,
+                overlay.configure(canvas: canvas, canvasIsLoaded: canvas.isLoaded, pageID: updated.id, pageSize: updated.size,
+                                  strokes: updated.vectorInkStrokes,
+                                  preset: self.vectorInkPreset.map { VectorInkTool(color: $0.color, width: $0.width, pressureSensitive: $0.pressureSensitive == true, isHighlighter: $0.inkType == .marker) },
                                   acceptsFinger: self.effectivePolicy == .anyInput)
             }
         }
