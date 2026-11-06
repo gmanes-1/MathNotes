@@ -8,7 +8,7 @@ struct VectorInkPoint: Codable, Hashable, Sendable {
     var force: Double
     var time: Double
 
-    var location: CGPoint { CGPoint(x: x, y: y) }
+    var location: CGPoint { CGPoint(x: CGFloat(x), y: CGFloat(y)) }
 }
 
 /// The unified Pen and Highlighter use this format instead of PKStroke/PKDrawing.
@@ -278,7 +278,7 @@ final class VectorInkInputView: UIView {
             let rawForce = sample.maximumPossibleForce > 0 ? sample.force / sample.maximumPossibleForce : 0.5
             let force = min(max(Double(rawForce), 0.08), 1)
             let elapsed = max(0, sample.timestamp - startedAt)
-            let next = VectorInkPoint(x: point.x, y: point.y, force: force, time: elapsed)
+            let next = VectorInkPoint(x: Double(point.x), y: Double(point.y), force: force, time: elapsed)
             if let last = inProgress.last, hypot(last.x - next.x, last.y - next.y) < 0.08 { continue }
             inProgress.append(next)
         }
