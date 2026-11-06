@@ -167,7 +167,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
         let range = widthRange(of: ink)
         if ink == .monoline {
-            return [0.3, 0.4, 0.6, 1.0, 1.5, 2.5, 4.0, range.upperBound]
+            return [0.1, 0.2, 0.3, 0.6, 1.0, 1.5, 2.5, range.upperBound]
         }
         if ink == .pen {
             return [0.9, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, range.upperBound]
@@ -220,8 +220,8 @@ final class ToolShelf {
     static let limit = 8
 
     /// A new shelf starts with the app's own inks.
-    static let starters = [ToolPreset(ink: .pen, color: 0x1B22_30FF, width: 2.7), ToolPreset(ink: .pen, color: 0x2747_B8FF, width: 2.7),
-                           ToolPreset(ink: .pen, color: 0xC945_2FFF, width: 2.7), ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20)]
+    static let starters = [ToolPreset(ink: .monoline, color: 0x1B22_30FF, width: 2.7), ToolPreset(ink: .monoline, color: 0x2747_B8FF, width: 2.7),
+                           ToolPreset(ink: .monoline, color: 0xC945_2FFF, width: 2.7), ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20)]
 
     private(set) var presets: [ToolPreset]
     @ObservationIgnored private let defaults: UserDefaults?

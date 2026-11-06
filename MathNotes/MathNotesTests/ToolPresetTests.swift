@@ -208,6 +208,7 @@ final class ToolPresetTests: XCTestCase {
         let shelf = ToolShelf(defaults: defaults)
         XCTAssertEqual(shelf.presets.count, 2)
         XCTAssertEqual(shelf.usable.count, 1)
+        XCTAssertEqual(shelf.usable.first?.inkType, .monoline, "a saved regular Pen becomes the unified Pen")
         shelf.add(ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20))
         XCTAssertEqual(ToolShelf(defaults: defaults).presets.first?.ink, "com.apple.ink.future", "saving again doesn't drop it")
     }
