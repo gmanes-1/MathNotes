@@ -361,6 +361,29 @@ final class ToolPresetTests: XCTestCase {
         }
     }
 
+    func testPressureInkTurnsRecordedForceIntoVisibleVariableWidth() {
+        let date = Date()
+        let points = [CGFloat(0.1), 0.25, 0.5, 0.75, 1.0].enumerated().map { index, force in
+            PKStrokePoint(location: CGPoint(x: index * 10, y: 20), timeOffset: Double(index) * 0.01,
+                          size: CGSize(width: 1, height: 1), opacity: 1, force: force,
+                          azimuth: 0, altitude: .pi / 2)
+        }
+        let path = PKStrokePath(controlPoints: points, creationDate: date)
+        let stroke = PKStroke(ink: PKInk(.pen, color: .black), path: path)
+        let pressure = PressureInk.varying(stroke, baseWidth: 1)
+        let widths = pressure.path.map(\\.size.width)
+        XCTAssertEqual(widths.count, points.count)
+        XCTAssertLessThan(widths.first ?? 1, widths.last ?? 0)
+        XCTAssertEqual(widths.first ?? 0, 0.45, accuracy: 0.01)
+        XCTAssertEqual(widths.last ?? 0, 1.8, accuracy: 0.01)
+        XCTAssertTrue(zip(widths, widths.dropFirst()).allSatisfy { $0 <= $1 })
+
+        let constant = PKStroke(ink: stroke.ink,
+                                path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
+        XCTAssertEqual(PressureInk.varying(constant, baseWidth: 1).path.map(\\.size.width),
+                       constant.path.map(\\.size.width), "constant force does not invent pressure variation")
+    }
+
     private func makeDocument() throws -> NotebookDocument {
         let root = StorageRoot(url: FileManager.default.temporaryDirectory.appending(path: "tool-tests-\(UUID().uuidString)", directoryHint: .isDirectory))
         let defaults = PageDefaults(template: .blank, paperColor: .white, pageSize: .letter)
