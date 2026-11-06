@@ -1282,7 +1282,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
               let drawn = canvas.drawing.strokes.last else { return }
 
         let pressureStroke = PressureInk.varying(drawn, baseWidth: tool.width)
-        guard pressureStroke.path.map(\\.size.width) != drawn.path.map(\\.size.width) else { return }
+        guard pressureStroke.path.map(\.size.width) != drawn.path.map(\\.size.width) else { return }
 
         var strokes = canvas.drawing.strokes
         strokes[strokes.count - 1] = pressureStroke
