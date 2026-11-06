@@ -1034,7 +1034,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                                  overlay: VectorInkInputView) {
         guard !document.isReadOnly, !isLocked,
               let page = document.pages.first(where: { $0.id == pageID }) else { return }
-        let points = stroke.points.map(\\.location)
+        let points = stroke.points.map(\.location)
         if canvas === zoomCanvas, let window = zoomWindow,
            window.reachesAdvanceBand(ShapeRecognizer.bounds(of: points)) {
             zoomReachedBand = true
