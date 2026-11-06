@@ -54,7 +54,7 @@ struct VectorInkTool: Sendable {
 }
 
 enum VectorInkRenderer {
-    private static func color(_ value: UInt32) -> UIColor {
+    private static func makeColor(_ value: UInt32) -> UIColor {
         UIColor(red: CGFloat(value >> 24 & 0xFF) / 255,
                 green: CGFloat(value >> 16 & 0xFF) / 255,
                 blue: CGFloat(value >> 8 & 0xFF) / 255,
@@ -66,7 +66,7 @@ enum VectorInkRenderer {
         guard !strokes.isEmpty else { return }
         context.saveGState()
         for stroke in strokes where !stroke.points.isEmpty {
-            let color = color(stroke.color)
+            let color = makeColor(stroke.color)
             let isHighlighter = stroke.kind == .highlighter
             context.setBlendMode(isHighlighter ? .multiply : .normal)
             context.setFillColor(color.withAlphaComponent(color.cgColor.alpha * (isHighlighter ? 0.36 : 1)).cgColor)
