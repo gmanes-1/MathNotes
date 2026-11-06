@@ -44,21 +44,29 @@ struct VectorInkStroke: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-extension NotebookPage {
-    var vectorInkStrokes: [VectorInkStroke] {
-        get { VectorInkStroke.decode(extra["vectorInk"]?.stringValue) }
-        set { extra["vectorInk"] = VectorInkStroke.encode(newValue).map(JSONValue.string) }
-    }
-}
 
 /// Vector geometry is shared by the live canvas, thumbnails, image export and PDF export.
+struct VectorInkTool: Sendable {
+    var color: UInt32
+    var width: Double
+    var pressureSensitive: Bool
+    var isHighlighter: Bool
+}
+
 enum VectorInkRenderer {
+    private static func color(_ value: UInt32) -> UIColor {
+        UIColor(red: CGFloat(value >> 24 & 0xFF) / 255,
+                green: CGFloat(value >> 16 & 0xFF) / 255,
+                blue: CGFloat(value >> 8 & 0xFF) / 255,
+                alpha: CGFloat(value & 0xFF) / 255)
+    }
+
     static func draw(_ strokes: [VectorInkStroke], in context: CGContext, scale: CGFloat = 1,
                      offset: CGPoint = .zero) {
         guard !strokes.isEmpty else { return }
         context.saveGState()
         for stroke in strokes where !stroke.points.isEmpty {
-            let color = ToolPreset.uiColor(stroke.color)
+            let color = color(stroke.color)
             let isHighlighter = stroke.kind == .highlighter
             context.setBlendMode(isHighlighter ? .multiply : .normal)
             context.setFillColor(color.withAlphaComponent(color.cgColor.alpha * (isHighlighter ? 0.36 : 1)).cgColor)
@@ -149,14 +157,14 @@ enum VectorInkRenderer {
 /// Captures coalesced UIKit Pencil samples and paints the same page-space vector path that is saved.
 @MainActor
 final class VectorInkInputView: UIView {
-    weak var canvas: PageCanvasView?
+    weak var canvas: UIScrollView?
     var onCommit: ((VectorInkStroke) -> Void)?
     private(set) var strokes: [VectorInkStroke] = []
-    private var preset: ToolPreset?
+    private var preset: VectorInkTool?
     private var pageID: UUID?
     private var pageSize = CGSize.zero
     private var inProgress: [VectorInkPoint] = []
-    private var activePreset: ToolPreset?
+    private var activePreset: VectorInkTool?
     private var activeCommit: ((VectorInkStroke) -> Void)?
     private var pendingStroke: VectorInkStroke?
     private var startedAt: TimeInterval = 0
@@ -174,8 +182,8 @@ final class VectorInkInputView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(canvas: PageCanvasView, pageID: UUID, pageSize: CGSize,
-                   strokes: [VectorInkStroke], preset: ToolPreset?, acceptsFinger: Bool) {
+    func configure(canvas: UIScrollView, canvasIsLoaded: Bool, pageID: UUID, pageSize: CGSize,
+                   strokes: [VectorInkStroke], preset: VectorInkTool?, acceptsFinger: Bool) {
         self.canvas = canvas
         self.pageID = pageID
         self.pageSize = pageSize
@@ -183,7 +191,7 @@ final class VectorInkInputView: UIView {
         pendingStroke = nil
         self.preset = preset
         self.acceptsFinger = acceptsFinger
-        isUserInteractionEnabled = preset != nil && canvas.isLoaded
+        isUserInteractionEnabled = preset != nil && canvasIsLoaded
         setNeedsDisplay()
     }
 
@@ -203,9 +211,9 @@ final class VectorInkInputView: UIView {
         guard let context = UIGraphicsGetCurrentContext(), let canvas else { return }
         VectorInkRenderer.draw(strokes + (pendingStroke.map { [$0] } ?? []), in: context, scale: canvas.zoomScale, offset: canvas.contentOffset)
         if let preset, !inProgress.isEmpty {
-            let kind: VectorInkStroke.Kind = preset.inkType == .marker ? .highlighter : .pen
+            let kind: VectorInkStroke.Kind = preset.isHighlighter ? .highlighter : .pen
             let live = VectorInkStroke(kind: kind, color: preset.color, width: preset.width,
-                                       pressureSensitive: preset.pressureSensitive == true, points: inProgress)
+                                       pressureSensitive: preset.pressureSensitive, points: inProgress)
             VectorInkRenderer.draw([live], in: context, scale: canvas.zoomScale, offset: canvas.contentOffset)
         }
     }
@@ -236,9 +244,9 @@ final class VectorInkInputView: UIView {
             setNeedsDisplay()
         }
         guard let preset = activePreset, pageID != nil else { return }
-        let kind: VectorInkStroke.Kind = preset.inkType == .marker ? .highlighter : .pen
+        let kind: VectorInkStroke.Kind = preset.isHighlighter ? .highlighter : .pen
         let stroke = VectorInkStroke(kind: kind, color: preset.color, width: preset.width,
-                                     pressureSensitive: preset.pressureSensitive == true, points: inProgress)
+                                     pressureSensitive: preset.pressureSensitive, points: inProgress)
         if !stroke.points.isEmpty {
             strokes.append(stroke)
             activeCommit?(stroke)
@@ -256,9 +264,9 @@ final class VectorInkInputView: UIView {
               let preset = activePreset, pageID != nil else { return }
         append(touch, event: event)
         guard !inProgress.isEmpty else { return }
-        let kind: VectorInkStroke.Kind = preset.inkType == .marker ? .highlighter : .pen
+        let kind: VectorInkStroke.Kind = preset.isHighlighter ? .highlighter : .pen
         let stroke = VectorInkStroke(kind: kind, color: preset.color, width: preset.width,
-                                     pressureSensitive: preset.pressureSensitive == true, points: inProgress)
+                                     pressureSensitive: preset.pressureSensitive, points: inProgress)
         strokes.append(stroke)
         activeCommit?(stroke)
     }

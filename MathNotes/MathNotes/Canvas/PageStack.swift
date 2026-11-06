@@ -1006,8 +1006,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             guard let self, let slot, let overlay else { return }
             self.commitVectorInk(stroke, pageID: slot.page.id, canvas: canvas, overlay: overlay)
         }
-        overlay.configure(canvas: canvas, pageID: slot.page.id, pageSize: slot.page.size,
-                          strokes: slot.page.vectorInkStrokes, preset: vectorInkPreset,
+        overlay.configure(canvas: canvas, canvasIsLoaded: canvas.isLoaded, pageID: slot.page.id, pageSize: slot.page.size,
+                          strokes: slot.page.vectorInkStrokes,
+                          preset: vectorInkPreset.map { VectorInkTool(color: $0.color, width: $0.width, pressureSensitive: $0.pressureSensitive == true, isHighlighter: $0.inkType == .marker) },
                           acceptsFinger: effectivePolicy == .anyInput)
     }
 
@@ -1023,8 +1024,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             self.commitVectorInk(stroke, pageID: page.id, canvas: canvas, overlay: overlay)
         }
         let isCurrentPage = canvas.pageID == page.id && canvas.isLoaded
-        overlay.configure(canvas: canvas, pageID: page.id, pageSize: page.size,
-                          strokes: isCurrentPage ? page.vectorInkStrokes : [], preset: isCurrentPage ? vectorInkPreset : nil,
+        overlay.configure(canvas: canvas, canvasIsLoaded: isCurrentPage, pageID: page.id, pageSize: page.size,
+                          strokes: isCurrentPage ? page.vectorInkStrokes : [],
+                          preset: isCurrentPage ? vectorInkPreset.map { VectorInkTool(color: $0.color, width: $0.width, pressureSensitive: $0.pressureSensitive == true, isHighlighter: $0.inkType == .marker) } : nil,
                           acceptsFinger: effectivePolicy == .anyInput)
     }
 

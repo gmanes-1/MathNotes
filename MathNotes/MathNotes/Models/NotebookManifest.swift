@@ -249,3 +249,10 @@ struct NotebookManifest: Sendable, Hashable {
     /// Newer schema versions open read-only so an older build never rewrites data it doesn't understand.
     var isNewerThanSupported: Bool { schemaVersion > Self.currentSchemaVersion }
 }
+
+extension NotebookPage {
+    var vectorInkStrokes: [VectorInkStroke] {
+        get { VectorInkStroke.decode(extra["vectorInk"]?.stringValue) }
+        set { extra["vectorInk"] = VectorInkStroke.encode(newValue).map(JSONValue.string) }
+    }
+}
