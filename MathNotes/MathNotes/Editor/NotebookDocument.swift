@@ -491,6 +491,13 @@ final class NotebookDocument {
         registerPageRestore(before, actionName: actionName)
     }
 
+    /// A custom vector stroke is kept in the page manifest rather than PKDrawing, but it still counts as writing
+    /// on the last page and should leave the notebook with its usual blank page after it.
+    func canvasDidCommitVectorInk(_ pageID: UUID) {
+        guard !isReadOnly else { return }
+        Task { @MainActor [weak self] in self?.keepBlankPageAtEnd(after: pageID, wrote: true) }
+    }
+
     private func registerPageRestore(_ page: NotebookPage, actionName: String) {
         undoManager.registerUndo(withTarget: self) { document in
             guard let index = document.index(of: page.id) else {

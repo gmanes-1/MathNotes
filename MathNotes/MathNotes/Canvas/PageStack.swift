@@ -1022,8 +1022,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             guard let self, let overlay else { return }
             self.commitVectorInk(stroke, pageID: page.id, canvas: canvas, overlay: overlay)
         }
+        let isCurrentPage = canvas.pageID == page.id && canvas.isLoaded
         overlay.configure(canvas: canvas, pageID: page.id, pageSize: page.size,
-                          strokes: page.vectorInkStrokes, preset: canvas.pageID == page.id && canvas.isLoaded ? vectorInkPreset : nil,
+                          strokes: isCurrentPage ? page.vectorInkStrokes : [], preset: isCurrentPage ? vectorInkPreset : nil,
                           acceptsFinger: effectivePolicy == .anyInput)
     }
 
@@ -1045,6 +1046,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             self.document.updatePage(pageID, actionName: String(localized: "Ink")) {
                 $0.vectorInkStrokes.append(stroke)
             }
+            self.document.canvasDidCommitVectorInk(pageID)
             if canvas.pageID == pageID, let updated = self.document.pages.first(where: { $0.id == pageID }) {
                 overlay.configure(canvas: canvas, pageID: updated.id, pageSize: updated.size,
                                   strokes: updated.vectorInkStrokes, preset: self.vectorInkPreset,

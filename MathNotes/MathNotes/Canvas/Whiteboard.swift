@@ -19,6 +19,13 @@ enum Whiteboard {
     /// Round everything written or placed on the board, or nil while it is empty.
     static func contentBounds(of page: NotebookPage, ink: PKDrawing) -> CGRect? {
         var bounds = ink.strokes.isEmpty ? CGRect.null : ink.bounds
+        for stroke in page.vectorInkStrokes where !stroke.points.isEmpty {
+            let radius = CGFloat(stroke.width) * 0.56
+            for point in stroke.points {
+                let x = CGFloat(point.x), y = CGFloat(point.y)
+                bounds = bounds.union(CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+            }
+        }
         if page.hasItems {
             for item in page.items where item.content != .unknown { bounds = bounds.union(item.boundingBox) }
         }
