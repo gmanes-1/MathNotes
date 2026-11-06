@@ -65,6 +65,9 @@ enum VectorInkRenderer {
                      offset: CGPoint = .zero) {
         guard !strokes.isEmpty else { return }
         context.saveGState()
+        context.setShouldAntialias(true)
+        context.setAllowsAntialiasing(true)
+        context.setInterpolationQuality(.high)
         for stroke in strokes where !stroke.points.isEmpty {
             let color = makeColor(stroke.color)
             let isHighlighter = stroke.kind == .highlighter
@@ -87,8 +90,8 @@ enum VectorInkRenderer {
                 let p1 = points[index]
                 let p2 = points[index + 1]
                 let p3 = points[min(points.count - 1, index + 2)]
-                for step in 0..<4 {
-                    let t = CGFloat(step) / 4
+                for step in 0..<12 {
+                    let t = CGFloat(step) / 12
                     let t2 = t * t, t3 = t2 * t
                     func curve(_ a: Double, _ b: Double, _ c: Double, _ d: Double) -> CGFloat {
                         CGFloat(0.5 * ((2 * b) + (-a + c) * Double(t) +
@@ -108,7 +111,7 @@ enum VectorInkRenderer {
                     let tangentY = derivative(p0.y, p1.y, p2.y, p3.y) * scale
                     let length = max(hypot(tangentX, tangentY), 0.001)
                     let normal = CGPoint(x: -tangentY / length, y: tangentX / length)
-                    let radius = CGFloat(stroke.width * (stroke.pressureSensitive ? 0.88 + 0.24 * force : 1)) * scale / 2
+                    let radius = CGFloat(stroke.width * pressureScale(force, enabled: stroke.pressureSensitive)) * scale / 2
                     left.append(CGPoint(x: center.x + normal.x * radius, y: center.y + normal.y * radius))
                     right.append(CGPoint(x: center.x - normal.x * radius, y: center.y - normal.y * radius))
                 }
@@ -147,10 +150,16 @@ enum VectorInkRenderer {
         CGPoint(x: CGFloat(point.x) * scale - offset.x, y: CGFloat(point.y) * scale - offset.y)
     }
 
-    /// A deliberately restrained pressure curve: force changes the stroke, but never collapses it to zero.
+    /// A smooth, visible pressure response with a stable minimum width.
+    /// The previous ±12% range was too small to perceive in normal handwriting.
+    private static func pressureScale(_ force: Double, enabled: Bool) -> Double {
+        guard enabled else { return 1 }
+        let normalized = min(max(force, 0), 1)
+        return 0.65 + 0.70 * normalized
+    }
+
     private static func diameter(_ stroke: VectorInkStroke, at point: VectorInkPoint) -> CGFloat {
-        let pressure = stroke.pressureSensitive ? min(max(point.force, 0), 1) : 0.5
-        return CGFloat(stroke.width * (0.88 + 0.24 * pressure))
+        CGFloat(stroke.width * pressureScale(point.force, enabled: stroke.pressureSensitive))
     }
 }
 
