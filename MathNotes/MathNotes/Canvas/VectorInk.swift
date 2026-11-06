@@ -178,6 +178,7 @@ final class VectorInkInputView: UIView {
     private var pendingStroke: VectorInkStroke?
     private var startedAt: TimeInterval = 0
     private var acceptsFinger = false
+    private var estimatedForceIndices: [NSNumber: Int] = [:]
     var canDraw: (() -> Bool)?
 
     override init(frame: CGRect) {
@@ -190,6 +191,23 @@ final class VectorInkInputView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    /// The overlay is a raster-backed UIView inside the zooming page hierarchy.
+    /// Increase its backing resolution as its ancestors magnify it so ink edges
+    /// don't become enlarged screen-resolution pixels while zooming.
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard let window else { return }
+        let boundsInWindow = convert(bounds, to: window)
+        let viewScale = max(boundsInWindow.width / max(bounds.width, 1),
+                            boundsInWindow.height / max(bounds.height, 1))
+        let targetScale = window.screen.scale * min(max(viewScale, 1), 2)
+        if abs(contentScaleFactor - targetScale) > 0.05 {
+            contentScaleFactor = targetScale
+            layer.contentsScale = targetScale
+            setNeedsDisplay()
+        }
+    }
 
     func configure(canvas: UIScrollView, canvasIsLoaded: Bool, pageID: UUID, pageSize: CGSize,
                    strokes: [VectorInkStroke], preset: VectorInkTool?, acceptsFinger: Bool) {
@@ -230,6 +248,7 @@ final class VectorInkInputView: UIView {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard inProgress.isEmpty, canDraw?() ?? true, let touch = touches.first, accepts(touch) else { return }
         startedAt = touch.timestamp
+        estimatedForceIndices.removeAll(keepingCapacity: true)
         activePreset = preset
         activeCommit = onCommit
         inProgress.removeAll(keepingCapacity: true)
@@ -248,6 +267,7 @@ final class VectorInkInputView: UIView {
         append(touch, event: event)
         defer {
             inProgress.removeAll(keepingCapacity: true)
+            estimatedForceIndices.removeAll(keepingCapacity: true)
             activePreset = nil
             activeCommit = nil
             setNeedsDisplay()
@@ -297,8 +317,29 @@ final class VectorInkInputView: UIView {
             let elapsed = max(0, sample.timestamp - startedAt)
             let next = VectorInkPoint(x: Double(point.x), y: Double(point.y), force: force, time: elapsed)
             if let last = inProgress.last, hypot(last.x - next.x, last.y - next.y) < 0.08 { continue }
+            let sampleIndex = inProgress.count
             inProgress.append(next)
+            if sample.estimatedPropertiesExpectingUpdates.contains(.force),
+               let updateIndex = sample.estimationUpdateIndex {
+                estimatedForceIndices[updateIndex] = sampleIndex
+            }
         }
+    }
+
+    override func touchesEstimatedPropertiesUpdated(_ touches: Set<UITouch>) {
+        var changed = false
+        for touch in touches {
+            guard let updateIndex = touch.estimationUpdateIndex,
+                  let sampleIndex = estimatedForceIndices[updateIndex],
+                  inProgress.indices.contains(sampleIndex),
+                  !touch.estimatedPropertiesExpectingUpdates.contains(.force) else { continue }
+            let normalized = touch.maximumPossibleForce > 0
+                ? touch.force / touch.maximumPossibleForce : 0.5
+            inProgress[sampleIndex].force = min(max(Double(normalized), 0.08), 1)
+            estimatedForceIndices.removeValue(forKey: updateIndex)
+            changed = true
+        }
+        if changed { setNeedsDisplay() }
     }
 }
 
