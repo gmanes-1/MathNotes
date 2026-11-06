@@ -292,3 +292,10 @@ final class VectorInkInputView: UIView {
         }
     }
 }
+
+extension NotebookPage {
+    var vectorInkStrokes: [VectorInkStroke] {
+        get { VectorInkStroke.decode(extra["vectorInk"]?.stringValue) }
+        set { extra["vectorInk"] = VectorInkStroke.encode(newValue).map(JSONValue.string) }
+    }
+}
