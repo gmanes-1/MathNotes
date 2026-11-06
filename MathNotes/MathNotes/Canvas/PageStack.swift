@@ -1111,10 +1111,14 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             // PencilKit exposes Pencil force on each path point. Turn that signal into a
             // deliberate variable-width stroke before it is committed to the notebook.
             let pressureStroke = PressureInk.varying(drawn, baseWidth: tool.width)
-            if pressureStroke.path != drawn.path {
+            let originalWidths = drawn.path.map(\.size.width)
+            let pressureWidths = pressureStroke.path.map(\.size.width)
+            if originalWidths != pressureWidths {
                 var strokes = canvas.drawing.strokes
                 strokes[strokes.count - 1] = pressureStroke
+                isApplyingDrawing = true
                 canvas.drawing = PKDrawing(strokes: strokes)
+                isApplyingDrawing = false
             }
         } else if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
                   let drawn = canvas.drawing.strokes.last,

@@ -376,7 +376,7 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertLessThan(widths.first ?? 1, widths.last ?? 0)
         XCTAssertEqual(widths.first ?? 0, 0.45, accuracy: 0.01)
         XCTAssertEqual(widths.last ?? 0, 1.8, accuracy: 0.01)
-        XCTAssertTrue(zip(widths, widths.dropFirst()).allSatisfy { $0 <= $1 })
+        XCTAssertTrue(zip(widths, widths.dropFirst()).allSatisfy { pair in pair.0 <= pair.1 })
 
         let constant = PKStroke(ink: stroke.ink,
                                 path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
