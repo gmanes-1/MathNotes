@@ -15,7 +15,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     init(id: UUID = UUID(), ink: PKInkingTool.InkType, color: UInt32, width: Double) {
         self.id = id
-        self.ink = ink.rawValue
+        self.ink = (ink == .pen ? .monoline : ink).rawValue
         self.color = color
         self.width = width
     }
@@ -71,9 +71,9 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         let valid = ink.validWidthRange
         // These are app-authored widths, not PencilKit's picker limits. Keep the requested fine
         // values available even when PencilKit reports a higher minimum for its standard picker.
-        let minimum: Double = ink == .monoline ? 0.3 : ink == .pen ? 0.9 : Double(valid.lowerBound)
+        let minimum: Double = (ink == .monoline || ink == .pen) ? 0.1 : Double(valid.lowerBound)
         // The unified Precision Pen spans the fine Fineliner end through the former regular-Pen range.
-        let maximum = ink == .monoline ? max(Double(valid.upperBound), Double(PKInkingTool.InkType.pen.validWidthRange.upperBound)) : Double(valid.upperBound)
+        let maximum = (ink == .monoline || ink == .pen) ? max(Double(valid.upperBound), Double(PKInkingTool.InkType.pen.validWidthRange.upperBound)) : Double(valid.upperBound)
         return minimum...maximum
     }
 
@@ -119,7 +119,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: String(localized: "Pen")
         case .pencil: String(localized: "Pencil")
         case .marker: String(localized: "Highlighter")
-        case .monoline: String(localized: "Precision Pen")
+        case .monoline, .pen: String(localized: "Pen")
         case .fountainPen: String(localized: "Fountain Pen")
         case .watercolor: String(localized: "Watercolour")
         case .crayon: String(localized: "Crayon")
@@ -132,7 +132,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: "pencil.tip"
         case .pencil: "pencil"
         case .marker: "highlighter"
-        case .monoline: "pencil.line"
+        case .monoline, .pen: "pencil.tip"
         case .watercolor: "paintbrush"
         case .crayon: "scribble"
         default: "paintbrush.pointed"
@@ -141,7 +141,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     /// The kinds of ink a pen can be given, in the order they are offered.
     static var kinds: [PKInkingTool.InkType] {
-        var kinds: [PKInkingTool.InkType] = [.pen, .monoline, .fountainPen, .pencil, .marker, .crayon, .watercolor]
+        var kinds: [PKInkingTool.InkType] = [.monoline, .fountainPen, .pencil, .marker, .crayon, .watercolor]
         if #available(iOS 26, *) { kinds.insert(.reed, at: 3) }
         return kinds
     }
@@ -234,11 +234,12 @@ final class ToolShelf {
         #endif
         self.defaults = store
         var loaded = store?.data(forKey: SettingsKey.toolPresets).flatMap { try? JSONDecoder().decode([ToolPreset].self, from: $0) } ?? Self.starters
-        // PencilKit renders sub-0.9 pt pen widths indistinguishably from its minimum.
-        // Normalize older saved presets so the displayed choice matches the tool actually used.
+        // Fold legacy regular-Pen presets into the single unified Pen/Fineliner tool.
+        // Keep IDs, colours, widths and order so saved tray choices continue to resolve.
         let original = loaded
         for index in loaded.indices where loaded[index].inkType == .pen {
-            loaded[index].width = ToolPreset.clamped(loaded[index].width, to: ToolPreset.widthRange(of: .pen))
+            loaded[index].ink = PKInkingTool.InkType.monoline.rawValue
+            loaded[index].width = ToolPreset.clamped(loaded[index].width, to: ToolPreset.widthRange(of: .monoline))
         }
         presets = loaded
         if store != nil, loaded != original { save() }

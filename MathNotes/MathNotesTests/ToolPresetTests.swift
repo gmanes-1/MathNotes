@@ -69,8 +69,8 @@ final class ToolPresetTests: XCTestCase {
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
-        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.3...8)
-        XCTAssertEqual(ToolPreset.widthRange(of: .pen), 0.5...8)
+        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.1...8)
+        XCTAssertEqual(ToolPreset.widthRange(of: .pen), 0.1...8)
         XCTAssertEqual(ToolPreset.widthRange(of: .marker), 5...30)
         for kind in ToolPreset.kinds {
             let range = ToolPreset.widthRange(of: kind)
@@ -101,7 +101,8 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(name(0x2747_B8FF), "Blue")
         XCTAssertEqual(name(0x3D5A_40FF), "Green")
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20).name, "Highlighter, Mustard")
-        XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 1).kindName, "Precision Pen")
+        XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 1).kindName, "Pen")
+        XCTAssertEqual(ToolPreset.widthSteps(of: .monoline).first, 0.1)
         XCTAssertEqual(ToolPreset.widthSteps(of: .monoline).last, 8)
     }
 
@@ -216,7 +217,7 @@ final class ToolPresetTests: XCTestCase {
         let toolbox = Toolbox(defaults: defaults)
         let pens = toolbox.shelf.usable
         XCTAssertEqual(toolbox.choice, .pen(pens[0].id), "a new toolbox starts with its first pen in hand")
-        XCTAssertEqual((toolbox.tool as? PKInkingTool)?.inkType, .pen)
+        XCTAssertEqual((toolbox.tool as? PKInkingTool)?.inkType, .monoline)
 
         toolbox.take(.pen(pens[3].id))
         XCTAssertEqual((toolbox.tool as? PKInkingTool)?.inkType, .marker)
@@ -240,14 +241,14 @@ final class ToolPresetTests: XCTestCase {
     func testAPenIsChangedAddedAndRemovedWhereItStands() throws {
         let toolbox = Toolbox(defaults: try freshDefaults())
         let first = toolbox.shelf.usable[0]
-        toolbox.changePen(first.id) { $0.color = 0x2F8F_4EFF; $0.width = ToolPreset.width(at: 0.5, of: .pen) }
+        toolbox.changePen(first.id) { $0.color = 0x2F8F_4EFF; $0.width = ToolPreset.width(at: 0.5, of: .monoline) }
         XCTAssertEqual(toolbox.pen?.color, 0x2F8F_4EFF)
         XCTAssertEqual(try XCTUnwrap(toolbox.pen).widthTravel, 0.5, accuracy: 0.001, "the slider comes back to where it was let go")
         XCTAssertEqual((toolbox.tool as? PKInkingTool).flatMap { ToolPreset($0) }?.color, 0x2F8F_4EFF, "and the pen in hand writes with it")
 
         let added = try XCTUnwrap(toolbox.addPen())
         XCTAssertEqual(toolbox.choice, .pen(added), "a new pen is taken up")
-        XCTAssertEqual(toolbox.pen?.inkType, .pen)
+        XCTAssertEqual(toolbox.pen?.inkType, .monoline)
         XCTAssertEqual(toolbox.pen?.color, 0x1B22_30FF, "in the first of the palette's colours no pen of its kind has")
         toolbox.removePen(added)
         XCTAssertEqual(toolbox.choice, .pen(toolbox.shelf.usable[3].id), "taken off while in hand, the pen beside it is taken up")
@@ -318,7 +319,7 @@ final class ToolPresetTests: XCTestCase {
         addTeardownBlock { @MainActor in window.isHidden = true }
         controller.view.layoutIfNeeded()
         let canvas = try XCTUnwrap(controller.canvas(forPage: 0))
-        XCTAssertEqual((canvas.tool as? PKInkingTool)?.inkType, .pen)
+        XCTAssertEqual((canvas.tool as? PKInkingTool)?.inkType, .monoline)
 
         let marker = toolbox.shelf.usable[3]
         toolbox.take(.pen(marker.id))
