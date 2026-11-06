@@ -1277,7 +1277,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
         guard let canvas = canvasView as? PageCanvasView, canvas.isLoaded,
               let pageID = canvas.pageID,
-              canvas !== zoomCanvas,
               toolbox.pen?.pressureSensitive == true,
               let tool = canvas.tool as? PKInkingTool,
               let drawn = canvas.drawing.strokes.last else { return }
