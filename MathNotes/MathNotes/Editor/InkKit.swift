@@ -72,6 +72,33 @@ enum InkCalibration {
 
 }
 
+
+/// Gives the unified Pen an explicit, visible width response to the Apple Pencil's recorded force.
+/// PencilKit records force separately from each point's rendered size, so we use the force samples
+/// to shape the finished stroke instead of relying on the system Pen's subtle default pressure curve.
+enum PressureInk {
+    static func varying(_ stroke: PKStroke, baseWidth: CGFloat) -> PKStroke {
+        let original = Array(stroke.path)
+        guard original.count >= 3, baseWidth > 0 else { return stroke }
+        let forces = original.map(\.force)
+        guard let least = forces.min(), let most = forces.max(), most - least >= 0.015 else { return stroke }
+        let span = most - least
+        let points = original.map { point -> PKStrokePoint in
+            let pressure = min(max((point.force - least) / span, 0), 1)
+            // A clear but controlled 0.45x–1.8x width range. Keep sub-point widths intact
+            // so the thinnest Pen setting remains useful when the page is highly zoomed in.
+            let diameter = max(baseWidth * (0.45 + 1.35 * pressure), 0.03)
+            return PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
+                                 size: CGSize(width: diameter, height: diameter), opacity: point.opacity,
+                                 force: point.force, azimuth: point.azimuth, altitude: point.altitude,
+                                 secondaryScale: point.secondaryScale)
+        }
+        let path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
+        return PKStroke(ink: stroke.ink, path: path, transform: stroke.transform, mask: stroke.mask,
+                        randomSeed: stroke.randomSeed)
+    }
+}
+
 @MainActor
 @Observable
 final class InkClipboard {
