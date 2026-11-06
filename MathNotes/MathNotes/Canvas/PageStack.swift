@@ -1106,13 +1106,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last,
-           let tool = canvas.tool as? PKInkingTool,
-           canvas !== zoomCanvas {
+           let tool = canvas.tool as? PKInkingTool, canvas !== zoomCanvas {
             // Learn from the exact tool PencilKit received. Never scale the stroke transform:
             // that changes the path's length as well as its thickness.
-            if toolbox.pen?.pressureSensitive != true {
-                InkCalibration.learn(from: drawn, writtenWith: tool)
-            }
+            InkCalibration.learn(from: drawn, writtenWith: tool)
         }
 
         document.canvasDidChangeInk(id, to: canvas.drawing)
@@ -1269,29 +1266,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             AccessibilityNotification.Announcement(announcement).post()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: 5) }
-    }
-
-    /// Apply pressure only after PencilKit has finished the live stroke. Replacing
-    /// canvas.drawing from drawingDidChange interrupts PencilKit's active gesture and
-    /// can make the stroke vanish as soon as the Pencil is lifted.
-    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
-        guard let canvas = canvasView as? PageCanvasView, canvas.isLoaded,
-              let pageID = canvas.pageID,
-              toolbox.pen?.pressureSensitive == true,
-              let tool = canvas.tool as? PKInkingTool,
-              let drawn = canvas.drawing.strokes.last else { return }
-
-        let pressureStroke = PressureInk.varying(drawn, baseWidth: tool.width)
-        guard pressureStroke.path.map(\.size.width) != drawn.path.map(\.size.width) else { return }
-
-        var strokes = canvas.drawing.strokes
-        strokes[strokes.count - 1] = pressureStroke
-        let drawing = PKDrawing(strokes: strokes)
-        isApplyingDrawing = true
-        canvas.drawing = drawing
-        isApplyingDrawing = false
-        document.canvasDidChangeInk(pageID, to: drawing)
-        mirrorInk(from: canvas, pageID: pageID)
     }
 
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
