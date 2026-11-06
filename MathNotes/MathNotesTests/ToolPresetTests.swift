@@ -371,7 +371,7 @@ final class ToolPresetTests: XCTestCase {
         let path = PKStrokePath(controlPoints: points, creationDate: date)
         let stroke = PKStroke(ink: PKInk(.pen, color: .black), path: path)
         let pressure = PressureInk.varying(stroke, baseWidth: 1)
-        let widths = pressure.path.map(\\.size.width)
+        let widths = pressure.path.map(\.size.width)
         XCTAssertEqual(widths.count, points.count)
         XCTAssertLessThan(widths.first ?? 1, widths.last ?? 0)
         XCTAssertEqual(widths.first ?? 0, 0.45, accuracy: 0.01)
@@ -380,8 +380,8 @@ final class ToolPresetTests: XCTestCase {
 
         let constant = PKStroke(ink: stroke.ink,
                                 path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
-        XCTAssertEqual(PressureInk.varying(constant, baseWidth: 1).path.map(\\.size.width),
-                       constant.path.map(\\.size.width), "constant force does not invent pressure variation")
+        XCTAssertEqual(PressureInk.varying(constant, baseWidth: 1).path.map(\.size.width),
+                       constant.path.map(\.size.width), "constant force does not invent pressure variation")
     }
 
     private func makeDocument() throws -> NotebookDocument {
