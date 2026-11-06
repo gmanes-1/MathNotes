@@ -78,9 +78,9 @@ enum InkCalibration {
 enum PressureInk {
     static func varying(_ stroke: PKStroke, baseWidth: CGFloat) -> PKStroke {
         let original = Array(stroke.path)
-        guard original.count >= 3, baseWidth > 0 else { return stroke }
+        guard original.count >= 2, baseWidth > 0 else { return stroke }
 
-        // A three-sample filter removes abrupt force spikes without flattening deliberate changes.
+        // Smooth force samples so tiny sensor fluctuations do not make the line wobble.
         let forces = original.map { min(max($0.force, 0), 1) }
         let smoothed = forces.indices.map { index -> CGFloat in
             let before = forces[max(index - 1, 0)]
@@ -90,12 +90,22 @@ enum PressureInk {
         }
 
         let points = zip(original, smoothed).map { point, force -> PKStrokePoint in
-            // Smoothstep gives a gentle onset and finish. Width stays within 0.82x–1.18x
-            // of the chosen size rather than turning light handwriting into a broad brush.
-            let pressure = force * force * (3 - 2 * force)
-            let diameter = max(baseWidth * (0.82 + 0.36 * pressure), 0.03)
+            // The selected Monoline width is the reference: ordinary pressure stays at
+            // that size, light pressure narrows it, and firm pressure adds very little.
+            let multiplier: CGFloat
+            if force <= 0.4 {
+                let t = force / 0.4
+                let eased = t * t * (3 - 2 * t)
+                multiplier = 0.76 + 0.24 * eased
+            } else {
+                let t = (force - 0.4) / 0.6
+                let eased = t * t * (3 - 2 * t)
+                multiplier = 1.0 + 0.10 * eased
+            }
+            let width = max(point.size.width * multiplier, 0.05)
+            let height = max(point.size.height * multiplier, 0.05)
             return PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
-                                 size: CGSize(width: diameter, height: diameter), opacity: point.opacity,
+                                 size: CGSize(width: width, height: height), opacity: point.opacity,
                                  force: point.force, azimuth: point.azimuth, altitude: point.altitude,
                                  secondaryScale: point.secondaryScale)
         }

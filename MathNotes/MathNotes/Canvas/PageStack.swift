@@ -1268,6 +1268,29 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: 5) }
     }
 
+    /// Finish pressure shaping only after PencilKit has completed its live gesture.
+    /// The live canvas is never replaced while the Pencil is down.
+    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
+        guard let canvas = canvasView as? PageCanvasView, canvas.isLoaded,
+              let pageID = canvas.pageID,
+              toolbox.pen?.pressureSensitive == true,
+              let tool = canvas.tool as? PKInkingTool,
+              tool.inkType == .monoline,
+              let drawn = canvas.drawing.strokes.last else { return }
+
+        let shaped = PressureInk.varying(drawn, baseWidth: tool.width)
+        guard shaped.path.map(\\.size.width) != drawn.path.map(\\.size.width) else { return }
+
+        var strokes = canvas.drawing.strokes
+        strokes[strokes.count - 1] = shaped
+        let drawing = PKDrawing(strokes: strokes)
+        isApplyingDrawing = true
+        canvas.drawing = drawing
+        isApplyingDrawing = false
+        document.canvasDidChangeInk(pageID, to: drawing)
+        mirrorInk(from: canvas, pageID: pageID)
+    }
+
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
         if session.selection != nil { select(nil) }
         if !unreadWriting.isEmpty { typingTimer?.cancel() }
