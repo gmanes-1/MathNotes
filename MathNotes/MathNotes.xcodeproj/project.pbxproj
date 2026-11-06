@@ -302,7 +302,6 @@
 				Canvas/StickerCutout.swift,
 				Canvas/Stickers.swift,
 				Canvas/StudyTape.swift,
-				Canvas/VectorInk.swift,
 				Canvas/Whiteboard.swift,
 				Canvas/ZoomWindow.swift,
 				Design/Controls.swift,

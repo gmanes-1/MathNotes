@@ -237,7 +237,6 @@ final class PageSlotView: UIView {
     var paper: PagePaperView?
     var card: BoardCardView?
     weak var canvas: PageCanvasView?
-    var vectorInkView: VectorInkInputView?
     var findView: FindHighlightView?
     private(set) var itemViews: [UUID: PageItemView] = [:]
 
@@ -268,8 +267,7 @@ final class PageSlotView: UIView {
     func raiseTape() {
         for item in page.items.reversed() where item.isOverInk {
             guard let view = itemViews[item.id] else { continue }
-            if let vectorInkView, vectorInkView.superview === self { insertSubview(view, aboveSubview: vectorInkView) }
-            else if let canvas, canvas.superview === self { insertSubview(view, aboveSubview: canvas) } else { addSubview(view) }
+            if let canvas, canvas.superview === self { insertSubview(view, aboveSubview: canvas) } else { addSubview(view) }
         }
     }
 
@@ -362,7 +360,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var zoomWindow: ZoomWindow?
     private var zoomPanel: ZoomWindowPanel?
     private var zoomCanvas: PageCanvasView?
-    private var zoomVectorInkView: VectorInkInputView?
     private var zoomPaper: PagePaperView?
     private var zoomTarget: ZoomTargetView?
     private var zoomLevel = 1
@@ -984,108 +981,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         return canvas
     }
 
-    private var vectorInkPreset: ToolPreset? {
-        guard !document.isReadOnly, !isLocked, !toolbox.isRulerActive, let preset = toolbox.pen,
-              let kind = preset.inkType, kind == .monoline || kind == .marker else { return nil }
-        return preset
-    }
-
-    private func configureVectorInk(in slot: PageSlotView, canvas: PageCanvasView) {
-        let overlay = slot.vectorInkView ?? VectorInkInputView()
-        if overlay.superview !== slot {
-            overlay.frame = canvas.frame
-            slot.addSubview(overlay)
-            slot.vectorInkView = overlay
-        }
-        overlay.frame = canvas.frame
-        overlay.canDraw = { [weak self] in
-            guard let self else { return false }
-            return self.vectorInkPreset != nil && !self.document.isReadOnly && !self.isLocked
-        }
-        overlay.onCommit = { [weak self, weak slot, weak overlay] stroke in
-            guard let self, let slot, let overlay else { return }
-            self.commitVectorInk(stroke, pageID: slot.page.id, canvas: canvas, overlay: overlay)
-        }
-        overlay.configure(canvas: canvas, canvasIsLoaded: canvas.isLoaded, pageID: slot.page.id, pageSize: slot.page.size,
-                          strokes: slot.page.vectorInkStrokes,
-                          preset: vectorInkPreset.map { VectorInkTool(color: $0.color, width: $0.width, pressureSensitive: $0.pressureSensitive == true, isHighlighter: $0.inkType == .marker) },
-                          acceptsFinger: effectivePolicy == .anyInput)
-    }
-
-    private func configureZoomVectorInk(_ page: NotebookPage, canvas: PageCanvasView) {
-        guard let overlay = zoomVectorInkView else { return }
-        overlay.frame = canvas.frame
-        overlay.canDraw = { [weak self] in
-            guard let self else { return false }
-            return self.vectorInkPreset != nil && !self.document.isReadOnly && !self.isLocked
-        }
-        overlay.onCommit = { [weak self, weak overlay] stroke in
-            guard let self, let overlay else { return }
-            self.commitVectorInk(stroke, pageID: page.id, canvas: canvas, overlay: overlay)
-        }
-        let isCurrentPage = canvas.pageID == page.id && canvas.isLoaded
-        overlay.configure(canvas: canvas, canvasIsLoaded: isCurrentPage, pageID: page.id, pageSize: page.size,
-                          strokes: isCurrentPage ? page.vectorInkStrokes : [],
-                          preset: isCurrentPage ? vectorInkPreset.map { VectorInkTool(color: $0.color, width: $0.width, pressureSensitive: $0.pressureSensitive == true, isHighlighter: $0.inkType == .marker) } : nil,
-                          acceptsFinger: effectivePolicy == .anyInput)
-    }
-
-    private func commitVectorInk(_ stroke: VectorInkStroke, pageID: UUID, canvas: PageCanvasView,
-                                 overlay: VectorInkInputView) {
-        guard !document.isReadOnly, !isLocked,
-              let page = document.pages.first(where: { $0.id == pageID }) else { return }
-        let points = stroke.points.map(\.location)
-        if canvas === zoomCanvas, let window = zoomWindow,
-           window.reachesAdvanceBand(ShapeRecognizer.bounds(of: points)) {
-            zoomReachedBand = true
-            zoomAdvance?.cancel()
-            let work = DispatchWorkItem { [weak self] in self?.moveZoomWindow(orTurnPage: true) { $0.advance() } }
-            zoomAdvance = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + ZoomWindow.rest, execute: work)
-        }
-        let persistVector = { [weak self, weak overlay] in
-            guard let self, let overlay, !self.document.isReadOnly, !self.isLocked else { return }
-            self.document.updatePage(pageID, actionName: String(localized: "Ink")) {
-                $0.vectorInkStrokes.append(stroke)
-            }
-            self.document.canvasDidCommitVectorInk(pageID)
-            if canvas.pageID == pageID, let updated = self.document.pages.first(where: { $0.id == pageID }) {
-                overlay.configure(canvas: canvas, canvasIsLoaded: canvas.isLoaded, pageID: updated.id, pageSize: updated.size,
-                                  strokes: updated.vectorInkStrokes,
-                                  preset: self.vectorInkPreset.map { VectorInkTool(color: $0.color, width: $0.width, pressureSensitive: $0.pressureSensitive == true, isHighlighter: $0.inkType == .marker) },
-                                  acceptsFinger: self.effectivePolicy == .anyInput)
-            }
-        }
-        if stroke.kind == .highlighter, PDFText.snapsHighlighter,
-           PDFText.runsAlongALine(points), case .pdf(let file, let pdfIndex) = page.background {
-            let url = document.package.assetURL(file), pageSize = page.size
-            overlay.showPending(stroke)
-            Task { @MainActor [weak self, weak overlay] in
-                defer { overlay?.showPending(nil) }
-                guard let self, !self.document.isReadOnly, !self.isLocked else { return }
-                guard let line = await self.pdfText.line(under: points, file: url, index: pdfIndex, pageSize: pageSize) else {
-                    persistVector()
-                    return
-                }
-                let ink = PKInk(.marker, color: ToolPreset.uiColor(stroke.color))
-                let snapped = TextHighlight.stroke(over: line, ink: ink)
-                let before = self.document.loadedInk(pageID) ?? PKDrawing()
-                let drawing = PKDrawing(strokes: before.strokes + [snapped])
-                self.document.canvasDidChangeInk(pageID, to: drawing)
-                if let mainCanvas = self.canvases[pageID] {
-                    self.show(drawing, in: mainCanvas)
-                    self.mirrorInk(from: mainCanvas, pageID: pageID)
-                }
-                if canvas === self.zoomCanvas, canvas.pageID == pageID { self.showZoomInk(drawing, in: canvas) }
-                self.document.undoManager.setActionName(String(localized: "Snap Highlighter"))
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                AccessibilityNotification.Announcement(String(localized: "Highlight laid over the text")).post()
-            }
-        } else {
-            persistVector()
-        }
-    }
-
     private func syncTool(_ canvas: PageCanvasView) {
         let selected = toolbox.tool
         if canvas === zoomCanvas, let ink = selected as? PKInkingTool {
@@ -1099,7 +994,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             canvas.tool = selected
         }
         canvas.isRulerActive = toolbox.isRulerActive
-        canvas.drawingGestureRecognizer.isEnabled = canvas.isLoaded && !document.isReadOnly && !isLocked && vectorInkPreset == nil
     }
 
     private func attachCanvas(_ page: NotebookPage, to slot: PageSlotView) {
@@ -1114,7 +1008,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         slot.addSubview(canvas)
         slot.canvas = canvas
         canvases[page.id] = canvas
-        configureVectorInk(in: slot, canvas: canvas)
         slot.raiseTape()
         if let selectionView, selectionView.superview === slot { slot.bringSubviewToFront(selectionView) }
         if let cropView, cropView.superview === slot { slot.bringSubviewToFront(cropView) }
@@ -1140,14 +1033,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         isApplyingDrawing = false
         canvas.isLoaded = true
         setDrawingEnabled(!document.isReadOnly && !isLocked, canvas)
-        if let id = canvas.pageID, let slot = slots[id] { configureVectorInk(in: slot, canvas: canvas) }
         if !firstInkReported, canvas.pageID == firstInkPage, ink.strokes.isEmpty {
             DispatchQueue.main.async { [weak self] in self?.reportFirstInk() }
         }
     }
 
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
-        canvas.drawingGestureRecognizer.isEnabled = enabled && vectorInkPreset == nil
+        canvas.drawingGestureRecognizer.isEnabled = enabled
     }
 
     private func recycleCanvas(_ id: UUID) {
@@ -1159,8 +1051,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         canvas.isLoaded = false
         canvas.overrideUserInterfaceStyle = .light
         slots[id]?.canvas = nil
-        slots[id]?.vectorInkView?.canvas = nil
-        slots[id]?.vectorInkView?.isUserInteractionEnabled = false
         isApplyingDrawing = true
         canvas.drawing = PKDrawing()
         isApplyingDrawing = false
@@ -1201,7 +1091,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let y = min(max((grown.minY / pixel).rounded(.down) * pixel, 0), full.height - height)
         let target = CGRect(x: x, y: y, width: width, height: height)
         if canvas.frame != target { canvas.frame = target }
-        if let overlay = slot.vectorInkView { overlay.frame = target }
         if canvas.contentSize != size { canvas.contentSize = size }
         if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
     }
@@ -1473,7 +1362,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             let page = pages[index]
             let changed = slot.page.extra["items"] != page.extra["items"]
             slot.page = page
-            if let canvas = slot.canvas { configureVectorInk(in: slot, canvas: canvas) }
             if let card = slot.card {
                 if all { card.shownKey = nil }
                 drawCard(in: slot)
@@ -2738,9 +2626,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         canvas.accessibilityIdentifier = "zoom.canvas"
         panel.host(canvas)
         zoomCanvas = canvas
-        let vectorOverlay = VectorInkInputView()
-        panel.canvasArea.addSubview(vectorOverlay)
-        zoomVectorInkView = vectorOverlay
         let target = ZoomTargetView()
         target.pan.addTarget(self, action: #selector(zoomTargetPanned))
         target.onStep = { [weak self] in self?.zoomAction($0 > 0 ? .forward : .back) }
@@ -2762,8 +2647,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             canvas.delegate = nil
         }
         zoomPanel?.removeFromSuperview()
-        zoomVectorInkView?.removeFromSuperview()
-        zoomVectorInkView = nil
         zoomTarget?.removeFromSuperview()
         zoomPanel = nil
         zoomCanvas = nil
@@ -2842,7 +2725,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let offset = CGPoint(x: window.rect.minX * scale, y: window.rect.minY * scale)
         if canvas.contentOffset != offset { canvas.contentOffset = offset }
         syncTool(canvas)
-        configureZoomVectorInk(page, canvas: canvas)
         canvas.overrideUserInterfaceStyle = page.inkAppearance(night: night)
         canvas.accessibilityLabel = String(localized: "Zoom window, page \(index + 1)")
         if canvas.pageID != page.id { loadZoomInk(page.id, into: canvas) }
@@ -2898,7 +2780,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         isApplyingDrawing = false
         canvas.isLoaded = true
         setDrawingEnabled(!document.isReadOnly && !isLocked, canvas)
-        if let pageID = canvas.pageID, let index = index(of: pageID) { configureZoomVectorInk(pages[index], canvas: canvas) }
     }
 
     private func layoutZoomTarget() {
@@ -3156,10 +3037,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     @objc private func toolChanged() {
         for canvas in allCanvases + pool { syncTool(canvas) }
-        for (id, slot) in slots { if let canvas = canvases[id] { configureVectorInk(in: slot, canvas: canvas) } }
-        if let pageID = zoomWindow?.pageID, let index = index(of: pageID), let canvas = zoomCanvas {
-            configureZoomVectorInk(pages[index], canvas: canvas)
-        }
         if toolbox.typesHandwriting { InkText.warmUp() }
         if !unreadWriting.isEmpty, !(toolbox.typesHandwriting && PencilGestures.writes(toolbox.tool)) { typeUnreadWriting() }
     }

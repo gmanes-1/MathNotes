@@ -76,11 +76,6 @@ enum NotebookExporter {
                         }
                         image?.draw(in: bounds)
                     }
-                    context.cgContext.saveGState()
-                    context.cgContext.translateBy(x: bounds.minX, y: bounds.minY)
-                    context.cgContext.scaleBy(x: bounds.width / max(page.size.width, 1), y: bounds.height / max(page.size.height, 1))
-                    VectorInkRenderer.draw(page.vectorInkStrokes, in: context.cgContext)
-                    context.cgContext.restoreGState()
                     PageRenderer.drawOverInk(page, assets: assets, in: context.cgContext, size: page.size)
                 }
                 let fraction = Double(index + 1) / count
