@@ -72,7 +72,9 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         // These are app-authored widths, not PencilKit's picker limits. Keep the requested fine
         // values available even when PencilKit reports a higher minimum for its standard picker.
         let minimum: Double = ink == .monoline ? 0.3 : ink == .pen ? 0.9 : Double(valid.lowerBound)
-        return minimum...Double(valid.upperBound)
+        // The unified Precision Pen spans the fine Fineliner end through the former regular-Pen range.
+        let maximum = ink == .monoline ? max(Double(valid.upperBound), Double(PKInkingTool.InkType.pen.validWidthRange.upperBound)) : Double(valid.upperBound)
+        return minimum...maximum
     }
 
     static func clamped(_ width: Double, to range: ClosedRange<Double>) -> Double {
@@ -117,7 +119,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: String(localized: "Pen")
         case .pencil: String(localized: "Pencil")
         case .marker: String(localized: "Highlighter")
-        case .monoline: String(localized: "Fineliner")
+        case .monoline: String(localized: "Precision Pen")
         case .fountainPen: String(localized: "Fountain Pen")
         case .watercolor: String(localized: "Watercolour")
         case .crayon: String(localized: "Crayon")
@@ -161,12 +163,11 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
     }
 
-    /// Explicit widths keep every choice distinct. Fineliner starts at 0.3 and pen at 0.9;
-    /// both retain a full set of eight choices across their usable range.
+    /// Explicit width steps remain useful to VoiceOver and legacy callers; the tray itself uses a continuous slider.
     static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
         let range = widthRange(of: ink)
         if ink == .monoline {
-            return [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, range.upperBound]
+            return [0.3, 0.4, 0.6, 1.0, 1.5, 2.5, 4.0, range.upperBound]
         }
         if ink == .pen {
             return [0.9, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, range.upperBound]

@@ -69,7 +69,7 @@ final class ToolPresetTests: XCTestCase {
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
-        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.3...3)
+        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.3...8)
         XCTAssertEqual(ToolPreset.widthRange(of: .pen), 0.5...8)
         XCTAssertEqual(ToolPreset.widthRange(of: .marker), 5...30)
         for kind in ToolPreset.kinds {
@@ -101,6 +101,8 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(name(0x2747_B8FF), "Blue")
         XCTAssertEqual(name(0x3D5A_40FF), "Green")
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20).name, "Highlighter, Mustard")
+        XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 1).kindName, "Precision Pen")
+        XCTAssertEqual(ToolPreset.widthSteps(of: .monoline).last, 8)
     }
 
     func testAPenIsAsFaintAsItIsSetWhateverItsColour() throws {

@@ -465,31 +465,13 @@ private struct PenOptions: View {
                     Spacer()
                     Text(width).font(.subheadline.monospacedDigit()).foregroundStyle(Color.textSecondary)
                 }
-                HStack(spacing: Space.x1) {
-                    ForEach(Array(ToolPreset.widthSteps(of: ink).enumerated()), id: \.offset) { index, step in
-                        let chosen = abs(pen.width - step) < 0.02
-                        Button {
-                            toolbox.changePen(id) { $0.width = step }
-                        } label: {
-                            VStack(spacing: 3) {
-                                Circle().fill(solid)
-                                    .frame(width: CGFloat(3 + 7 * Double(index) / 7), height: CGFloat(3 + 7 * Double(index) / 7))
-                                    .frame(height: 14)
-                                Text(step.formatted(.number.precision(.fractionLength(0...1))))
-                                    .font(.system(size: 9, weight: chosen ? .bold : .regular, design: .rounded).monospacedDigit())
-                                    .foregroundStyle(chosen ? Color.accentColor : Color.textSecondary)
-                                    .lineLimit(1).minimumScaleFactor(0.7)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 38)
-                            .contentShape(Rectangle())
-                            .background(chosen ? Color.accentColor.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 7))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text("Width \(step.formatted(.number.precision(.fractionLength(0...1))))"))
-                        .accessibilityAddTraits(chosen ? .isSelected : [])
-                        .accessibilityIdentifier("editor.tools.pen.width.\(index)")
-                    }
-                }
+                Slider(value: Binding(get: { pen.widthTravel }, set: { travel in
+                    toolbox.changePen(id) { $0.width = ToolPreset.width(at: travel, of: ink) }
+                }), in: 0...1)
+                .tint(Color.accentColor)
+                .accessibilityLabel(Text("Pen width"))
+                .accessibilityValue(Text(width))
+                .accessibilityIdentifier("editor.tools.pen.width")
             }
             // Opacity moves in steps of a twentieth, so the figure beside it is a round one.
             WidthBar(measure: .opacity, travel: Binding(get: { (pen.opacity - faintest) / (1 - faintest) }, set: { travel in
