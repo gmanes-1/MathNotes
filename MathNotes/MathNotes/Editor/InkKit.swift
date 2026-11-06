@@ -73,21 +73,27 @@ enum InkCalibration {
 }
 
 
-/// Gives the unified Pen an explicit, visible width response to the Apple Pencil's recorded force.
-/// PencilKit records force separately from each point's rendered size, so we use the force samples
-/// to shape the finished stroke instead of relying on the system Pen's subtle default pressure curve.
+/// Shapes the Fineliner's vector path from Pencil force. The selected tray width remains
+/// the baseline; pressure adds only a restrained variation so fine writing stays fine.
 enum PressureInk {
     static func varying(_ stroke: PKStroke, baseWidth: CGFloat) -> PKStroke {
         let original = Array(stroke.path)
         guard original.count >= 3, baseWidth > 0 else { return stroke }
-        let forces = original.map(\.force)
-        guard let least = forces.min(), let most = forces.max(), most - least >= 0.015 else { return stroke }
-        let span = most - least
-        let points = original.map { point -> PKStrokePoint in
-            let pressure = min(max((point.force - least) / span, 0), 1)
-            // A clear but controlled 0.45x–1.8x width range. Keep sub-point widths intact
-            // so the thinnest Pen setting remains useful when the page is highly zoomed in.
-            let diameter = max(baseWidth * (0.45 + 1.35 * pressure), 0.03)
+
+        // A three-sample filter removes abrupt force spikes without flattening deliberate changes.
+        let forces = original.map { min(max($0.force, 0), 1) }
+        let smoothed = forces.indices.map { index -> CGFloat in
+            let before = forces[max(index - 1, 0)]
+            let current = forces[index]
+            let after = forces[min(index + 1, forces.count - 1)]
+            return before * 0.2 + current * 0.6 + after * 0.2
+        }
+
+        let points = zip(original, smoothed).map { point, force -> PKStrokePoint in
+            // Smoothstep gives a gentle onset and finish. Width stays within 0.82x–1.18x
+            // of the chosen size rather than turning light handwriting into a broad brush.
+            let pressure = force * force * (3 - 2 * force)
+            let diameter = max(baseWidth * (0.82 + 0.36 * pressure), 0.03)
             return PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
                                  size: CGSize(width: diameter, height: diameter), opacity: point.opacity,
                                  force: point.force, azimuth: point.azimuth, altitude: point.altitude,

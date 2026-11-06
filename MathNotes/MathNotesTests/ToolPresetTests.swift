@@ -374,9 +374,10 @@ final class ToolPresetTests: XCTestCase {
         let widths = pressure.path.map(\.size.width)
         XCTAssertEqual(widths.count, points.count)
         XCTAssertLessThan(widths.first ?? 1, widths.last ?? 0)
-        XCTAssertEqual(widths.first ?? 0, 0.45, accuracy: 0.01)
-        XCTAssertEqual(widths.last ?? 0, 1.8, accuracy: 0.01)
+        XCTAssertEqual(widths.first ?? 0, 0.83, accuracy: 0.03)
+        XCTAssertEqual(widths.last ?? 0, 1.17, accuracy: 0.03)
         XCTAssertTrue(zip(widths, widths.dropFirst()).allSatisfy { pair in pair.0 <= pair.1 })
+        XCTAssertLessThan(widths.last ?? 0, 1.25, "pressure must not turn the fine pen into a broad brush")
 
         let constant = PKStroke(ink: stroke.ink,
                                 path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
