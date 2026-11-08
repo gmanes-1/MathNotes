@@ -138,7 +138,7 @@ final class PressureFinelinerCaptureView: UIView {
 
     private func refreshPreview() {
         guard !samples.isEmpty, canvas != nil else { preview.path = nil; return }
-        let points = samples.map { ($0.viewLocation, max(baseWidth * widthFactor($0.force) / 2, 0.12)) }
+        let points = samples.map { ($0.viewLocation, max(baseWidth * 0.55 * widthFactor($0.force) / 2, 0.12)) }
         let path = CGMutablePath()
         if points.count == 1 {
             let p = points[0].0, r = points[0].1
@@ -200,7 +200,7 @@ final class PressureFinelinerCaptureView: UIView {
         defer { cancelStroke() }
         guard let canvas, !samples.isEmpty else { return }
         var controlPoints = samples.map { sample in
-            let width = max(baseWidth * widthFactor(sample.force), 0.12)
+            let width = max(baseWidth * 0.55 * widthFactor(sample.force), 0.12)
             return PKStrokePoint(location: sample.location, timeOffset: sample.time,
                                  size: CGSize(width: width, height: width), opacity: 1,
                                  force: sample.force, azimuth: sample.azimuth, altitude: sample.altitude)
