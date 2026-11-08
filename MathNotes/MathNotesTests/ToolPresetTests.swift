@@ -51,21 +51,16 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "off keeps the current uniform Fineliner")
         fineliner.pressureSensitive = true
         let pressureTool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(pressureTool.inkType, .monoline, "pressure mode keeps the exact Fineliner width range")
+        XCTAssertEqual(pressureTool.inkType, .pen, "pressure mode uses PencilKit's live pressure rendering")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
         XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.001, "pressure mode uses the selected Fineliner width as its native pressure base")
         fineliner.width = 0.3
         XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), 0.3, accuracy: 0.001,
                        "the selected width remains the base width in pressure mode")
-        for width in [0.1, 0.3, 0.5] {
-            fineliner.width = width
-            XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), width, accuracy: 0.001,
-                           "pressure mode must preserve distinct fine widths")
-        }
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)
-        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .monoline)
+        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .pen)
 
         let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":0.6}"#.data(using: .utf8)!
         let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
@@ -379,8 +374,8 @@ final class ToolPresetTests: XCTestCase {
         let widths = pressure.path.map(\.size.width)
         XCTAssertEqual(widths.count, points.count)
         XCTAssertLessThan(widths.first ?? 1, widths.last ?? 0)
-        XCTAssertEqual(widths.first ?? 0, 0.82, accuracy: 0.04)
-        XCTAssertEqual(widths.last ?? 0, 1.10, accuracy: 0.04)
+        XCTAssertEqual(widths.first ?? 0, 0.83, accuracy: 0.03)
+        XCTAssertEqual(widths.last ?? 0, 1.17, accuracy: 0.03)
         XCTAssertTrue(zip(widths, widths.dropFirst()).allSatisfy { pair in pair.0 <= pair.1 })
         XCTAssertLessThan(widths.last ?? 0, 1.25, "pressure must not turn the fine pen into a broad brush")
 

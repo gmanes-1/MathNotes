@@ -1095,34 +1095,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
     }
 
-    /// Shape the completed Fineliner stroke only after PencilKit has ended its live gesture.
-    /// Deferring one main-queue turn prevents replacing the drawing while PencilKit is finalizing it.
-    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
-        guard let canvas = canvasView as? PageCanvasView, canvas.isLoaded,
-              toolbox.pen?.pressureSensitive == true,
-              let pageID = canvas.pageID,
-              let tool = canvas.tool as? PKInkingTool,
-              tool.inkType == .monoline,
-              let drawn = canvas.drawing.strokes.last else { return }
-
-        let strokeDate = drawn.path.creationDate
-        let baseWidth = tool.width
-        DispatchQueue.main.async { [weak self, weak canvas] in
-            guard let self, let canvas, canvas.isLoaded, canvas.pageID == pageID else { return }
-            var strokes = canvas.drawing.strokes
-            guard let index = strokes.firstIndex(where: { $0.path.creationDate == strokeDate }) else { return }
-            let shaped = PressureInk.varying(strokes[index], baseWidth: baseWidth)
-            guard shaped.path.map(\.size.width) != strokes[index].path.map(\.size.width) else { return }
-            strokes[index] = shaped
-            let drawing = PKDrawing(strokes: strokes)
-            isApplyingDrawing = true
-            canvas.drawing = drawing
-            isApplyingDrawing = false
-            document.canvasDidChangeInk(pageID, to: drawing)
-            mirrorInk(from: canvas, pageID: pageID)
-        }
-    }
-
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isApplyingDrawing, let canvas = canvasView as? PageCanvasView, canvas.isLoaded, let id = canvas.pageID else { return }
         canvas.strokeCount = nil
