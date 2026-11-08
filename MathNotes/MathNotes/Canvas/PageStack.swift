@@ -1052,7 +1052,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
         let pressurePreset = enabled && (canvas.tool as? PKInkingTool)?.inkType == .monoline
             && toolbox.pen?.inkType == .monoline && toolbox.pen?.pressureSensitive == true ? toolbox.pen : nil
-        canvas.pressureCaptureView?.configure(preset: pressurePreset, enabled: pressurePreset != nil)
+        canvas.pressureCaptureView?.configure(preset: pressurePreset, enabled: pressurePreset != nil,
+                                               allowsFingerDrawing: effectivePolicy == .anyInput)
         // The sibling capture view receives Pencil touches in pressure mode; never let PencilKit
         // simultaneously create a second native stroke from the same touch sequence.
         canvas.drawingGestureRecognizer.isEnabled = enabled && pressurePreset == nil

@@ -26,6 +26,7 @@ final class PressureFinelinerCaptureView: UIView {
     private var inkColor = UIColor.label
     private var activeTouch: UITouch?
     private(set) var isEnabled = false
+    private var allowsFingerDrawing = false
 
     init(canvas: PageCanvasView) {
         self.canvas = canvas
@@ -40,10 +41,11 @@ final class PressureFinelinerCaptureView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(preset: ToolPreset?, enabled: Bool) {
+    func configure(preset: ToolPreset?, enabled: Bool, allowsFingerDrawing: Bool = false) {
         let shouldEnable = enabled && preset?.pressureSensitive == true
         isEnabled = shouldEnable
         isUserInteractionEnabled = shouldEnable
+        self.allowsFingerDrawing = shouldEnable && allowsFingerDrawing
         if let preset {
             baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
             inkColor = preset.uiColor
@@ -54,7 +56,7 @@ final class PressureFinelinerCaptureView: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard isEnabled, bounds.contains(point),
-              event?.allTouches?.contains(where: { $0.type == .pencil }) == true else { return nil }
+              event?.allTouches?.contains(where: { $0.type == .pencil || (allowsFingerDrawing && $0.type == .direct) }) == true else { return nil }
         return self
     }
 
@@ -64,7 +66,7 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard isEnabled, let touch = touches.first(where: { $0.type == .pencil }), let canvas else {
+        guard isEnabled, let touch = touches.first(where: { $0.type == .pencil || (allowsFingerDrawing && $0.type == .direct) }), canvas != nil else {
             super.touchesBegan(touches, with: event)
             return
         }
@@ -115,7 +117,7 @@ final class PressureFinelinerCaptureView: UIView {
         let canvasPoint = canvas.convert(visiblePoint, from: self)
         let contentPoint = CGPoint(x: canvasPoint.x + canvas.contentOffset.x,
                                    y: canvasPoint.y + canvas.contentOffset.y)
-        let rawForce = max(touch.force, 0)
+        let rawForce = touch.type == .pencil ? max(touch.force, 0) : 1
         let force = samples.last.map { $0.force * 0.62 + rawForce * 0.38 } ?? rawForce
         if let last = samples.last, hypot(last.location.x - contentPoint.x, last.location.y - contentPoint.y) < 0.12,
            abs(last.force - force) < 0.015 { return }
