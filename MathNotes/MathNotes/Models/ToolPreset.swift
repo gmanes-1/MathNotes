@@ -86,12 +86,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Use PencilKit's native Pen for live force response. Do not reshape the
-        // drawing after the gesture; PencilKit owns the in-progress pressure rendering.
+        // Pressure Fineliner is captured by PressureFinelinerCaptureView. Keep the canvas tool
+        // as Monoline at the exact selected width so pressure-off and normal-width behavior agree.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        let activeInk: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
-        let renderedWidth = pressureSensitive == true ? selectedWidth / 5.0 : selectedWidth
-        return PKInkingTool(activeInk, color: uiColor, width: renderedWidth)
+        return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.

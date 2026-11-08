@@ -51,16 +51,16 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "off keeps the current uniform Fineliner")
         fineliner.pressureSensitive = true
         let pressureTool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(pressureTool.inkType, .pen, "pressure mode uses PencilKit's live pressure rendering")
+        XCTAssertEqual(pressureTool.inkType, .monoline, "custom live pressure capture retains Monoline ink")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
-        XCTAssertEqual(Double(pressureTool.width), 0.12, accuracy: 0.001, "pressure mode uses a finer native Pen base width")
+        XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.001, "pressure mode preserves the selected Monoline base width")
         fineliner.width = 0.3
-        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), 0.06, accuracy: 0.001,
-                       "pressure mode keeps the finer native Pen base width")
+        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), 0.3, accuracy: 0.001,
+                       "pressure mode does not shrink the selected width")
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)
-        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .pen)
+        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .monoline)
 
         let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":0.6}"#.data(using: .utf8)!
         let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
