@@ -86,13 +86,15 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Do not clamp to validWidthRange: the app's fine presets intentionally go below
-        // PencilKit's standard picker minimum, and PKInkingTool accepts an explicit width.
-        // The Fineliner always starts as a clean monoline. In pressure mode, PageStack
-        // writes the force response into the saved vector path after the stroke ends;
-        // this avoids the broad, variable brush profile of PencilKit's default Pen.
-        let renderedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        return PKInkingTool(inkType, color: uiColor, width: renderedWidth)
+        // Keep fine presets below PencilKit's standard picker minimum when requested.
+        // Monoline is the pressure-off Fineliner. Pressure-on uses PencilKit's native
+        // pressure-aware Pen during the live gesture, avoiding post-gesture canvas edits
+        // that can discard a stroke. The 1.25 calibration matches its typical width to
+        // the selected Monoline width.
+        let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
+        let activeInk: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
+        let renderedWidth = pressureSensitive == true ? selectedWidth / 1.25 : selectedWidth
+        return PKInkingTool(activeInk, color: uiColor, width: renderedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.

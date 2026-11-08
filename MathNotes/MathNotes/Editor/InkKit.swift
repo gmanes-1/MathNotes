@@ -73,48 +73,6 @@ enum InkCalibration {
 }
 
 
-/// Shapes the Fineliner's vector path from Pencil force. The selected tray width remains
-/// the baseline; pressure adds only a restrained variation so fine writing stays fine.
-enum PressureInk {
-    static func varying(_ stroke: PKStroke, baseWidth: CGFloat) -> PKStroke {
-        let original = Array(stroke.path)
-        guard original.count >= 2, baseWidth > 0 else { return stroke }
-
-        // Smooth force samples so tiny sensor fluctuations do not make the line wobble.
-        let forces = original.map { min(max($0.force, 0), 1) }
-        let smoothed = forces.indices.map { index -> CGFloat in
-            let before = forces[max(index - 1, 0)]
-            let current = forces[index]
-            let after = forces[min(index + 1, forces.count - 1)]
-            return before * 0.2 + current * 0.6 + after * 0.2
-        }
-
-        let points = zip(original, smoothed).map { point, force -> PKStrokePoint in
-            // The selected Monoline width is the reference: ordinary pressure stays at
-            // that size, light pressure narrows it, and firm pressure adds very little.
-            let multiplier: CGFloat
-            if force <= 0.4 {
-                let t = force / 0.4
-                let eased = t * t * (3 - 2 * t)
-                multiplier = 0.76 + 0.24 * eased
-            } else {
-                let t = (force - 0.4) / 0.6
-                let eased = t * t * (3 - 2 * t)
-                multiplier = 1.0 + 0.10 * eased
-            }
-            let width = max(point.size.width * multiplier, 0.05)
-            let height = max(point.size.height * multiplier, 0.05)
-            return PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
-                                 size: CGSize(width: width, height: height), opacity: point.opacity,
-                                 force: point.force, azimuth: point.azimuth, altitude: point.altitude,
-                                 secondaryScale: point.secondaryScale)
-        }
-        let path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
-        return PKStroke(ink: stroke.ink, path: path, transform: stroke.transform, mask: stroke.mask,
-                        randomSeed: stroke.randomSeed)
-    }
-}
-
 @MainActor
 @Observable
 final class InkClipboard {
