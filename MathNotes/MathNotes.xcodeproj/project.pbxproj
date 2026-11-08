@@ -293,6 +293,7 @@
 				Canvas/PagePaper.swift,
 				Canvas/PageRenderer.swift,
 				Canvas/PageStack.swift,
+				Canvas/PressureFineliner.swift,
 				Canvas/PageText.swift,
 				Canvas/PaperRuling.swift,
 				Canvas/PaperTemplates.swift,
