@@ -73,6 +73,44 @@ enum InkCalibration {
 }
 
 
+/// Smoothly shapes the Fineliner's vector path from recorded Pencil force.
+/// The chosen width remains the baseline; light pressure narrows it and firm pressure
+/// adds only a small amount. This does not draw a raster overlay.
+enum PressureInk {
+    static func varying(_ stroke: PKStroke, baseWidth: CGFloat) -> PKStroke {
+        let original = Array(stroke.path)
+        guard original.count >= 2, baseWidth > 0 else { return stroke }
+
+        let forces = original.map { min(max($0.force, 0), 1) }
+        let smoothed = forces.indices.map { index -> CGFloat in
+            let before = forces[max(index - 1, 0)]
+            let current = forces[index]
+            let after = forces[min(index + 1, forces.count - 1)]
+            return before * 0.2 + current * 0.6 + after * 0.2
+        }
+        let points = zip(original, smoothed).map { point, force -> PKStrokePoint in
+            let multiplier: CGFloat
+            if force <= 0.4 {
+                let t = force / 0.4
+                let eased = t * t * (3 - 2 * t)
+                multiplier = 0.76 + 0.24 * eased
+            } else {
+                let t = (force - 0.4) / 0.6
+                let eased = t * t * (3 - 2 * t)
+                multiplier = 1.0 + 0.10 * eased
+            }
+            return PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
+                                 size: CGSize(width: max(point.size.width * multiplier, 0.05),
+                                              height: max(point.size.height * multiplier, 0.05)),
+                                 opacity: point.opacity, force: point.force, azimuth: point.azimuth,
+                                 altitude: point.altitude, secondaryScale: point.secondaryScale)
+        }
+        let path = PKStrokePath(controlPoints: points, creationDate: stroke.path.creationDate)
+        return PKStroke(ink: stroke.ink, path: path, transform: stroke.transform,
+                        mask: stroke.mask, randomSeed: stroke.randomSeed)
+    }
+}
+
 @MainActor
 @Observable
 final class InkClipboard {
