@@ -57,6 +57,11 @@ final class ToolPresetTests: XCTestCase {
         fineliner.width = 0.3
         XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), 0.3, accuracy: 0.001,
                        "the selected width remains the base width in pressure mode")
+        for width in [0.1, 0.3, 0.5] {
+            fineliner.width = width
+            XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), width, accuracy: 0.001,
+                           "pressure mode must preserve distinct fine widths")
+        }
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)
