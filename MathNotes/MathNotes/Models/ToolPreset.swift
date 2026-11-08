@@ -89,11 +89,11 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         // Keep fine presets below PencilKit's standard picker minimum when requested.
         // Monoline is the pressure-off Fineliner. Pressure-on uses PencilKit's native
         // pressure-aware Pen during the live gesture, avoiding post-gesture canvas edits
-        // that can discard a stroke. The 1.25 calibration matches its typical width to
-        // the selected Monoline width.
+        // that can discard a stroke. PencilKit's Pen renders substantially broader than
+        // Monoline at the same nominal width, so use a 2.5x input-width calibration.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         let activeInk: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
-        let renderedWidth = pressureSensitive == true ? selectedWidth / 1.25 : selectedWidth
+        let renderedWidth = pressureSensitive == true ? selectedWidth / 2.5 : selectedWidth
         return PKInkingTool(activeInk, color: uiColor, width: renderedWidth)
     }
 
