@@ -53,10 +53,10 @@ final class ToolPresetTests: XCTestCase {
         let pressureTool = try XCTUnwrap(fineliner.tool)
         XCTAssertEqual(pressureTool.inkType, .pen, "pressure mode uses PencilKit's live pressure rendering")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
-        XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.001, "pressure mode uses the selected Fineliner width as its native pressure base")
+        XCTAssertEqual(Double(pressureTool.width), 0.12, accuracy: 0.001, "pressure mode uses a finer native Pen base width")
         fineliner.width = 0.3
-        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), 0.3, accuracy: 0.001,
-                       "the selected width remains the base width in pressure mode")
+        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), 0.06, accuracy: 0.001,
+                       "pressure mode keeps the finer native Pen base width")
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)

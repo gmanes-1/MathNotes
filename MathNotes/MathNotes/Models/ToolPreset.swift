@@ -90,7 +90,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         // drawing after the gesture; PencilKit owns the in-progress pressure rendering.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         let activeInk: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
-        let renderedWidth = pressureSensitive == true ? selectedWidth / 2.5 : selectedWidth
+        let renderedWidth = pressureSensitive == true ? selectedWidth / 5.0 : selectedWidth
         return PKInkingTool(activeInk, color: uiColor, width: renderedWidth)
     }
 
