@@ -1001,8 +1001,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     /// only hit-tests Pencil contacts, so finger scrolling and page navigation remain native.
     private func syncPressureCapture(_ canvas: PageCanvasView) {
         let preset = toolbox.pen
-        let wantsPressure = canvas !== zoomCanvas && canvas.isLoaded &&
-            !document.isReadOnly && !isLocked && preset?.pressureSensitive == true
+        let host: UIView? = canvas === zoomCanvas
+            ? zoomPanel?.canvasArea
+            : canvas.pageID.flatMap { slots[$0] }
+        let wantsPressure = canvas.isLoaded && !document.isReadOnly &&
+            !isLocked && preset?.pressureSensitive == true
         if wantsPressure {
             let capture: PressureFinelinerCaptureView
             if let existing = canvas.pressureCaptureView {
@@ -1024,10 +1027,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 canvas.pressureCaptureView = capture
             }
             capture.configure(preset: preset, enabled: true)
-            if let pageID = canvas.pageID, let slot = slots[pageID] {
-                if capture.superview !== slot { slot.addSubview(capture) }
+            if let host {
+                if capture.superview !== host { host.addSubview(capture) }
                 capture.frame = canvas.frame
-                slot.bringSubviewToFront(capture)
+                host.bringSubviewToFront(capture)
             }
         } else {
             canvas.pressureCaptureView?.configure(preset: preset, enabled: false)
