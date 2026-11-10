@@ -60,6 +60,15 @@ private final class MaLiangZoomableNotebookPage: UIView, UIScrollViewDelegate {
         scrollView.bouncesZoom = true
         scrollView.delaysContentTouches = false
         scrollView.canCancelContentTouches = false
+
+        // Keep the scroll view's gesture recognizers from cancelling or delaying
+        // the canvas' touch stream. In particular, MaLiang needs every Pencil
+        // movement between touch-down and touch-up to build one continuous stroke.
+        scrollView.panGestureRecognizer.cancelsTouchesInView = false
+        scrollView.panGestureRecognizer.delaysTouchesBegan = false
+        scrollView.pinchGestureRecognizer?.cancelsTouchesInView = false
+        scrollView.pinchGestureRecognizer?.delaysTouchesBegan = false
+
         // A finger can pan the page, while Pencil touches remain available to MaLiang.
         scrollView.panGestureRecognizer.allowedTouchTypes = [
             NSNumber(value: UITouch.TouchType.direct.rawValue)
