@@ -10,9 +10,9 @@ public final class MaLiangFinelinerPrototypeView: UIView {
 
     public init(
         frame: CGRect = .zero,
-        width: CGFloat = 0.65,
+        width: CGFloat = 0.42,
         color: UIColor = .label,
-        pressureSensitivity: CGFloat = 0.12
+        pressureSensitivity: CGFloat = 0.08
     ) {
         canvas = Canvas(frame: .zero)
         super.init(frame: frame)
@@ -24,7 +24,7 @@ public final class MaLiangFinelinerPrototypeView: UIView {
         canvas = Canvas(frame: .zero)
         super.init(coder: coder)
         installCanvas()
-        configure(width: 0.65, color: .label, pressureSensitivity: 0.12)
+        configure(width: 0.42, color: .label, pressureSensitivity: 0.08)
     }
 
     private func installCanvas() {
@@ -43,16 +43,17 @@ public final class MaLiangFinelinerPrototypeView: UIView {
     }
 
     /// MaLiang computes width as pointSize * pow(force, forceSensitive).
-    /// A low exponent keeps pressure changes deliberately restrained.
+    /// Pressure is normalized to 0...1 before reaching MaLiang. A very low exponent
+    /// then keeps the width change subtle while preserving live Apple Pencil response.
     public func configure(
         width: CGFloat,
         color: UIColor,
         pressureSensitivity: CGFloat
     ) {
         let brush = canvas.defaultBrush!
-        brush.pointSize = max(0.2, width)
+        brush.pointSize = max(0.18, width)
         brush.pointStep = 0.6
-        brush.opacity = 0.65
+        brush.opacity = 0.72
         brush.forceSensitive = min(max(pressureSensitivity, 0), 1)
         brush.color = color
         brush.use()

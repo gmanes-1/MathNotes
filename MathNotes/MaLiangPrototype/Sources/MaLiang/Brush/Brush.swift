@@ -20,10 +20,14 @@ public struct Pan {
         } else {
             point = touch.location(in: view)
         }
-        force = touch.force
+        // UIKit reports raw force in device-specific units. Normalize it so the
+        // brush's pressure curve receives a stable 0...1 value on every iPad.
+        force = touch.maximumPossibleForce > 0
+            ? min(max(touch.force / touch.maximumPossibleForce, 0), 1)
+            : 0
         
-        // force on devices not supporting from a finger is always 0, reset to 0.3
-        if touch.type == .direct, force == 0 {
+        // Finger input has no pressure sensor; keep it at a steady full-width value.
+        if touch.type == .direct {
             force = 1
         }
     }
