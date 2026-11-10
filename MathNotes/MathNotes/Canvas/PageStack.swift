@@ -1029,7 +1029,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             // repositioned, or hosted by the zoom window; as a child it tracks the
             // actual interactive canvas bounds in every layout.
             if capture.superview !== canvas { canvas.addSubview(capture) }
-            capture.frame = canvas.bounds
+            capture.frame = CGRect(origin: canvas.contentOffset, size: canvas.bounds.size)
             canvas.bringSubviewToFront(capture)
         } else {
             canvas.pressureCaptureView?.configure(preset: preset, enabled: false)
