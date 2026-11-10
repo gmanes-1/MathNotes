@@ -81,6 +81,7 @@ final class PageCanvasView: PKCanvasView {
     var isLoaded = false
     weak var undoProxy: UndoManager?
     var strokeCount: Int?
+    var pressureCaptureView: PressureFinelinerCaptureView?
     override var undoManager: UndoManager? { undoProxy ?? super.undoManager }
 
     override var accessibilityValue: String? {
@@ -993,12 +994,46 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             canvas.tool = selected
         }
         canvas.isRulerActive = toolbox.isRulerActive
+        syncPressureCapture(canvas)
+    }
+
+    /// Installs the lab-calibrated pressure path over the regular canvas. The overlay
+    /// only hit-tests Pencil contacts, so finger scrolling and page navigation remain native.
+    private func syncPressureCapture(_ canvas: PageCanvasView) {
+        let preset = toolbox.pen
+        let wantsPressure = canvas !== zoomCanvas && preset?.pressureSensitive == true
+        if wantsPressure {
+            let capture: PressureFinelinerCaptureView
+            if let existing = canvas.pressureCaptureView {
+                capture = existing
+            } else {
+                capture = PressureFinelinerCaptureView(canvas: canvas)
+                capture.onStrokeCommitted = { [weak self, weak canvas] before, stroke in
+                    guard let self, let canvas, canvas.isLoaded,
+                          let pageID = canvas.pageID, !document.isReadOnly, !isLocked else { return }
+                    // Commit a single normal PencilKit stroke so existing undo, persistence,
+                    // replay and export paths continue to work unchanged.
+                    canvas.drawing = PKDrawing(strokes: before.strokes + [stroke])
+                    canvas.strokeCount = nil
+                }
+                canvas.pressureCaptureView = capture
+            }
+            capture.configure(preset: preset, enabled: true)
+            if let pageID = canvas.pageID, let slot = slots[pageID] {
+                if capture.superview !== slot { slot.addSubview(capture) }
+                capture.frame = canvas.frame
+                slot.bringSubviewToFront(capture)
+            }
+        } else {
+            canvas.pressureCaptureView?.configure(preset: preset, enabled: false)
+            canvas.pressureCaptureView?.removeFromSuperview()
+        }
     }
 
     private func attachCanvas(_ page: NotebookPage, to slot: PageSlotView) {
         let canvas = pool.popLast() ?? makeCanvas()
-        syncTool(canvas)
         canvas.pageID = page.id
+        syncTool(canvas)
         canvas.overrideUserInterfaceStyle = page.inkAppearance(night: night)
         let number = (index(of: page.id) ?? 0) + 1
         canvas.accessibilityLabel = canvasLabel(page, number: number)
@@ -1007,11 +1042,16 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         slot.addSubview(canvas)
         slot.canvas = canvas
         canvases[page.id] = canvas
+        syncPressureCapture(canvas)
         slot.raiseTape()
         if let selectionView, selectionView.superview === slot { slot.bringSubviewToFront(selectionView) }
         if let cropView, cropView.superview === slot { slot.bringSubviewToFront(cropView) }
         if let textView, textView.superview === slot { slot.bringSubviewToFront(textView) }
         if let findView = slot.findView { slot.bringSubviewToFront(findView) }
+        if let capture = canvas.pressureCaptureView, capture.isEnabled {
+            capture.frame = canvas.frame
+            slot.bringSubviewToFront(capture)
+        }
         if let ink = document.loadedInk(page.id) {
             show(ink, in: canvas)
         } else {
@@ -1040,13 +1080,15 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
         // PencilKit owns the complete touch lifecycle so pressure, undo, persistence and zoom
         // all use the same native stroke pipeline.
-        canvas.drawingGestureRecognizer.isEnabled = enabled
+        canvas.drawingGestureRecognizer.isEnabled = enabled && canvas.pressureCaptureView?.isEnabled != true
     }
 
 
     private func recycleCanvas(_ id: UUID) {
         guard let canvas = canvases.removeValue(forKey: id) else { return }
         if canvas.isFirstResponder { anchor.becomeFirstResponder() }
+        canvas.pressureCaptureView?.configure(preset: nil, enabled: false)
+        canvas.pressureCaptureView?.removeFromSuperview()
         canvas.removeFromSuperview()
         canvas.pageID = nil
         replayPages[id] = nil
@@ -1093,6 +1135,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let y = min(max((grown.minY / pixel).rounded(.down) * pixel, 0), full.height - height)
         let target = CGRect(x: x, y: y, width: width, height: height)
         if canvas.frame != target { canvas.frame = target }
+        if let capture = canvas.pressureCaptureView {
+            capture.frame = target
+            if capture.isEnabled, capture.superview === slot { slot.bringSubviewToFront(capture) }
+        }
         if canvas.contentSize != size { canvas.contentSize = size }
         if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
     }
