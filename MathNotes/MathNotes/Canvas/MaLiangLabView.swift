@@ -60,8 +60,7 @@ private struct MaLiangLabView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("MaLiang pen test")
                             .font(.title2.bold())
@@ -110,9 +109,9 @@ private struct MaLiangLabView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                .padding()
+                .padding(10)
             }
-            .scrollDisabled(true) // Keep the SwiftUI scroll view from stealing Apple Pencil drawing gestures.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("MaLiang Lab")
             .navigationBarTitleDisplayMode(.inline)
@@ -143,7 +142,7 @@ private struct MaLiangLabView: View {
                 color: uiColor,
                 pressureSensitivity: sensitivity
             )
-            .frame(height: 220)
+            .frame(height: 170)
             .background(Color(uiColor: .secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay {
