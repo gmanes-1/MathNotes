@@ -1026,7 +1026,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 }
                 canvas.pressureCaptureView = capture
             }
-            capture.configure(preset: preset, enabled: true)
+            capture.configure(preset: preset, enabled: true, allowsFingerDrawing: effectivePolicy == .anyInput)
             if let host {
                 if capture.superview !== host { host.addSubview(capture) }
                 capture.frame = canvas.frame
