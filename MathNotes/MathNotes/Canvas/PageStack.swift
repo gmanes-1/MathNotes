@@ -1005,7 +1005,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             ? zoomPanel?.canvasArea
             : canvas.pageID.flatMap { slots[$0] }
         let wantsPressure = canvas.isLoaded && !document.isReadOnly &&
-            !isLocked && preset?.pressureSensitive == true
+            !isLocked && preset?.inkType == .monoline && preset?.pressureSensitive == true
         if wantsPressure {
             let capture: PressureFinelinerCaptureView
             if let existing = canvas.pressureCaptureView {
