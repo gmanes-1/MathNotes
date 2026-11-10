@@ -488,6 +488,22 @@ private struct PenOptions: View {
                 .font(.subheadline.weight(.medium))
                 .tint(Color.accentColor)
                 .accessibilityIdentifier("editor.tools.pen.pressure")
+                if pen.pressureSensitive == true {
+                    VStack(alignment: .leading, spacing: Space.x2) {
+                        HStack {
+                            Text("Pressure amount").font(.subheadline.weight(.semibold)).foregroundStyle(Color.ink)
+                            Spacer()
+                            Text(((pen.pressureAmount ?? 0.08) * 100).formatted(.number.precision(.fractionLength(0))) + "%")
+                                .font(.subheadline.monospacedDigit()).foregroundStyle(Color.textSecondary)
+                        }
+                        Slider(value: Binding(get: { pen.pressureAmount ?? 0.08 }, set: { amount in
+                            toolbox.changePen(id) { $0.pressureAmount = amount }
+                        }), in: 0...0.5, step: 0.01)
+                        .tint(Color.accentColor)
+                        .accessibilityLabel(Text("Pressure amount"))
+                        .accessibilityIdentifier("editor.tools.pen.pressureAmount")
+                    }
+                }
             }
             place(pen)
         }
