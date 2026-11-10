@@ -41,16 +41,16 @@ public final class MaLiangFinelinerPrototypeView: UIView {
         ])
     }
 
-    /// The no-pressure reference is 12% of the selected preset width. At standard
-    /// normalized pressure (0.5), MaLiang renders exactly that reference width.
+    /// The reference width is 3% of the selected preset width. This is a first
+    /// visual correction after the 12% prototype rendered roughly four times too thick.
     public func configure(
         width: CGFloat,
         color: UIColor,
         pressureSensitivity: CGFloat
     ) {
         let brush = canvas.defaultBrush!
-        // Match the Fineliner's width scale: 12% of the selected preset width.
-        brush.pointSize = max(0, width) * 0.12
+        // Reduce the MaLiang reference width by 4x; keep pressure behaviour unchanged.
+        brush.pointSize = max(0, width) * 0.03
         // Preserve the previous minimum-width proportion, now relative to this preset.
         brush.minimumForceRatio = 0.43
         brush.pointStep = 0.6
