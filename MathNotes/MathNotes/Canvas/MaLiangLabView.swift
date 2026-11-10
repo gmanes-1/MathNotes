@@ -1,15 +1,17 @@
 import SwiftUI
 import UIKit
 
-/// A throwaway comparison room for calibrating MaLiang before it is considered for notebook ink.
-/// Nothing drawn here is written into a notebook or the app's PKDrawing documents.
+/// An isolated MaLiang notebook workspace. Strokes here never enter notebook documents.
 @MainActor
 private final class MaLiangSurfaceHandle: ObservableObject {
-    weak var surface: MaLiangFinelinerPrototypeView?
+    weak var page: MaLiangZoomableNotebookPage?
 
-    func clear() { surface?.clear() }
-    func undo() { surface?.undo() }
-    func redo() { surface?.redo() }
+    func clear() { page?.surface.clear() }
+    func undo() { page?.surface.undo() }
+    func redo() { page?.surface.redo() }
+    func zoomIn() { page?.changeZoom(by: 1.2) }
+    func zoomOut() { page?.changeZoom(by: 1 / 1.2) }
+    func fitPage() { page?.fitPage() }
 }
 
 private struct MaLiangSurface: UIViewRepresentable {
@@ -24,18 +26,17 @@ private struct MaLiangSurface: UIViewRepresentable {
             color: color,
             pressureSensitivity: pressureSensitivity
         )
-        handle.surface = page.surface
+        handle.page = page
         return page
     }
 
     func updateUIView(_ page: MaLiangZoomableNotebookPage, context: Context) {
         page.surface.configure(width: width, color: color, pressureSensitivity: pressureSensitivity)
-        handle.surface = page.surface
+        handle.page = page
     }
 }
 
-/// A real, high-resolution notebook sheet hosted by a native zooming scroll view.
-/// Pencil input is left to MaLiang; finger gestures pan and pinch-zoom the sheet.
+/// A single notebook sheet. Apple Pencil draws; finger gestures pan and pinch-zoom.
 @MainActor
 private final class MaLiangZoomableNotebookPage: UIView, UIScrollViewDelegate {
     private let pageSize = CGSize(width: 900, height: 1200)
@@ -56,12 +57,10 @@ private final class MaLiangZoomableNotebookPage: UIView, UIScrollViewDelegate {
         scrollView.delegate = self
         scrollView.backgroundColor = .clear
         scrollView.contentInsetAdjustmentBehavior = .never
-        scrollView.minimumZoomScale = 0.25
-        scrollView.maximumZoomScale = 2.5
         scrollView.bouncesZoom = true
         scrollView.delaysContentTouches = false
         scrollView.canCancelContentTouches = false
-        // Keep Pencil strokes out of the scroll view's one-finger pan recognizer.
+        // A finger can pan the page, while Pencil touches remain available to MaLiang.
         scrollView.panGestureRecognizer.allowedTouchTypes = [
             NSNumber(value: UITouch.TouchType.direct.rawValue)
         ]
@@ -80,20 +79,31 @@ private final class MaLiangZoomableNotebookPage: UIView, UIScrollViewDelegate {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if !didSetInitialZoom, bounds.width > 0, bounds.height > 0 {
-            scrollView.contentSize = pageSize
-            let fit = min(bounds.width / pageSize.width, bounds.height / pageSize.height)
-            scrollView.minimumZoomScale = fit
-            scrollView.maximumZoomScale = fit * 5
-            scrollView.zoomScale = fit
-            didSetInitialZoom = true
-            centerPageIfNeeded()
-        }
+        guard !didSetInitialZoom, bounds.width > 0, bounds.height > 0 else { return }
+        scrollView.contentSize = pageSize
+        let fit = min(bounds.width / pageSize.width, bounds.height / pageSize.height)
+        scrollView.minimumZoomScale = fit
+        scrollView.maximumZoomScale = fit * 5
+        scrollView.zoomScale = fit
+        didSetInitialZoom = true
+        centerPageIfNeeded()
     }
 
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { surface }
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) { centerPageIfNeeded() }
+
+    func changeZoom(by factor: CGFloat) {
+        guard didSetInitialZoom else { return }
+        let target = min(max(scrollView.zoomScale * factor, scrollView.minimumZoomScale),
+                         scrollView.maximumZoomScale)
+        scrollView.setZoomScale(target, animated: true)
+    }
+
+    func fitPage() {
+        guard didSetInitialZoom else { return }
+        scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
+    }
 
     private func centerPageIfNeeded() {
         let horizontal = max(0, (scrollView.bounds.width - scrollView.contentSize.width) / 2)
@@ -120,125 +130,131 @@ struct MaLiangLabHost: View {
 
 private struct MaLiangLabView: View {
     let onClose: () -> Void
-    @StateObject private var fineliner = MaLiangSurfaceHandle()
-    @StateObject private var pressurePen = MaLiangSurfaceHandle()
+    @StateObject private var pageHandle = MaLiangSurfaceHandle()
     @State private var width: Double = 2.7
     @State private var pressureSensitivity: Double = 0.08
     @State private var inkColor = Color.black
+    @State private var usesPressure = true
+    @State private var showingPenOptions = false
 
     private var uiColor: UIColor { UIColor(inkColor) }
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("MaLiang pen test")
-                            .font(.title2.bold())
-                        Text("Draw with Apple Pencil. These are isolated test surfaces: strokes do not enter or change any notebook.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+            ZStack {
+                Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
+
+                MaLiangSurface(
+                    handle: pageHandle,
+                    width: CGFloat(width),
+                    color: uiColor,
+                    pressureSensitivity: usesPressure ? CGFloat(pressureSensitivity) : 0
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+
+                VStack {
+                    Spacer()
+                    HStack(spacing: 22) {
+                        toolButton("Undo", systemImage: "arrow.uturn.backward") { pageHandle.undo() }
+                        toolButton("Redo", systemImage: "arrow.uturn.forward") { pageHandle.redo() }
+                        Spacer()
+                        toolButton("Clear", systemImage: "trash") { pageHandle.clear() }
                     }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Reference width")
-                            Spacer()
-                            Text(width.formatted(.number.precision(.fractionLength(1))))
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(value: $width, in: 0.1...8, step: 0.1)
-                        HStack {
-                            Text("Pressure response")
-                            Spacer()
-                            Text(pressureSensitivity.formatted(.number.precision(.fractionLength(2))))
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(value: $pressureSensitivity, in: 0...1, step: 0.01)
-                        ColorPicker("Ink colour", selection: $inkColor, supportsOpacity: false)
-                    }
-                    .padding(14)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-
-                    HStack(alignment: .top, spacing: 12) {
-                        surfaceCard(
-                            title: "Fineliner",
-                            subtitle: "Constant-width MaLiang brush",
-                            handle: fineliner,
-                            sensitivity: 0
-                        )
-                        .frame(maxWidth: .infinity)
-
-                        surfaceCard(
-                            title: "Pressure Pen",
-                            subtitle: "MaLiang pressure response: \(pressureSensitivity.formatted(.number.precision(.fractionLength(2))))",
-                            handle: pressurePen,
-                            sensitivity: CGFloat(pressureSensitivity)
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-
-                    Text("Both surfaces use the same reference width and colour. Change the sliders, then draw new strokes to compare. Undo and clear are independent for each surface.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    .font(.subheadline.weight(.medium))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.bottom, 12)
+                }
+                .padding(.horizontal, 18)
             }
-            .padding(10)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("MaLiang Lab")
+            .navigationTitle("MaLiang Notebook")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close", action: onClose)
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button { pageHandle.zoomOut() } label: {
+                        Image(systemName: "minus.magnifyingglass")
+                    }
+                    .accessibilityLabel("Zoom out")
+
+                    Button { pageHandle.fitPage() } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    }
+                    .accessibilityLabel("Fit page")
+
+                    Button { pageHandle.zoomIn() } label: {
+                        Image(systemName: "plus.magnifyingglass")
+                    }
+                    .accessibilityLabel("Zoom in")
+
+                    Button {
+                        showingPenOptions = true
+                    } label: {
+                        Image(systemName: "pencil.tip.crop.circle")
+                    }
+                    .accessibilityLabel("Pen options")
+                    .popover(isPresented: $showingPenOptions, arrowEdge: .top) {
+                        penOptions
+                            .frame(width: 310)
+                            .padding(16)
+                    }
                 }
             }
         }
         .tint(.accentColor)
     }
 
-    private func surfaceCard(
-        title: String,
-        subtitle: String,
-        handle: MaLiangSurfaceHandle,
-        sensitivity: CGFloat
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+    private var penOptions: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Pen options").font(.headline)
+
+            Picker("Pen", selection: $usesPressure) {
+                Text("Pressure pen").tag(true)
+                Text("Fineliner").tag(false)
+            }
+            .pickerStyle(.segmented)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Pen width")
+                    Spacer()
+                    Text(width.formatted(.number.precision(.fractionLength(1))))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $width, in: 0.1...8, step: 0.1)
             }
 
-            MaLiangSurface(
-                handle: handle,
-                width: CGFloat(width),
-                color: uiColor,
-                pressureSensitivity: sensitivity
-            )
-            .frame(height: 420)
-            .background(Color(uiColor: .secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            if usesPressure {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Pressure response")
+                        Spacer()
+                        Text(pressureSensitivity.formatted(.number.precision(.fractionLength(2))))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $pressureSensitivity, in: 0...1, step: 0.01)
+                }
             }
 
-            HStack(spacing: 18) {
-                Button { handle.undo() } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
-                }
-                Button { handle.redo() } label: {
-                    Label("Redo", systemImage: "arrow.uturn.forward")
-                }
-                Spacer()
-                Button(role: .destructive) { handle.clear() } label: {
-                    Label("Clear", systemImage: "trash")
-                }
-            }
-            .buttonStyle(.borderless)
-            .font(.subheadline)
+            ColorPicker("Ink colour", selection: $inkColor, supportsOpacity: false)
         }
-        .padding(14)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func toolButton(
+        _ title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+        }
+        .buttonStyle(.plain)
     }
 }
