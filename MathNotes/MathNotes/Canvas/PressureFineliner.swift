@@ -50,7 +50,8 @@ final class PressureFinelinerCaptureView: UIView {
             // Match the selected app width and the same learned monoline calibration
             // used by ordinary notebook strokes. Do not read canvas.tool.width here:
             // the capture view, not PencilKit, owns the pressure-sensitive stroke.
-            baseWidth = CGFloat(preset.width) * InkCalibration.factor(for: .monoline)
+            baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
+                * InkCalibration.factor(for: .monoline)
             inkColor = preset.uiColor
             preview.fillColor = inkColor.cgColor
         }
