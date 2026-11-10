@@ -130,8 +130,7 @@ private struct MaLiangLabView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("MaLiang pen test")
                             .font(.title2.bold())
@@ -162,26 +161,28 @@ private struct MaLiangLabView: View {
                     .padding(14)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
-                    surfaceCard(
-                        title: "Fineliner",
-                        subtitle: "Constant-width MaLiang brush",
-                        handle: fineliner,
-                        sensitivity: 0
-                    )
+                    HStack(alignment: .top, spacing: 12) {
+                        surfaceCard(
+                            title: "Fineliner",
+                            subtitle: "Constant-width MaLiang brush",
+                            handle: fineliner,
+                            sensitivity: 0
+                        )
+                        .frame(maxWidth: .infinity)
 
-                    surfaceCard(
-                        title: "Pressure Pen",
-                        subtitle: "MaLiang pressure response: \(pressureSensitivity.formatted(.number.precision(.fractionLength(2))))",
-                        handle: pressurePen,
-                        sensitivity: CGFloat(pressureSensitivity)
-                    )
+                        surfaceCard(
+                            title: "Pressure Pen",
+                            subtitle: "MaLiang pressure response: \(pressureSensitivity.formatted(.number.precision(.fractionLength(2))))",
+                            handle: pressurePen,
+                            sensitivity: CGFloat(pressureSensitivity)
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
 
                     Text("Both surfaces use the same reference width and colour. Change the sliders, then draw new strokes to compare. Undo and clear are independent for each surface.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                }
-                    .padding(10)
-                }
+                .padding(10)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("MaLiang Lab")
