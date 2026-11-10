@@ -286,6 +286,7 @@
 				App/MathNotesApp.swift,
 				App/WidgetBridge.swift,
 				Canvas/MaLiangFinelinerPrototypeView.swift,
+				Canvas/MaLiangLabView.swift,
 				Canvas/CanvasUndoProxy.swift,
 				Canvas/InkLasso.swift,
 				Canvas/InkTyping.swift,

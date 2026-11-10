@@ -23,7 +23,15 @@ struct MathNotesApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if LaunchOptions.arguments.contains("-maLiangLab") {
+                MaLiangLabHost()
+            } else {
+                MathNotesRoot()
+            }
+            #else
             MathNotesRoot()
+            #endif
         }
     }
 }
