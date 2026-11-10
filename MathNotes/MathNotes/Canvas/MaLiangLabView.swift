@@ -182,7 +182,8 @@ private struct MaLiangLabView: View {
                     Text("Both surfaces use the same reference width and colour. Change the sliders, then draw new strokes to compare. Undo and clear are independent for each surface.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                .padding(10)
+            }
+            .padding(10)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("MaLiang Lab")
