@@ -90,7 +90,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         // width fine; ordinary pens and markers retain their own native ink type and width.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         let nativeType: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
-        let nativeWidth = selectedWidth * (pressureSensitive == true ? 0.55 : 1)
+        let nativeWidth = selectedWidth * (pressureSensitive == true ? 0.25 : 1)
         return PKInkingTool(nativeType, color: uiColor, width: nativeWidth)
     }
 
