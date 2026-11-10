@@ -10,7 +10,7 @@ public final class MaLiangFinelinerPrototypeView: UIView {
 
     public init(
         frame: CGRect = .zero,
-        width: CGFloat = 0.42,
+        width: CGFloat,
         color: UIColor = .label,
         pressureSensitivity: CGFloat = 0.08
     ) {
@@ -24,7 +24,7 @@ public final class MaLiangFinelinerPrototypeView: UIView {
         canvas = Canvas(frame: .zero)
         super.init(coder: coder)
         installCanvas()
-        configure(width: 0.42, color: .label, pressureSensitivity: 0.08)
+        configure(width: 0.65, color: .label, pressureSensitivity: 0.08)
     }
 
     private func installCanvas() {
@@ -51,7 +51,7 @@ public final class MaLiangFinelinerPrototypeView: UIView {
         pressureSensitivity: CGFloat
     ) {
         let brush = canvas.defaultBrush!
-        brush.pointSize = max(0.18, width)
+        brush.pointSize = max(0, width)
         brush.pointStep = 0.6
         brush.opacity = 0.72
         brush.forceSensitive = min(max(pressureSensitivity, 0), 1)
