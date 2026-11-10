@@ -112,6 +112,7 @@ private struct MaLiangLabView: View {
                 }
                 .padding()
             }
+            .scrollDisabled(true) // Keep the SwiftUI scroll view from stealing Apple Pencil drawing gestures.
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("MaLiang Lab")
             .navigationBarTitleDisplayMode(.inline)
