@@ -47,9 +47,8 @@ final class PressureFinelinerCaptureView: UIView {
         isUserInteractionEnabled = shouldEnable
         self.allowsFingerDrawing = shouldEnable && allowsFingerDrawing
         if let preset {
-            // Match the selected app width and the same learned monoline calibration
-            // used by ordinary notebook strokes. Do not read canvas.tool.width here:
-            // the capture view, not PencilKit, owns the pressure-sensitive stroke.
+            // Match the selected app width (including zoom scaling) and the same
+            // learned monoline calibration used by ordinary notebook strokes.
             baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
                 * InkCalibration.factor(for: .monoline)
             inkColor = preset.uiColor
@@ -142,7 +141,10 @@ final class PressureFinelinerCaptureView: UIView {
     private func widthFactor(_ force: CGFloat) -> CGFloat {
         // Keep the selected width as the reference at average force (1.0).
         // Lighter pressure tapers gently; maximum pressure is only 5% wider.
-        let response = 0.95 + 0.05 * pow(min(max(force, 0), 2.0), 0.65)
+        // UITouch force is stored normalized to 0...1. Treat half of the Pencil's
+        // available force as the reference (1.0); maximum force reaches +5%.
+        let referenceForce = min(max(force * 2, 0), 2)
+        let response = 0.95 + 0.05 * pow(referenceForce, 0.65)
         return min(max(response, 0.95), 1.05)
     }
 
