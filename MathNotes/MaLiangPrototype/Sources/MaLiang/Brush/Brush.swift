@@ -67,6 +67,9 @@ open class Brush {
     // sensitive of pointsize changed from force, if sets to 0, stroke size will not be affected by force
     // sets to 1 to make an everage affect
     open var forceSensitive: CGFloat = 0
+
+    /// Lower bound for pressure-scaled width; zero preserves the original MaLiang behavior.
+    open var minimumForceRatio: CGFloat = 0
     
     // indicate if the stroke size in visual will be scaled along with the Canvas
     // defaults to false, the stroke size in visual will stay with the original value
@@ -123,7 +126,8 @@ open class Brush {
     /// get a line with specified begin and end location with force info
     open func makeLine(from: Pan, to: Pan) -> [MLLine] {
         let endForce = from.force * 0.95 + to.force * 0.05
-        let forceRate = pow(endForce, forceSensitive)
+        let minimum = min(max(minimumForceRatio, 0), 1)
+        let forceRate = minimum + (1 - minimum) * pow(endForce, forceSensitive)
         return makeLine(from: from.point, to: to.point, force: forceRate)
     }
     

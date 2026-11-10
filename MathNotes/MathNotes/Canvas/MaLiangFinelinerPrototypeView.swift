@@ -42,16 +42,18 @@ public final class MaLiangFinelinerPrototypeView: UIView {
         ])
     }
 
-    /// MaLiang computes width as pointSize * pow(force, forceSensitive).
-    /// Pressure is normalized to 0...1 before reaching MaLiang. A very low exponent
-    /// then keeps the width change subtle while preserving live Apple Pencil response.
+    /// Baseline width is 12% of the selected preset. Pressure scales that baseline
+    /// between the relative minimum and full width using MaLiang's force curve.
     public func configure(
         width: CGFloat,
         color: UIColor,
         pressureSensitivity: CGFloat
     ) {
         let brush = canvas.defaultBrush!
-        brush.pointSize = max(0, width)
+        // Match the Fineliner's width scale: 12% of the selected preset width.
+        brush.pointSize = max(0, width) * 0.12
+        // Preserve the previous minimum-width proportion, now relative to this preset.
+        brush.minimumForceRatio = 0.43
         brush.pointStep = 0.6
         brush.opacity = 0.72
         brush.forceSensitive = min(max(pressureSensitivity, 0), 1)
