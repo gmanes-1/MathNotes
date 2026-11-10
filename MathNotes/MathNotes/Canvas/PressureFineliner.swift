@@ -120,8 +120,9 @@ final class PressureFinelinerCaptureView: UIView {
         guard let canvas else { return }
         let visiblePoint = touch.location(in: self)
         let canvasPoint = canvas.convert(visiblePoint, from: self)
-        let contentPoint = CGPoint(x: canvasPoint.x + canvas.contentOffset.x,
-                                   y: canvasPoint.y + canvas.contentOffset.y)
+        // The capture view is a child of the scrollable canvas, so conversion
+        // already returns the drawing's content coordinates.
+        let contentPoint = canvasPoint
         let rawForce = touch.type == .pencil ? normalizedForce(for: touch) : 0.5
         let force = samples.last.map { $0.force * 0.62 + rawForce * 0.38 } ?? rawForce
         if let last = samples.last, hypot(last.location.x - contentPoint.x, last.location.y - contentPoint.y) < 0.12,
