@@ -86,15 +86,12 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Fineliner uses PencilKit's native pressure-sensitive Pen ink. Keep the selected
-        // width fine; ordinary pens and markers retain their own native ink type and width.
+        // The Precision Pen is always a monoline nib. When pressure is enabled,
+        // PageStack routes Pencil samples through PressureFinelinerCaptureView,
+        // which applies the lab's restrained 0–5% width response. With pressure
+        // disabled, PencilKit writes the same nib at a constant width.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        let nativeType: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
-        // The custom Fineliner capture applies its own calibrated pressure curve.
-        // Keep this as the calibrated reference width; the curve caps maximum pressure at +5%.
-        let finelinerScale: CGFloat = 0.00125
-        let nativeWidth = selectedWidth * (pressureSensitive == true ? finelinerScale : 1)
-        return PKInkingTool(nativeType, color: uiColor, width: nativeWidth)
+        return PKInkingTool(.monoline, color: uiColor, width: selectedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
