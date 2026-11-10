@@ -90,11 +90,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         // width fine; ordinary pens and markers retain their own native ink type and width.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         let nativeType: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
-        // The native Pen renderer is substantially wider than Monoline at the same numeric width.
-        // Calibrated Fineliner scale is 0.00125 of the selected width. Set the
-        // maximum-pressure ceiling just 5% above that recalibrated reference.
+        // The custom Fineliner capture applies its own calibrated pressure curve.
+        // Keep this as the calibrated reference width; the curve caps maximum pressure at +5%.
         let finelinerScale: CGFloat = 0.00125
-        let nativeWidth = selectedWidth * (pressureSensitive == true ? finelinerScale * 1.05 : 1)
+        let nativeWidth = selectedWidth * (pressureSensitive == true ? finelinerScale : 1)
         return PKInkingTool(nativeType, color: uiColor, width: nativeWidth)
     }
 
