@@ -41,6 +41,23 @@
 		<dict>
 			<key>UTTypeConformsTo</key>
 			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>MathNotes library backup</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.owais.owlluna.backup</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>owllunabackup</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
 				<string>com.apple.package</string>
 				<string>public.composite-content</string>
 			</array>
@@ -55,16 +72,6 @@
 					<string>mathnotes</string>
 				</array>
 			</dict>
-		</dict>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>MathNotes notebook</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.giuseppe.mathnotes.notebook-reference</string>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
