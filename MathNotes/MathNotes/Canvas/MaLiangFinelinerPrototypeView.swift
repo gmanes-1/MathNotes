@@ -27,8 +27,14 @@ public final class MaLiangFinelinerPrototypeView: UIView {
     }
 
     private func installCanvas() {
-        backgroundColor = .clear
+        backgroundColor = .white
+        isOpaque = true
         clipsToBounds = true
+        layer.cornerRadius = 3
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.16
+        layer.shadowRadius = 8
+        layer.shadowOffset = CGSize(width: 0, height: 3)
         canvas.translatesAutoresizingMaskIntoConstraints = false
         canvas.backgroundColor = .clear
         canvas.isPencilMode = true
@@ -39,6 +45,26 @@ public final class MaLiangFinelinerPrototypeView: UIView {
             canvas.topAnchor.constraint(equalTo: topAnchor),
             canvas.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+    }
+
+    /// Draw a subtle ruled-paper background beneath the transparent Metal canvas.
+    public override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        UIColor.white.setFill()
+        UIRectFill(rect)
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        context.setStrokeColor(UIColor(red: 0.78, green: 0.86, blue: 0.94, alpha: 1).cgColor)
+        context.setLineWidth(1)
+        stride(from: CGFloat(72), through: bounds.height, by: 42).forEach { y in
+            context.move(to: CGPoint(x: 0, y: y))
+            context.addLine(to: CGPoint(x: bounds.width, y: y))
+        }
+        context.strokePath()
+        context.setStrokeColor(UIColor(red: 0.92, green: 0.68, blue: 0.68, alpha: 0.9).cgColor)
+        context.setLineWidth(2)
+        context.move(to: CGPoint(x: 96, y: 0))
+        context.addLine(to: CGPoint(x: 96, y: bounds.height))
+        context.strokePath()
     }
 
     /// Convert the lab's selected reference width into a clearly visible MaLiang point size.

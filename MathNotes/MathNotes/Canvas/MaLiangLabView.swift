@@ -18,19 +18,89 @@ private struct MaLiangSurface: UIViewRepresentable {
     let color: UIColor
     let pressureSensitivity: CGFloat
 
-    func makeUIView(context: Context) -> MaLiangFinelinerPrototypeView {
-        let surface = MaLiangFinelinerPrototypeView(
+    func makeUIView(context: Context) -> MaLiangZoomableNotebookPage {
+        let page = MaLiangZoomableNotebookPage(
             width: width,
             color: color,
             pressureSensitivity: pressureSensitivity
         )
-        handle.surface = surface
-        return surface
+        handle.surface = page.surface
+        return page
     }
 
-    func updateUIView(_ surface: MaLiangFinelinerPrototypeView, context: Context) {
-        surface.configure(width: width, color: color, pressureSensitivity: pressureSensitivity)
-        handle.surface = surface
+    func updateUIView(_ page: MaLiangZoomableNotebookPage, context: Context) {
+        page.surface.configure(width: width, color: color, pressureSensitivity: pressureSensitivity)
+        handle.surface = page.surface
+    }
+}
+
+/// A real, high-resolution notebook sheet hosted by a native zooming scroll view.
+/// Pencil input is left to MaLiang; finger gestures pan and pinch-zoom the sheet.
+@MainActor
+private final class MaLiangZoomableNotebookPage: UIView, UIScrollViewDelegate {
+    private let pageSize = CGSize(width: 900, height: 1200)
+    let surface: MaLiangFinelinerPrototypeView
+    private let scrollView = UIScrollView()
+    private var didSetInitialZoom = false
+
+    init(width: CGFloat, color: UIColor, pressureSensitivity: CGFloat) {
+        surface = MaLiangFinelinerPrototypeView(
+            frame: CGRect(origin: .zero, size: CGSize(width: 900, height: 1200)),
+            width: width,
+            color: color,
+            pressureSensitivity: pressureSensitivity
+        )
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.delegate = self
+        scrollView.backgroundColor = .clear
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.minimumZoomScale = 0.25
+        scrollView.maximumZoomScale = 2.5
+        scrollView.bouncesZoom = true
+        scrollView.delaysContentTouches = false
+        scrollView.canCancelContentTouches = false
+        // Keep Pencil strokes out of the scroll view's one-finger pan recognizer.
+        scrollView.panGestureRecognizer.allowedTouchTypes = [
+            NSNumber(value: UITouch.TouchType.direct.rawValue)
+        ]
+        surface.frame = CGRect(origin: .zero, size: pageSize)
+        scrollView.addSubview(surface)
+        addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if !didSetInitialZoom, bounds.width > 0, bounds.height > 0 {
+            scrollView.contentSize = pageSize
+            let fit = min(bounds.width / pageSize.width, bounds.height / pageSize.height)
+            scrollView.minimumZoomScale = fit
+            scrollView.maximumZoomScale = fit * 5
+            scrollView.zoomScale = fit
+            didSetInitialZoom = true
+            centerPageIfNeeded()
+        }
+    }
+
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? { surface }
+
+    func scrollViewDidZoom(_ scrollView: UIScrollView) { centerPageIfNeeded() }
+
+    private func centerPageIfNeeded() {
+        let horizontal = max(0, (scrollView.bounds.width - scrollView.contentSize.width) / 2)
+        let vertical = max(0, (scrollView.bounds.height - scrollView.contentSize.height) / 2)
+        scrollView.contentInset = UIEdgeInsets(
+            top: vertical, left: horizontal, bottom: vertical, right: horizontal
+        )
     }
 }
 
@@ -60,7 +130,8 @@ private struct MaLiangLabView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("MaLiang pen test")
                             .font(.title2.bold())
@@ -109,7 +180,8 @@ private struct MaLiangLabView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                .padding(10)
+                    .padding(10)
+                }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("MaLiang Lab")
@@ -141,7 +213,7 @@ private struct MaLiangLabView: View {
                 color: uiColor,
                 pressureSensitivity: sensitivity
             )
-            .frame(height: 170)
+            .frame(height: 420)
             .background(Color(uiColor: .secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay {
