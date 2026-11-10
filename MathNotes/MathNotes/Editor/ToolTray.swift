@@ -450,7 +450,11 @@ private struct PenOptions: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             PenRoll(kind: Binding(get: { ink }, set: { kind in
-                toolbox.changePen(id) { $0.ink = kind.rawValue; $0.width = Double(kind.defaultWidth) }
+                toolbox.changePen(id) {
+                    $0.ink = kind.rawValue
+                    $0.width = Double(kind.defaultWidth)
+                    if kind != .monoline { $0.pressureSensitive = false }
+                }
             }), ink: solid, paper: paper, night: night)
                 .accessibilityIdentifier("editor.tools.pen.kind")
             LazyVGrid(columns: Self.columns, spacing: 0) {
