@@ -120,7 +120,7 @@ final class PressureFinelinerCaptureView: UIView {
         let canvasPoint = canvas.convert(visiblePoint, from: self)
         let contentPoint = CGPoint(x: canvasPoint.x + canvas.contentOffset.x,
                                    y: canvasPoint.y + canvas.contentOffset.y)
-        let rawForce = touch.type == .pencil ? normalizedForce(for: touch) : 1
+        let rawForce = touch.type == .pencil ? normalizedForce(for: touch) : 0.5
         let force = samples.last.map { $0.force * 0.62 + rawForce * 0.38 } ?? rawForce
         if let last = samples.last, hypot(last.location.x - contentPoint.x, last.location.y - contentPoint.y) < 0.12,
            abs(last.force - force) < 0.015 { return }
