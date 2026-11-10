@@ -1009,8 +1009,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             } else {
                 capture = PressureFinelinerCaptureView(canvas: canvas)
                 capture.onStrokeCommitted = { [weak self, weak canvas] before, stroke in
-                    guard let self, let canvas, canvas.isLoaded,
-                          let pageID = canvas.pageID, !document.isReadOnly, !isLocked else { return }
+                    guard let self, let canvas, canvas.isLoaded, canvas.pageID != nil,
+                          !self.document.isReadOnly, !self.isLocked else { return }
                     // Commit a single normal PencilKit stroke so existing undo, persistence,
                     // replay and export paths continue to work unchanged.
                     canvas.drawing = PKDrawing(strokes: before.strokes + [stroke])
