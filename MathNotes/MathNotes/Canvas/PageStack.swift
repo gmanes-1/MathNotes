@@ -1001,7 +1001,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     /// only hit-tests Pencil contacts, so finger scrolling and page navigation remain native.
     private func syncPressureCapture(_ canvas: PageCanvasView) {
         let preset = toolbox.pen
-        let wantsPressure = canvas !== zoomCanvas && preset?.pressureSensitive == true
+        let wantsPressure = canvas !== zoomCanvas && canvas.isLoaded &&
+            !document.isReadOnly && !isLocked && preset?.pressureSensitive == true
         if wantsPressure {
             let capture: PressureFinelinerCaptureView
             if let existing = canvas.pressureCaptureView {
@@ -1078,8 +1079,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
-        // PencilKit owns the complete touch lifecycle so pressure, undo, persistence and zoom
-        // all use the same native stroke pipeline.
+        syncPressureCapture(canvas)
+        // PencilKit owns ordinary fineliner strokes. The capture overlay takes over only
+        // when the pressure option is on, then commits its samples as a regular PKStroke.
         canvas.drawingGestureRecognizer.isEnabled = enabled && canvas.pressureCaptureView?.isEnabled != true
     }
 
