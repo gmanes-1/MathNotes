@@ -23,6 +23,7 @@ final class PressureFinelinerCaptureView: UIView {
     private var startDate = Date()
     private var startTimestamp: TimeInterval = 0
     private var baseWidth: CGFloat = 1
+    private var pressureAmount: CGFloat = 0.08
     private var inkColor = UIColor.label
     private var activeTouch: UITouch?
     private(set) var isEnabled = false
@@ -51,6 +52,7 @@ final class PressureFinelinerCaptureView: UIView {
             // learned monoline calibration used by ordinary notebook strokes.
             baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
                 * InkCalibration.factor(for: .monoline)
+            pressureAmount = CGFloat(min(max(preset.pressureAmount ?? 0.08, 0), 0.5))
             inkColor = preset.uiColor
             preview.fillColor = inkColor.cgColor
         }
@@ -139,13 +141,10 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     private func widthFactor(_ force: CGFloat) -> CGFloat {
-        // Keep the selected width as the reference at average force (1.0).
-        // Lighter pressure tapers gently; maximum pressure is only 5% wider.
-        // UITouch force is stored normalized to 0...1. Treat half of the Pencil's
-        // available force as the reference (1.0); maximum force reaches +5%.
-        let referenceForce = min(max(force * 2, 0), 2)
-        let response = 0.95 + 0.05 * pow(referenceForce, 0.65)
-        return min(max(response, 0.95), 1.05)
+        // The selected width is the reference at half force. The in-app slider
+        // controls the full width variation on either side of that reference.
+        let centredForce = min(max(force, 0), 1) * 2 - 1
+        return max(0.5, 1 + centredForce * pressureAmount)
     }
 
     private func refreshPreview() {
