@@ -110,7 +110,7 @@ final class PressureFinelinerCaptureView: UIView {
                   !touch.estimatedPropertiesExpectingUpdates.contains(.force),
                   let sampleIndex = estimates.removeValue(forKey: index),
                   samples.indices.contains(sampleIndex) else { continue }
-            samples[sampleIndex].force = max(touch.force, 0)
+            samples[sampleIndex].force = normalizedForce(for: touch)
             refreshPreview()
         }
     }
@@ -121,7 +121,7 @@ final class PressureFinelinerCaptureView: UIView {
         let canvasPoint = canvas.convert(visiblePoint, from: self)
         let contentPoint = CGPoint(x: canvasPoint.x + canvas.contentOffset.x,
                                    y: canvasPoint.y + canvas.contentOffset.y)
-        let rawForce = touch.type == .pencil ? max(touch.force, 0) : 1
+        let rawForce = touch.type == .pencil ? normalizedForce(for: touch) : 1
         let force = samples.last.map { $0.force * 0.62 + rawForce * 0.38 } ?? rawForce
         if let last = samples.last, hypot(last.location.x - contentPoint.x, last.location.y - contentPoint.y) < 0.12,
            abs(last.force - force) < 0.015 { return }
@@ -132,6 +132,11 @@ final class PressureFinelinerCaptureView: UIView {
         if touch.estimatedPropertiesExpectingUpdates.contains(.force), let index = touch.estimationUpdateIndex {
             estimates[index] = samples.count - 1
         }
+    }
+
+    private func normalizedForce(for touch: UITouch) -> CGFloat {
+        guard touch.type == .pencil else { return 1 }
+        return min(max(touch.force / max(touch.maximumPossibleForce, 1), 0), 1)
     }
 
     private func widthFactor(_ force: CGFloat) -> CGFloat {
