@@ -1001,9 +1001,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     /// only hit-tests Pencil contacts, so finger scrolling and page navigation remain native.
     private func syncPressureCapture(_ canvas: PageCanvasView) {
         let preset = toolbox.pen
-        let host: UIView? = canvas === zoomCanvas
-            ? zoomPanel?.canvasArea
-            : canvas.pageID.flatMap { slots[$0] }
         let wantsPressure = canvas.isLoaded && !document.isReadOnly &&
             !isLocked && preset?.inkType == .monoline && preset?.pressureSensitive == true
         if wantsPressure {
@@ -1027,11 +1024,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 canvas.pressureCaptureView = capture
             }
             capture.configure(preset: preset, enabled: true, allowsFingerDrawing: effectivePolicy == .anyInput)
-            if let host {
-                if capture.superview !== host { host.addSubview(capture) }
-                capture.frame = canvas.frame
-                host.bringSubviewToFront(capture)
-            }
+            // Keep the capture surface inside the canvas itself. As a sibling in
+            // the page slot its frame can become stale when the canvas is overscanned,
+            // repositioned, or hosted by the zoom window; as a child it tracks the
+            // actual interactive canvas bounds in every layout.
+            if capture.superview !== canvas { canvas.addSubview(capture) }
+            capture.frame = canvas.bounds
+            canvas.bringSubviewToFront(capture)
         } else {
             canvas.pressureCaptureView?.configure(preset: preset, enabled: false)
             canvas.pressureCaptureView?.removeFromSuperview()
@@ -1056,10 +1055,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if let cropView, cropView.superview === slot { slot.bringSubviewToFront(cropView) }
         if let textView, textView.superview === slot { slot.bringSubviewToFront(textView) }
         if let findView = slot.findView { slot.bringSubviewToFront(findView) }
-        if let capture = canvas.pressureCaptureView, capture.isEnabled {
-            capture.frame = canvas.frame
-            slot.bringSubviewToFront(capture)
-        }
         if let ink = document.loadedInk(page.id) {
             show(ink, in: canvas)
         } else {
@@ -1145,8 +1140,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let target = CGRect(x: x, y: y, width: width, height: height)
         if canvas.frame != target { canvas.frame = target }
         if let capture = canvas.pressureCaptureView {
-            capture.frame = target
-            if capture.isEnabled, capture.superview === slot { slot.bringSubviewToFront(capture) }
+            capture.frame = canvas.bounds
+            if capture.isEnabled, capture.superview === canvas { canvas.bringSubviewToFront(capture) }
         }
         if canvas.contentSize != size { canvas.contentSize = size }
         if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
