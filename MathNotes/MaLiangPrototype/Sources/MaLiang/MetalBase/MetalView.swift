@@ -13,6 +13,10 @@ import MetalKit
 internal let sharedDevice = MTLCreateSystemDefaultDevice()
 
 open class MetalView: MTKView {
+
+    // MTKView can be created at .zero by SwiftUI before its first layout pass.
+    // The render-target uniforms must be rebuilt once it receives its real size.
+    private var targetUniformsSize: CGSize = .zero
     
     // MARK: - Brush Textures
     
@@ -43,7 +47,15 @@ open class MetalView: MTKView {
     
     open override func layoutSubviews() {
         super.layoutSubviews()
-        screenTarget?.updateBuffer(with: drawableSize)
+        let size = drawableSize
+        screenTarget?.updateBuffer(with: size)
+
+        // Canvas is commonly initialized with a zero frame inside UIViewRepresentable.
+        // Its first setup therefore has no usable vertex/uniform buffers. Rebuild them
+        // as soon as Auto Layout assigns the actual drawing-box dimensions.
+        if size.width > 0, size.height > 0, size != targetUniformsSize {
+            setupTargetUniforms()
+        }
     }
 
     open override var backgroundColor: UIColor? {
@@ -113,6 +125,7 @@ open class MetalView: MTKView {
     
     func setupTargetUniforms() {
         let size = drawableSize
+        guard size.width > 0, size.height > 0 else { return }
         let w = size.width, h = size.height
         let vertices = [
             Vertex(position: CGPoint(x: 0 , y: 0), textCoord: CGPoint(x: 0, y: 0)),
@@ -126,6 +139,7 @@ open class MetalView: MTKView {
         metrix.scaling(x: 2 / Float(size.width), y: -2 / Float(size.height), z: 1)
         metrix.translation(x: -1, y: 1, z: 0)
         render_target_uniform = device?.makeBuffer(bytes: metrix.m, length: MemoryLayout<Float>.size * 16, options: [])
+        targetUniformsSize = size
     }
     
     open override func draw(_ rect: CGRect) {
