@@ -81,14 +81,6 @@ final class PageCanvasView: PKCanvasView {
     var isLoaded = false
     weak var undoProxy: UndoManager?
     var strokeCount: Int?
-    weak var pressureCaptureView: PressureFinelinerCaptureView?
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        // The capture surface is a sibling so PencilKit's own drawing recognizer can be bypassed cleanly.
-        pressureCaptureView?.frame = frame
-    }
-
     override var undoManager: UndoManager? { undoProxy ?? super.undoManager }
 
     override var accessibilityValue: String? {
@@ -1013,10 +1005,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         canvas.accessibilityIdentifier = "page.canvas.\(number)"
         place(canvas, in: slot, force: true)
         slot.addSubview(canvas)
-        let pressureView = makePressureCapture(for: canvas)
-        canvas.pressureCaptureView = pressureView
-        slot.addSubview(pressureView)
-        pressureView.frame = canvas.frame
         slot.canvas = canvas
         canvases[page.id] = canvas
         slot.raiseTape()
@@ -1050,40 +1038,15 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
-        let pressurePreset = enabled && (canvas.tool as? PKInkingTool)?.inkType == .monoline
-            && toolbox.pen?.inkType == .monoline && toolbox.pen?.pressureSensitive == true ? toolbox.pen : nil
-        canvas.pressureCaptureView?.configure(preset: pressurePreset, enabled: pressurePreset != nil,
-                                               allowsFingerDrawing: effectivePolicy == .anyInput)
-        // The sibling capture view receives Pencil touches in pressure mode; never let PencilKit
-        // simultaneously create a second native stroke from the same touch sequence.
-        canvas.drawingGestureRecognizer.isEnabled = enabled && pressurePreset == nil
+        // PencilKit owns the complete touch lifecycle so pressure, undo, persistence and zoom
+        // all use the same native stroke pipeline.
+        canvas.drawingGestureRecognizer.isEnabled = enabled
     }
 
-    private func makePressureCapture(for canvas: PageCanvasView) -> PressureFinelinerCaptureView {
-        let capture = PressureFinelinerCaptureView(canvas: canvas)
-        capture.onStrokeBegan = { [weak self, weak canvas] in
-            guard let self, let canvas else { return }
-            self.canvasViewDidBeginUsingTool(canvas)
-        }
-        capture.onStrokeCommitted = { [weak self, weak canvas] before, stroke in
-            guard let self, let canvas, let pageID = canvas.pageID, canvas.isLoaded else { return }
-            let updated = PKDrawing(strokes: before.strokes + [stroke])
-            self.isApplyingDrawing = true
-            canvas.drawing = updated
-            self.isApplyingDrawing = false
-            canvas.strokeCount = nil
-            self.document.canvasDidChangeInk(pageID, to: updated)
-            self.mirrorInk(from: canvas, pageID: pageID)
-            if canvas === self.zoomCanvas { self.zoomStrokeEnded(canvas, before: before) }
-        }
-        return capture
-    }
 
     private func recycleCanvas(_ id: UUID) {
         guard let canvas = canvases.removeValue(forKey: id) else { return }
         if canvas.isFirstResponder { anchor.becomeFirstResponder() }
-        canvas.pressureCaptureView?.removeFromSuperview()
-        canvas.pressureCaptureView = nil
         canvas.removeFromSuperview()
         canvas.pageID = nil
         replayPages[id] = nil
@@ -1155,7 +1118,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         mirrorInk(from: canvas, pageID: id)
         let typing = noteWriting(on: canvas, pageID: id, before: before)
         let straighten = { [weak self, weak canvas] in
-            guard let self, let canvas, canvas !== zoomCanvas, !typing, toolbox.pen?.pressureSensitive != true else { return }
+            guard let self, let canvas, canvas !== zoomCanvas, !typing else { return }
             straightenLastStroke(on: canvas, pageID: id, before: before, rest: rest)
         }
         let readingText = snapHighlighter(on: canvas, pageID: id, before: before, otherwise: straighten)
@@ -2648,10 +2611,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         syncTool(canvas)
         canvas.accessibilityIdentifier = "zoom.canvas"
         panel.host(canvas)
-        let pressureView = makePressureCapture(for: canvas)
-        canvas.pressureCaptureView = pressureView
-        canvas.superview?.insertSubview(pressureView, aboveSubview: canvas)
-        pressureView.frame = canvas.frame
         zoomCanvas = canvas
         let target = ZoomTargetView()
         target.pan.addTarget(self, action: #selector(zoomTargetPanned))
@@ -2671,8 +2630,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         zoomAdvance?.cancel()
         if let canvas = zoomCanvas {
             if canvas.isFirstResponder { anchor.becomeFirstResponder() }
-            canvas.pressureCaptureView?.removeFromSuperview()
-            canvas.pressureCaptureView = nil
             canvas.delegate = nil
         }
         zoomPanel?.removeFromSuperview()
