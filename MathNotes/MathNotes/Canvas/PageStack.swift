@@ -1013,9 +1013,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                     guard let self, let canvas, canvas.isLoaded, canvas.pageID != nil,
                           !self.document.isReadOnly, !self.isLocked else { return }
                     // Commit a single normal PencilKit stroke so existing undo, persistence,
-                    // replay and export paths continue to work unchanged.
+                    // replay and export paths continue to work unchanged. Suppress the setter's
+                    // delegate notification, then run the normal document-change pipeline once.
+                    self.isApplyingDrawing = true
                     canvas.drawing = PKDrawing(strokes: before.strokes + [stroke])
+                    self.isApplyingDrawing = false
                     canvas.strokeCount = nil
+                    self.canvasViewDrawingDidChange(canvas)
                 }
                 canvas.pressureCaptureView = capture
             }
