@@ -110,7 +110,6 @@ private struct MaLiangLabView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(10)
-            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("MaLiang Lab")
