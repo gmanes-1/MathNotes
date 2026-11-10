@@ -1,5 +1,4 @@
 import UIKit
-import Metal
 import MaLiang
 
 /// Isolated Apple Pencil Fineliner test surface. It is deliberately not wired into
@@ -15,18 +14,14 @@ public final class MaLiangFinelinerPrototypeView: UIView {
         color: UIColor = .label,
         pressureSensitivity: CGFloat = 0.12
     ) {
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("MaLiang requires a device with Metal support.")
-        }
-        canvas = Canvas(frame: .zero, device: device)
+        canvas = Canvas(frame: .zero)
         super.init(frame: frame)
         installCanvas()
         configure(width: width, color: color, pressureSensitivity: pressureSensitivity)
     }
 
     public required init?(coder: NSCoder) {
-        guard let device = MTLCreateSystemDefaultDevice() else { return nil }
-        canvas = Canvas(frame: .zero, device: device)
+        canvas = Canvas(frame: .zero)
         super.init(coder: coder)
         installCanvas()
         configure(width: 0.65, color: .label, pressureSensitivity: 0.12)
