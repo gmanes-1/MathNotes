@@ -91,7 +91,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         // which applies the lab's restrained 0–5% width response. With pressure
         // disabled, PencilKit writes the same nib at a constant width.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        return PKInkingTool(.monoline, color: uiColor, width: selectedWidth)
+        return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
