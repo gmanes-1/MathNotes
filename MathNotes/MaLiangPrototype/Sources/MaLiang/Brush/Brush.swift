@@ -125,9 +125,13 @@ open class Brush {
     
     /// get a line with specified begin and end location with force info
     open func makeLine(from: Pan, to: Pan) -> [MLLine] {
-        let endForce = from.force * 0.95 + to.force * 0.05
+        let endForce = min(max(from.force * 0.95 + to.force * 0.05, 0), 1)
         let minimum = min(max(minimumForceRatio, 0), 1)
-        let forceRate = minimum + (1 - minimum) * pow(endForce, forceSensitive)
+        // 50% normalized Pencil force is the calibrated, no-pressure reference width.
+        // Lighter pressure tapers towards the minimum; heavier pressure stays at the reference.
+        let pressure = min(endForce * 2, 1)
+        let curve = 1 + min(max(forceSensitive, 0), 1) * 3
+        let forceRate = minimum + (1 - minimum) * pow(pressure, curve)
         return makeLine(from: from.point, to: to.point, force: forceRate)
     }
     

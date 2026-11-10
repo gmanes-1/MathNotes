@@ -1,8 +1,7 @@
 import UIKit
 import MaLiang
 
-/// Isolated Apple Pencil Fineliner test surface. It is deliberately not wired into
-/// PageStack: MathNotes continues to use PencilKit for all production notebook ink.
+/// MaLiang Fineliner surface. The current notebook still persists its production ink as PKDrawing.
 @MainActor
 public final class MaLiangFinelinerPrototypeView: UIView {
     public let canvas: Canvas
@@ -42,8 +41,8 @@ public final class MaLiangFinelinerPrototypeView: UIView {
         ])
     }
 
-    /// Baseline width is 12% of the selected preset. Pressure scales that baseline
-    /// between the relative minimum and full width using MaLiang's force curve.
+    /// The no-pressure reference is 12% of the selected preset width. At standard
+    /// normalized pressure (0.5), MaLiang renders exactly that reference width.
     public func configure(
         width: CGFloat,
         color: UIColor,
