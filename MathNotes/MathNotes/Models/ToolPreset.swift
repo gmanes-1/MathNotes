@@ -88,12 +88,12 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // The Precision Pen is always a monoline nib. When pressure is enabled,
-        // PageStack routes Pencil samples through PressureFinelinerCaptureView,
-        // which applies the lab's restrained 0–5% width response. With pressure
-        // disabled, PencilKit writes the same nib at a constant width.
+        // Fineliner is native PencilKit ink in both modes. Monoline gives a
+        // constant-width stroke; .pen uses Apple Pencil's native force response.
+        let renderingType: PKInkingTool.InkType =
+            inkType == .monoline && pressureSensitive == true ? .pen : inkType
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
+        return PKInkingTool(renderingType, color: uiColor, width: selectedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
