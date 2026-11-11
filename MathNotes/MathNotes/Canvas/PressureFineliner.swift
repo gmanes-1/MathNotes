@@ -51,7 +51,7 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
 
         referenceWidth = max(CGFloat(preset.width), 0.1)
         inkColor = preset.uiColor
-        usesPressure = preset.pressureSensitive
+        usesPressure = preset.pressureSensitive ?? false
         maliangCanvas.isPencilMode = !allowsFingerDrawing
 
         // These are the same brush settings used by MaLiangFinelinerPrototypeView.
