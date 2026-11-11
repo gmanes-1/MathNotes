@@ -1044,7 +1044,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 }
                 canvas.pressureCaptureView = capture
             }
-            capture.configure(preset: preset, enabled: true, allowsFingerDrawing: effectivePolicy == .anyInput)
+            capture.configure(preset: preset, enabled: true, allowsFingerDrawing: false)
             // Keep the capture surface inside the canvas itself. As a sibling in
             // the page slot its frame can become stale when the canvas is overscanned,
             // repositioned, or hosted by the zoom window; as a child it tracks the
@@ -2052,6 +2052,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         case _ where textOverlay != nil: true
         case _ where inkLasso != nil: false
         case _ where document.isReadOnly || replay != nil || isFinding: false
+        // The MaLiang fineliner reserves finger input for page navigation.
+        // Pencil strokes are captured by its Pencil-only surface.
+        case .anyInput where toolbox.pen?.inkType == .monoline: false
         case .anyInput: true
         default: false
         }
@@ -3110,6 +3113,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         if toolbox.typesHandwriting { InkText.warmUp() }
         if !unreadWriting.isEmpty, !(toolbox.typesHandwriting && PencilGestures.writes(toolbox.tool)) { typeUnreadWriting() }
+        updateScrollTouches()
     }
 
     func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveTap tap: UIPencilInteraction.Tap) {
