@@ -12,7 +12,8 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     var width: Double
     /// Fineliner can optionally use pressure-sensitive pen rendering; nil keeps older saved presets off.
     var pressureSensitive: Bool? = nil
-    /// How much pressure changes Fineliner width; 0 is constant width, 1 is a strong response.
+    /// Legacy MaLiang pressure setting retained when decoding older saved presets.
+    /// Native PencilKit pressure response is controlled by Apple Pencil input.
     var pressureAmount: Double? = nil
 
     init(id: UUID = UUID(), ink: PKInkingTool.InkType, color: UInt32, width: Double) {
