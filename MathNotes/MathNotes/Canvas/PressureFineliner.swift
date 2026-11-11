@@ -60,8 +60,13 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard isEnabled, bounds.contains(point),
-              event?.allTouches?.contains(where: { $0.type == .pencil || (allowsFingerDrawing && $0.type == .direct) }) == true else { return nil }
+        // Do not depend on UIEvent.allTouches during hit-testing: UIKit can
+        // provide an event whose touch set is not populated yet. That made
+        // the overlay miss the Pencil entirely while the PK drawing recognizer
+        // was disabled, leaving pressure mode with no active drawing target.
+        // Ancestor scroll-view recognizers still see finger touches; touchesBegan
+        // below only captures Pencil (or explicitly allowed finger) input.
+        guard isEnabled, bounds.contains(point) else { return nil }
         return self
     }
 
