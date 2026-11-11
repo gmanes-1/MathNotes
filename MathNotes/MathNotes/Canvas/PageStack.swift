@@ -81,7 +81,7 @@ final class PageCanvasView: PKCanvasView {
     var isLoaded = false
     weak var undoProxy: UndoManager?
     var strokeCount: Int?
-    var pressureCaptureView: PressureFinelinerCaptureView?
+    var pressureCaptureView: MaLiangFinelinerCaptureView?
     override var undoManager: UndoManager? { undoProxy ?? super.undoManager }
 
     override var accessibilityValue: String? {
@@ -1001,14 +1001,14 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     /// only hit-tests Pencil contacts, so finger scrolling and page navigation remain native.
     private func syncPressureCapture(_ canvas: PageCanvasView) {
         let preset = toolbox.pen
-        let wantsPressure = canvas.isLoaded && !document.isReadOnly &&
-            !isLocked && preset?.inkType == .monoline && preset?.pressureSensitive == true
-        if wantsPressure {
-            let capture: PressureFinelinerCaptureView
+        let wantsMaLiang = canvas.isLoaded && !document.isReadOnly &&
+            !isLocked && preset?.inkType == .monoline
+        if wantsMaLiang {
+            let capture: MaLiangFinelinerCaptureView
             if let existing = canvas.pressureCaptureView {
                 capture = existing
             } else {
-                capture = PressureFinelinerCaptureView(canvas: canvas)
+                capture = MaLiangFinelinerCaptureView(canvas: canvas)
                 capture.onStrokeCommitted = { [weak self, weak canvas] before, stroke in
                     guard let self, let canvas, canvas.isLoaded, canvas.pageID != nil,
                           !self.document.isReadOnly, !self.isLocked else { return }
@@ -1082,8 +1082,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
         syncPressureCapture(canvas)
-        // PencilKit owns ordinary fineliner strokes. The capture overlay takes over only
-        // when the pressure option is on, then commits its samples as a regular PKStroke.
+        // MaLiang owns monoline input in both pressure modes. Other ink types stay on PencilKit.
         canvas.drawingGestureRecognizer.isEnabled = enabled && canvas.pressureCaptureView?.isEnabled != true
     }
 
