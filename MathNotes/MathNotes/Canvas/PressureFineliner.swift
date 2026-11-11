@@ -1,248 +1,138 @@
 import UIKit
 import PencilKit
+import MaLiang
 
-/// Captures Apple Pencil force for Fineliner and commits the resulting points as a normal PencilKit stroke.
-/// The live preview is a vector shape layer; it is never used as the saved drawing.
+/// Uses the actual MaLiang Canvas/Brush for live ink, then converts MaLiang's
+/// finished line strip into a regular PKStroke for the notebook's existing
+/// persistence, undo, replay and export pipeline.
 @MainActor
-final class PressureFinelinerCaptureView: UIView {
-    private struct Sample {
-        var location: CGPoint
-        var time: TimeInterval
-        var force: CGFloat
-        var azimuth: CGFloat
-        var altitude: CGFloat
-        var viewLocation: CGPoint
-    }
-
-    weak var canvas: PageCanvasView?
-    var onStrokeBegan: (() -> Void)?
+final class MaLiangFinelinerCaptureView: UIView, ActionObserver {
+    weak var notebookCanvas: PageCanvasView?
+    let maliangCanvas: Canvas
     var onStrokeCommitted: ((PKDrawing, PKStroke) -> Void)?
-    private let preview = CAShapeLayer()
-    private var samples: [Sample] = []
-    private var estimates: [NSNumber: Int] = [:]
-    private var startDate = Date()
-    private var startTimestamp: TimeInterval = 0
-    private var baseWidth: CGFloat = 1
-    private var pressureAmount: CGFloat = 0.08
     private var inkColor = UIColor.label
-    private var activeTouch: UITouch?
+    private var referenceWidth: CGFloat = 2.7
+    private var pressureAmount: CGFloat = 0.08
+    private var usesPressure = false
     private(set) var isEnabled = false
-    private var allowsFingerDrawing = false
 
     init(canvas: PageCanvasView) {
-        self.canvas = canvas
-        super.init(frame: canvas.frame)
+        notebookCanvas = canvas
+        maliangCanvas = Canvas(frame: .zero)
+        super.init(frame: canvas.bounds)
         backgroundColor = .clear
         isOpaque = false
-        isAccessibilityElement = false
-        preview.fillColor = inkColor.cgColor
-        preview.fillRule = .nonZero
-        layer.addSublayer(preview)
+        clipsToBounds = true
+
+        maliangCanvas.translatesAutoresizingMaskIntoConstraints = false
+        maliangCanvas.backgroundColor = .clear
+        maliangCanvas.isPencilMode = true
+        addSubview(maliangCanvas)
+        NSLayoutConstraint.activate([
+            maliangCanvas.leadingAnchor.constraint(equalTo: leadingAnchor),
+            maliangCanvas.trailingAnchor.constraint(equalTo: trailingAnchor),
+            maliangCanvas.topAnchor.constraint(equalTo: topAnchor),
+            maliangCanvas.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        maliangCanvas.addObserver(self)
+        configure(preset: nil, enabled: false)
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func configure(preset: ToolPreset?, enabled: Bool, allowsFingerDrawing: Bool = false) {
-        let shouldEnable = enabled && preset?.pressureSensitive == true
-        isEnabled = shouldEnable
-        isUserInteractionEnabled = shouldEnable
-        self.allowsFingerDrawing = shouldEnable && allowsFingerDrawing
-        if let preset {
-            // The tray's width is already the actual PencilKit point width.
-            // Do not apply InkCalibration again: that calibration is learned from
-            // PencilKit's own rendered strokes and would make this custom path
-            // narrower than the width the user selected.
-            baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
-            pressureAmount = CGFloat(min(max(preset.pressureAmount ?? 0.08, 0), 1))
-            inkColor = preset.uiColor
-            preview.fillColor = inkColor.cgColor
+        let active = enabled && preset?.inkType == .monoline
+        isEnabled = active
+        isUserInteractionEnabled = active
+        guard active, let preset else {
+            maliangCanvas.isUserInteractionEnabled = false
+            maliangCanvas.resetData()
+            return
         }
-        if !shouldEnable { cancelStroke() }
+
+        referenceWidth = max(CGFloat(preset.width), 0.1)
+        inkColor = preset.uiColor
+        usesPressure = preset.pressureSensitive
+        pressureAmount = min(max(CGFloat(preset.pressureAmount ?? 0.08), 0), 1)
+        maliangCanvas.isPencilMode = !allowsFingerDrawing
+
+        // These are the same brush settings used by MaLiangFinelinerPrototypeView.
+        // Pressure OFF makes the minimum ratio 1, so the width is constant.
+        // Pressure ON uses MaLiang's native force curve and the tray slider.
+        let brush = maliangCanvas.defaultBrush!
+        brush.pointSize = referenceWidth * 0.3
+        brush.pointStep = 0.6
+        brush.opacity = 0.72
+        brush.minimumForceRatio = usesPressure ? 0.43 : 1
+        brush.forceSensitive = usesPressure ? pressureAmount : 0
+        brush.color = inkColor
+        brush.use()
+        maliangCanvas.isUserInteractionEnabled = true
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        // Do not depend on UIEvent.allTouches during hit-testing: UIKit can
-        // provide an event whose touch set is not populated yet. That made
-        // the overlay miss the Pencil entirely while the PK drawing recognizer
-        // was disabled, leaving pressure mode with no active drawing target.
-        // Ancestor scroll-view recognizers still see finger touches; touchesBegan
-        // below only captures Pencil (or explicitly allowed finger) input.
         guard isEnabled, bounds.contains(point) else { return nil }
-        return self
+        return super.hitTest(point, with: event) ?? self
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        preview.frame = bounds
+        maliangCanvas.frame = bounds
     }
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard isEnabled, let touch = touches.first(where: { $0.type == .pencil || (allowsFingerDrawing && $0.type == .direct) }), canvas != nil else {
-            super.touchesBegan(touches, with: event)
+    func canvas(_ canvas: Canvas, didFinishLineAt point: CGPoint, force: CGFloat) {
+        guard canvas === maliangCanvas, let notebookCanvas, isEnabled,
+              let strip = canvas.data.elements.last as? LineStrip,
+              !strip.lines.isEmpty else {
+            maliangCanvas.resetData()
             return
         }
-        cancelStroke()
-        activeTouch = touch
-        startDate = Date()
-        startTimestamp = touch.timestamp
-        onStrokeBegan?()
-        append(touch)
-        refreshPreview()
-    }
 
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let activeTouch, let event, touches.contains(activeTouch) else { return }
-        let coalesced = event.coalescedTouches(for: activeTouch) ?? [activeTouch]
-        for touch in coalesced { append(touch) }
-        refreshPreview()
-    }
-
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let activeTouch, touches.contains(activeTouch) else { return }
-        if let event {
-            for touch in event.coalescedTouches(for: activeTouch) ?? [activeTouch] { append(touch) }
-        }
-        finishStroke()
-    }
-
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let activeTouch, touches.contains(activeTouch) else { return }
-        cancelStroke()
-    }
-
-    override func touchesEstimatedPropertiesUpdated(_ touches: Set<UITouch>) {
-        for touch in touches {
-            guard touch.type == .pencil,
-                  let index = touch.estimationUpdateIndex,
-                  !touch.estimatedPropertiesExpectingUpdates.contains(.force),
-                  let sampleIndex = estimates.removeValue(forKey: index),
-                  samples.indices.contains(sampleIndex) else { continue }
-            samples[sampleIndex].force = normalizedForce(for: touch)
-            refreshPreview()
-        }
-    }
-
-    private func append(_ touch: UITouch) {
-        guard let canvas else { return }
-        let visiblePoint = touch.location(in: self)
-        let canvasPoint = canvas.convert(visiblePoint, from: self)
-        // The overlay's frame already follows canvas.bounds.origin (the scroll
-        // content offset). Converting into the canvas therefore already produces
-        // the PKDrawing content coordinate; adding contentOffset again would
-        // double-shift the committed stroke away from its live preview.
-        let contentPoint = canvasPoint
-        let rawForce = touch.type == .pencil ? normalizedForce(for: touch) : 0.5
-        let force = samples.last.map { $0.force * 0.62 + rawForce * 0.38 } ?? rawForce
-        if let last = samples.last, hypot(last.location.x - contentPoint.x, last.location.y - contentPoint.y) < 0.12,
-           abs(last.force - force) < 0.015 { return }
-        let sample = Sample(location: contentPoint, time: max(0, touch.timestamp - startTimestamp),
-                            force: force, azimuth: touch.azimuthAngle(in: self),
-                            altitude: touch.altitudeAngle, viewLocation: visiblePoint)
-        samples.append(sample)
-        if touch.estimatedPropertiesExpectingUpdates.contains(.force), let index = touch.estimationUpdateIndex {
-            estimates[index] = samples.count - 1
-        }
-    }
-
-    private func normalizedForce(for touch: UITouch) -> CGFloat {
-        guard touch.type == .pencil else { return 1 }
-        return min(max(touch.force / max(touch.maximumPossibleForce, 1), 0), 1)
-    }
-
-    private func widthFactor(_ force: CGFloat) -> CGFloat {
-        // Keep the width selected in the tray as the reference width at
-        // ordinary Pencil pressure. Pressure changes it symmetrically instead
-        // of shrinking every stroke to 43% of the selected width. At slider 0
-        // the pen is constant-width; at 1 the range is 0.65x...1.35x.
-        let normalizedPressure = min(max(force, 0), 1)
-        let strength = min(max(pressureAmount, 0), 1)
-        return 1 + strength * (normalizedPressure - 0.5) * 0.7
-    }
-
-    private func refreshPreview() {
-        guard !samples.isEmpty, canvas != nil else { preview.path = nil; return }
-        let points = samples.map { ($0.viewLocation, max(baseWidth * widthFactor($0.force) / 2, 0.2)) }
-        let path = CGMutablePath()
-        if points.count == 1 {
-            let p = points[0].0, r = points[0].1
-            path.addEllipse(in: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
-        } else {
-            var left: [CGPoint] = []
-            var right: [CGPoint] = []
-            let centers = smoothSamples(points, steps: 6)
-            for i in centers.indices {
-                let previous = centers[max(i - 1, 0)].0
-                let next = centers[min(i + 1, centers.count - 1)].0
-                let dx = next.x - previous.x, dy = next.y - previous.y
-                let length = max(hypot(dx, dy), 0.001)
-                let normal = CGPoint(x: -dy / length, y: dx / length)
-                let center = centers[i].0, radius = centers[i].1
-                left.append(CGPoint(x: center.x + normal.x * radius, y: center.y + normal.y * radius))
-                right.append(CGPoint(x: center.x - normal.x * radius, y: center.y - normal.y * radius))
+        var controlPoints: [PKStrokePoint] = []
+        var time: TimeInterval = 0
+        for line in strip.lines {
+            let start = notebookLocation(for: line.begin)
+            let end = notebookLocation(for: line.end)
+            let width = max(line.pointSize, 0.2)
+            if controlPoints.isEmpty || hypot(controlPoints.last!.location.x - start.x,
+                                               controlPoints.last!.location.y - start.y) > 0.01 {
+                controlPoints.append(makePoint(start, width: width, time: time))
+                time += 0.001
             }
-            if let first = left.first { path.move(to: first) }
-            for point in left.dropFirst() { path.addLine(to: point) }
-            for point in right.reversed() { path.addLine(to: point) }
-            path.closeSubpath()
-            for (center, radius) in [centers.first, centers.last].compactMap({ $0 }) {
-                path.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius,
-                                           width: radius * 2, height: radius * 2))
-            }
+            controlPoints.append(makePoint(end, width: width, time: time))
+            time += 0.001
         }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        preview.path = path
-        CATransaction.commit()
-    }
 
-    private func smoothSamples(_ points: [(CGPoint, CGFloat)], steps: Int) -> [(CGPoint, CGFloat)] {
-        guard points.count > 1 else { return points }
-        var result: [(CGPoint, CGFloat)] = []
-        for index in 0..<(points.count - 1) {
-            let p0 = points[max(index - 1, 0)]
-            let p1 = points[index]
-            let p2 = points[index + 1]
-            let p3 = points[min(index + 2, points.count - 1)]
-            for step in 0..<steps {
-                let t = CGFloat(step) / CGFloat(steps)
-                let t2 = t * t, t3 = t2 * t
-                func interpolate(_ a: CGFloat, _ b: CGFloat, _ c: CGFloat, _ d: CGFloat) -> CGFloat {
-                    0.5 * ((2 * b) + (-a + c) * t + (2*a - 5*b + 4*c - d) * t2 + (-a + 3*b - 3*c + d) * t3)
-                }
-                let point = CGPoint(x: interpolate(p0.0.x, p1.0.x, p2.0.x, p3.0.x),
-                                    y: interpolate(p0.0.y, p1.0.y, p2.0.y, p3.0.y))
-                let radius = max(interpolate(p0.1, p1.1, p2.1, p3.1), 0.12)
-                result.append((point, radius))
-            }
+        if controlPoints.count == 1, let only = controlPoints.first {
+            controlPoints.append(makePoint(only.location, width: only.size.width, time: time))
         }
-        if let last = points.last { result.append(last) }
-        return result
-    }
+        guard controlPoints.count >= 2 else {
+            maliangCanvas.resetData()
+            return
+        }
 
-    private func finishStroke() {
-        defer { cancelStroke() }
-        guard let canvas, !samples.isEmpty else { return }
-        var controlPoints = samples.map { sample in
-            let width = max(baseWidth * widthFactor(sample.force), 0.4)
-            return PKStrokePoint(location: sample.location, timeOffset: sample.time,
-                                 size: CGSize(width: width, height: width), opacity: 1,
-                                 force: sample.force, azimuth: sample.azimuth, altitude: sample.altitude)
-        }
-        if controlPoints.count == 1, let point = controlPoints.first {
-            controlPoints.append(PKStrokePoint(location: point.location, timeOffset: point.timeOffset + 0.001,
-                                               size: point.size, opacity: point.opacity, force: point.force,
-                                               azimuth: point.azimuth, altitude: point.altitude))
-        }
-        let path = PKStrokePath(controlPoints: controlPoints, creationDate: startDate)
-        let stroke = PKStroke(ink: PKInk(.monoline, color: inkColor), path: path, transform: .identity, mask: nil)
-        let before = canvas.drawing
+        let path = PKStrokePath(controlPoints: controlPoints, creationDate: Date())
+        let stroke = PKStroke(ink: PKInk(.monoline, color: inkColor),
+                              path: path, transform: .identity, mask: nil)
+        let before = notebookCanvas.drawing
         onStrokeCommitted?(before, stroke)
+        // The notebook now owns the finished stroke. Clear the temporary Metal
+        // surface so it cannot be drawn twice or leak into the next stroke.
+        maliangCanvas.resetData()
     }
 
-    private func cancelStroke() {
-        samples.removeAll(keepingCapacity: true)
-        estimates.removeAll(keepingCapacity: true)
-        activeTouch = nil
-        preview.path = nil
+    private func notebookLocation(for point: CGPoint) -> CGPoint {
+        guard let notebookCanvas else { return point }
+        // The overlay tracks the visible bounds. MaLiang reports overlay-local
+        // coordinates; PencilKit stores coordinates in the page content space.
+        let visible = notebookCanvas.convert(point, from: maliangCanvas)
+        return CGPoint(x: visible.x + notebookCanvas.contentOffset.x,
+                       y: visible.y + notebookCanvas.contentOffset.y)
+    }
+
+    private func makePoint(_ location: CGPoint, width: CGFloat, time: TimeInterval) -> PKStrokePoint {
+        PKStrokePoint(location: location, timeOffset: time,
+                      size: CGSize(width: width, height: width), opacity: 1,
+                      force: 0.5, azimuth: 0, altitude: .pi / 2)
     }
 }
