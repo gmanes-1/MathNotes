@@ -77,8 +77,15 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
     // the page scroll view instead of being swallowed by this full-page overlay.
     // Pencil contacts still enter MaLiang's Metal canvas.
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard isEnabled,
-              event?.allTouches?.contains(where: { $0.type == .pencil }) == true else {
+        guard isEnabled else { return nil }
+
+        // UIKit can call hitTest before the Pencil touch is exposed through
+        // event.allTouches (and may provide a nil event). Do not reject that
+        // initial hit: MaLiang needs to receive touchesBegan to start the stroke.
+        // When UIKit does provide touch metadata, pass finger-only contacts
+        // through to the underlying page scroll view.
+        if let touches = event?.allTouches, !touches.isEmpty,
+           !touches.contains(where: { $0.type == .pencil }) {
             return nil
         }
         return super.hitTest(point, with: event)
