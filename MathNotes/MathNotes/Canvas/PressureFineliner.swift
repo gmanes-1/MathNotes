@@ -79,14 +79,26 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard isEnabled else { return nil }
 
-        // UIKit can call hitTest before the Pencil touch is exposed through
-        // event.allTouches (and may provide a nil event). Do not reject that
-        // initial hit: MaLiang needs to receive touchesBegan to start the stroke.
-        // When UIKit does provide touch metadata, pass finger-only contacts
-        // through to the underlying page scroll view.
-        if let touches = event?.allTouches, !touches.isEmpty,
-           !touches.contains(where: { $0.type == .pencil }) {
-            return nil
+        // UIKit can call hitTest before the Pencil touch is exposed (or with
+        // a nil event), so keep the initial-hit fallback for MaLiang. When
+        // touch metadata is available, classify the contact being hit-tested,
+        // not the event as a whole: allTouches can contain a Pencil AND the
+        // two fingers of a pinch at the same time. Let those finger contacts
+        // pass through to the page scroll view so native anchored zoom works.
+        if let touches = event?.allTouches, !touches.isEmpty {
+            let activeTouches = touches.filter {
+                $0.phase == .began || $0.phase == .moved || $0.phase == .stationary
+            }
+            if let nearestTouch = activeTouches.min(by: {
+                let a = $0.location(in: self)
+                let b = $1.location(in: self)
+                let da = pow(a.x - point.x, 2) + pow(a.y - point.y, 2)
+                let db = pow(b.x - point.x, 2) + pow(b.y - point.y, 2)
+                return da < db
+            }), nearestTouch.type != .pencil {
+                return nil
+            }
+            if activeTouches.isEmpty { return nil }
         }
         return super.hitTest(point, with: event)
     }
