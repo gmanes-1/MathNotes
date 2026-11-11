@@ -99,13 +99,23 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
             let start = notebookLocation(for: startInCanvas)
             let end = notebookLocation(for: endInCanvas)
             let width = min(max(line.pointSize * renderScale, 0.2), referenceWidth)
-            if controlPoints.isEmpty || hypot(controlPoints.last!.location.x - start.x,
-                                               controlPoints.last!.location.y - start.y) > 0.01 {
-                controlPoints.append(makePoint(start, width: width, time: time))
-                time += 0.001
+            // MaLiang's Metal renderer stamps many dots along each short line.
+            // Keeping only the segment endpoints in PencilKit made the saved
+            // stroke visibly faceted. Resample each segment into sub-point steps
+            // so the committed vector path follows the same smooth curve.
+            let distance = hypot(end.x - start.x, end.y - start.y)
+            let subdivisions = max(1, Int(ceil(distance / 0.75)))
+            for sample in 0...subdivisions {
+                let fraction = CGFloat(sample) / CGFloat(subdivisions)
+                let location = CGPoint(x: start.x + (end.x - start.x) * fraction,
+                                       y: start.y + (end.y - start.y) * fraction)
+                if let last = controlPoints.last,
+                   hypot(last.location.x - location.x, last.location.y - location.y) <= 0.01 {
+                    continue
+                }
+                controlPoints.append(makePoint(location, width: width, time: time))
+                time += 1.0 / 120.0
             }
-            controlPoints.append(makePoint(end, width: width, time: time))
-            time += 0.001
         }
 
         if controlPoints.count == 1, let only = controlPoints.first {
