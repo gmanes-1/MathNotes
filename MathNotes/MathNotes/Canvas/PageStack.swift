@@ -1147,12 +1147,15 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let y = min(max((grown.minY / pixel).rounded(.down) * pixel, 0), full.height - height)
         let target = CGRect(x: x, y: y, width: width, height: height)
         if canvas.frame != target { canvas.frame = target }
+        if canvas.contentSize != size { canvas.contentSize = size }
+        if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
+        // A UIScrollView's bounds origin follows contentOffset. Position the MaLiang
+        // overlay only after updating the offset, so it always covers the visible
+        // canvas viewport rather than the previous overscanned content origin.
         if let capture = canvas.pressureCaptureView {
             capture.frame = canvas.bounds
             if capture.isEnabled, capture.superview === canvas { canvas.bringSubviewToFront(capture) }
         }
-        if canvas.contentSize != size { canvas.contentSize = size }
-        if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
     }
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
