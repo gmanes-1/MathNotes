@@ -1968,6 +1968,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var drawingPolicy: PKCanvasViewDrawingPolicy = .default
 
     private var effectivePolicy: PKCanvasViewDrawingPolicy {
+        // The fineliner is Pencil-only: fingers must remain available to the
+        // outer page scroll view for one-finger panning and two-finger zooming.
+        // PKCanvasView must not compete with those gestures for finger input.
+        if toolbox.pen?.inkType == .monoline { return .pencilOnly }
         switch drawingPolicy {
         case .anyInput, .pencilOnly: drawingPolicy
         default: session.showsToolTray && !UIPencilInteraction.prefersPencilOnlyDrawing ? .anyInput : .pencilOnly
