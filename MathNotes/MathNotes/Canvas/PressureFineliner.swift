@@ -58,7 +58,7 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
         // Pressure OFF makes the minimum ratio 1, so the width is constant.
         // Pressure ON uses MaLiang's native force response at a fixed strength.
         let brush = maliangCanvas.defaultBrush!
-        brush.pointSize = referenceWidth * 0.3
+        brush.pointSize = referenceWidth
         brush.pointStep = 0.6
         brush.opacity = 0.72
         brush.minimumForceRatio = usesPressure ? 0.43 : 1
@@ -91,7 +91,7 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
         for line in strip.lines {
             let start = notebookLocation(for: line.begin)
             let end = notebookLocation(for: line.end)
-            let width = max(line.pointSize, 0.2)
+            let width = min(max(line.pointSize, 0.2), referenceWidth)
             if controlPoints.isEmpty || hypot(controlPoints.last!.location.x - start.x,
                                                controlPoints.last!.location.y - start.y) > 0.01 {
                 controlPoints.append(makePoint(start, width: width, time: time))
