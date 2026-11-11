@@ -1,6 +1,6 @@
 import UIKit
 import PencilKit
-import MaLiang
+@preconcurrency import MaLiang
 
 /// Uses the actual MaLiang Canvas/Brush for live ink, then converts MaLiang's
 /// finished line strip into a regular PKStroke for the notebook's existing
@@ -52,7 +52,7 @@ final class MaLiangFinelinerCaptureView: UIView, ActionObserver {
 
         referenceWidth = max(CGFloat(preset.width), 0.1)
         inkColor = preset.uiColor
-        usesPressure = preset.pressureSensitive
+        usesPressure = preset.pressureSensitive ?? false
         pressureAmount = min(max(CGFloat(preset.pressureAmount ?? 0.08), 0), 1)
         maliangCanvas.isPencilMode = !allowsFingerDrawing
 
