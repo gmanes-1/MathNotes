@@ -440,6 +440,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.panGestureRecognizer.delaysTouchesBegan = false
         scrollView.pinchGestureRecognizer?.cancelsTouchesInView = false
         scrollView.pinchGestureRecognizer?.delaysTouchesBegan = false
+        // The MaLiang child surface handles Pencil touches directly. Make the
+        // page's pinch recognizer participate simultaneously so two-finger
+        // gestures are not blocked by the drawing surface's touch handling.
+        scrollView.pinchGestureRecognizer?.delegate = self
         scrollView.bouncesZoom = false
         scrollView.alwaysBounceHorizontal = false
         scrollView.panGestureRecognizer.allowedTouchTypes = Self.scrollTouchTypes
