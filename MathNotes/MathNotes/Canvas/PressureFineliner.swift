@@ -86,10 +86,19 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
 
         var controlPoints: [PKStrokePoint] = []
         var time: TimeInterval = 0
+        // MaLiang stores line coordinates and point sizes divided by its render
+        // target scale. Convert them back to UIKit points before handing them to
+        // PencilKit; otherwise strokes are misplaced and their widths drift.
+        let renderScale = max(canvas.scale, 0.001)
+        let renderOffset = canvas.contentOffset
         for line in strip.lines {
-            let start = notebookLocation(for: line.begin)
-            let end = notebookLocation(for: line.end)
-            let width = min(max(line.pointSize, 0.2), referenceWidth)
+            let startInCanvas = CGPoint(x: line.begin.x * renderScale - renderOffset.x,
+                                        y: line.begin.y * renderScale - renderOffset.y)
+            let endInCanvas = CGPoint(x: line.end.x * renderScale - renderOffset.x,
+                                      y: line.end.y * renderScale - renderOffset.y)
+            let start = notebookLocation(for: startInCanvas)
+            let end = notebookLocation(for: endInCanvas)
+            let width = min(max(line.pointSize * renderScale, 0.2), referenceWidth)
             if controlPoints.isEmpty || hypot(controlPoints.last!.location.x - start.x,
                                                controlPoints.last!.location.y - start.y) > 0.01 {
                 controlPoints.append(makePoint(start, width: width, time: time))
@@ -119,8 +128,9 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
 
     private func notebookLocation(for point: CGPoint) -> CGPoint {
         guard let notebookCanvas else { return point }
-        // UIView.convert already returns the notebook canvas' content coordinate.
-        // Adding contentOffset again would shift strokes twice when the page scrolls.
+        // The point passed here has already been converted out of MaLiang's
+        // render-target scale and offset. UIView.convert supplies the page's
+        // content-coordinate transform, including its current scroll offset.
         return notebookCanvas.convert(point, from: maliangCanvas)
     }
 
