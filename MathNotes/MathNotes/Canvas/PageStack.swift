@@ -1992,9 +1992,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         case _ where textOverlay != nil: true
         case _ where inkLasso != nil: false
         case _ where document.isReadOnly || replay != nil || isFinding: false
-        // Fineliner reserves finger input for page navigation; PencilKit
-        // captures Apple Pencil strokes on the canvas.
-        case .anyInput where toolbox.pen?.inkType == .monoline: false
         case .anyInput: true
         default: false
         }
