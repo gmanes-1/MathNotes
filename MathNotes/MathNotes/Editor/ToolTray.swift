@@ -498,7 +498,7 @@ private struct PenOptions: View {
                         }
                         Slider(value: Binding(get: { pen.pressureAmount ?? 0.08 }, set: { amount in
                             toolbox.changePen(id) { $0.pressureAmount = amount }
-                        }), in: 0...0.5, step: 0.01)
+                        }), in: 0...1, step: 0.01)
                         .tint(Color.accentColor)
                         .accessibilityLabel(Text("Pressure amount"))
                         .accessibilityIdentifier("editor.tools.pen.pressureAmount")
