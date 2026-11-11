@@ -60,7 +60,7 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
         let brush = maliangCanvas.defaultBrush!
         brush.pointSize = referenceWidth
         brush.pointStep = 0.6
-        brush.opacity = 0.72
+        brush.opacity = 1
         brush.minimumForceRatio = usesPressure ? 0.43 : 1
         brush.forceSensitive = usesPressure ? 0.08 : 0
         brush.color = inkColor
@@ -69,7 +69,13 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard isEnabled, bounds.contains(point) else { return nil }
+        // This overlay is an Apple Pencil ink surface, not a full-screen touch
+        // shield. Let finger touches reach the page/scroll view so pinch-to-zoom
+        // and navigation continue to work while MaLiang captures Pencil input.
+        guard isEnabled, bounds.contains(point),
+              event?.allTouches?.contains(where: { $0.type == .pencil }) == true else {
+            return nil
+        }
         return super.hitTest(point, with: event) ?? self
     }
 
