@@ -81,7 +81,6 @@ final class PageCanvasView: PKCanvasView {
     var isLoaded = false
     weak var undoProxy: UndoManager?
     var strokeCount: Int?
-    var pressureCaptureView: MaLiangFinelinerCaptureView?
     override var undoManager: UndoManager? { undoProxy ?? super.undoManager }
 
     override var accessibilityValue: String? {
@@ -1003,49 +1002,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             canvas.tool = selected
         }
         canvas.isRulerActive = toolbox.isRulerActive
-        syncPressureCapture(canvas)
     }
 
     /// Installs the lab-calibrated pressure path over the regular canvas. The overlay
     /// only hit-tests Pencil contacts, so finger scrolling and page navigation remain native.
-    private func syncPressureCapture(_ canvas: PageCanvasView) {
-        let preset = toolbox.pen
-        let wantsMaLiang = canvas.isLoaded && !document.isReadOnly &&
-            !isLocked && preset?.inkType == .monoline
-        if wantsMaLiang {
-            let capture: MaLiangFinelinerCaptureView
-            if let existing = canvas.pressureCaptureView {
-                capture = existing
-            } else {
-                capture = MaLiangFinelinerCaptureView(canvas: canvas)
-                capture.onStrokeCommitted = { [weak self, weak canvas] before, stroke in
-                    guard let self, let canvas, canvas.isLoaded, canvas.pageID != nil,
-                          !self.document.isReadOnly, !self.isLocked else { return }
-                    // Commit a single normal PencilKit stroke so existing undo, persistence,
-                    // replay and export paths continue to work unchanged. Suppress the setter's
-                    // delegate notification, then run the normal document-change pipeline once.
-                    self.isApplyingDrawing = true
-                    canvas.drawing = PKDrawing(strokes: before.strokes + [stroke])
-                    self.isApplyingDrawing = false
-                    canvas.strokeCount = nil
-                    self.canvasViewDrawingDidChange(canvas)
-                }
-                canvas.pressureCaptureView = capture
-            }
-            capture.configure(preset: preset, enabled: true, allowsFingerDrawing: false)
-            // Keep the capture surface inside the canvas itself. As a sibling in
-            // the page slot its frame can become stale when the canvas is overscanned,
-            // repositioned, or hosted by the zoom window; as a child it tracks the
-            // actual interactive canvas bounds in every layout.
-            if capture.superview !== canvas { canvas.addSubview(capture) }
-            capture.frame = CGRect(origin: canvas.contentOffset, size: canvas.bounds.size)
-            canvas.bringSubviewToFront(capture)
-        } else {
-            canvas.pressureCaptureView?.configure(preset: preset, enabled: false)
-            canvas.pressureCaptureView?.removeFromSuperview()
-        }
-    }
-
     private func attachCanvas(_ page: NotebookPage, to slot: PageSlotView) {
         let canvas = pool.popLast() ?? makeCanvas()
         canvas.pageID = page.id
@@ -1058,7 +1018,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         slot.addSubview(canvas)
         slot.canvas = canvas
         canvases[page.id] = canvas
-        syncPressureCapture(canvas)
         slot.raiseTape()
         if let selectionView, selectionView.superview === slot { slot.bringSubviewToFront(selectionView) }
         if let cropView, cropView.superview === slot { slot.bringSubviewToFront(cropView) }
@@ -1090,17 +1049,16 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
-        syncPressureCapture(canvas)
         // MaLiang owns monoline input in both pressure modes. Other ink types stay on PencilKit.
-        canvas.drawingGestureRecognizer.isEnabled = enabled && canvas.pressureCaptureView?.isEnabled != true
+        // PencilKit owns the complete Pencil stroke lifecycle for every ink type.
+        // The live stroke and saved PKDrawing therefore use the same renderer.
+        canvas.drawingGestureRecognizer.isEnabled = enabled
     }
 
 
     private func recycleCanvas(_ id: UUID) {
         guard let canvas = canvases.removeValue(forKey: id) else { return }
         if canvas.isFirstResponder { anchor.becomeFirstResponder() }
-        canvas.pressureCaptureView?.configure(preset: nil, enabled: false)
-        canvas.pressureCaptureView?.removeFromSuperview()
         canvas.removeFromSuperview()
         canvas.pageID = nil
         replayPages[id] = nil
@@ -1152,10 +1110,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         // A UIScrollView's bounds origin follows contentOffset. Position the MaLiang
         // overlay only after updating the offset, so it always covers the visible
         // canvas viewport rather than the previous overscanned content origin.
-        if let capture = canvas.pressureCaptureView {
-            capture.frame = canvas.bounds
-            if capture.isEnabled, capture.superview === canvas { canvas.bringSubviewToFront(capture) }
-        }
     }
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
