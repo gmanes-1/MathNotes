@@ -68,17 +68,9 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
         maliangCanvas.isUserInteractionEnabled = true
     }
 
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        // This overlay is an Apple Pencil ink surface, not a full-screen touch
-        // shield. Let finger touches reach the page/scroll view so pinch-to-zoom
-        // and navigation continue to work while MaLiang captures Pencil input.
-        guard isEnabled, bounds.contains(point),
-              event?.allTouches?.contains(where: { $0.type == .pencil }) == true else {
-            return nil
-        }
-        return super.hitTest(point, with: event) ?? self
-    }
-
+    // Keep normal UIKit hit-testing. MaLiang is in Pencil mode, so it accepts
+    // Apple Pencil input while the ancestor scroll view's gesture recognizers
+    // continue to observe finger contacts for pinch-to-zoom.
     override func layoutSubviews() {
         super.layoutSubviews()
         maliangCanvas.frame = bounds
