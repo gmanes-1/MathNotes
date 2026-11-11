@@ -58,8 +58,12 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
         // Pressure OFF makes the minimum ratio 1, so the width is constant.
         // Pressure ON uses MaLiang's native force response at a fixed strength.
         let brush = maliangCanvas.defaultBrush!
-        brush.pointSize = referenceWidth
-        brush.pointStep = 0.6
+        // The app's slider is calibrated in tenths of MaLiang's native point units.
+        // Keeping this conversion here also keeps the committed PencilKit path in sync.
+        brush.pointSize = referenceWidth * 0.1
+        // MaLiang attenuates each stamp by its overlap count. Match the spacing to
+        // the fine nib so a 100%-opacity stroke does not become a row of faint dots.
+        brush.pointStep = max(0.04, brush.pointSize / 2.5)
         brush.opacity = 1
         brush.minimumForceRatio = usesPressure ? 0.43 : 1
         brush.forceSensitive = usesPressure ? 0.08 : 0
@@ -104,7 +108,10 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
             // stroke visibly faceted. Resample each segment into sub-point steps
             // so the committed vector path follows the same smooth curve.
             let distance = hypot(end.x - start.x, end.y - start.y)
-            let subdivisions = max(1, Int(ceil(distance / 0.75)))
+            // Sample more densely than the nib diameter so the committed PencilKit
+            // path stays continuous instead of exposing the individual MaLiang stamps.
+            let sampleStep = max(0.025, min(0.15, width * 0.5))
+            let subdivisions = max(1, Int(ceil(distance / sampleStep)))
             for sample in 0...subdivisions {
                 let fraction = CGFloat(sample) / CGFloat(subdivisions)
                 let location = CGPoint(x: start.x + (end.x - start.x) * fraction,
