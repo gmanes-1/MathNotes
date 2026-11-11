@@ -300,6 +300,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private let session: EditorSession
     private var document: NotebookDocument { session.document }
     private let scrollView = PageScrollView()
+    private lazy var notebookPinch = UIPinchGestureRecognizer(target: self, action: #selector(handleNotebookPinch(_:)))
+    private var pinchStartZoomScale: CGFloat = 1
     private let contentView = UIView()
     private let anchor = ResponderAnchor()
     private let toolbox: Toolbox
@@ -440,9 +442,16 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.panGestureRecognizer.delaysTouchesBegan = false
         scrollView.pinchGestureRecognizer?.cancelsTouchesInView = false
         scrollView.pinchGestureRecognizer?.delaysTouchesBegan = false
-        // Keep UIScrollView's own pinch recognizer delegate intact. The page's
-        // tap/hold recognizers use this controller as their delegate and opt in
-        // to simultaneous recognition with the scroll view's pinch recognizer.
+        // The nested MaLiang/PencilKit canvases repeatedly prevent UIScrollView's
+        // private pinch recognizer from receiving a complete two-finger stream.
+        // Use an explicit recognizer on the page scroll view and drive its normal
+        // zoomScale so UIScrollView still performs the actual content zoom.
+        scrollView.pinchGestureRecognizer?.isEnabled = false
+        notebookPinch.allowedTouchTypes = Self.scrollTouchTypes
+        notebookPinch.cancelsTouchesInView = false
+        notebookPinch.delaysTouchesBegan = false
+        notebookPinch.delegate = self
+        scrollView.addGestureRecognizer(notebookPinch)
         scrollView.bouncesZoom = false
         scrollView.alwaysBounceHorizontal = false
         scrollView.panGestureRecognizer.allowedTouchTypes = Self.scrollTouchTypes
@@ -3068,6 +3077,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         // Pinch-to-zoom must not be blocked by the page's tap/hold recognizers.
+        if gestureRecognizer === notebookPinch || other === notebookPinch {
+            return true
+        }
         if gestureRecognizer === scrollView.pinchGestureRecognizer ||
             other === scrollView.pinchGestureRecognizer {
             return true
@@ -3187,8 +3199,23 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if inkLasso != nil { publishInkSelection() }
     }
 
-    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
-        guard scrollView === self.scrollView else { return }
+    @objc private func handleNotebookPinch(_ gesture: UIPinchGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            pinchStartZoomScale = scrollView.zoomScale
+            pendingPage = nil
+            dropLaser()
+        case .changed:
+            let requested = pinchStartZoomScale * gesture.scale
+            scrollView.zoomScale = min(max(requested, scrollView.minimumZoomScale), scrollView.maximumZoomScale)
+        case .ended, .cancelled, .failed:
+            finishNotebookPinch()
+        default:
+            break
+        }
+    }
+
+    private func finishNotebookPinch() {
         guard !isBaking else { return }
         let pinch = scrollView.zoomScale
         guard abs(pinch - 1) > 0.001 else { return }
@@ -3205,5 +3232,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         updateWindow(force: true)
         CATransaction.commit()
         if inkLasso != nil { publishInkSelection() }
+    }
+
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        guard scrollView === self.scrollView else { return }
+        finishNotebookPinch()
     }
 }
