@@ -123,11 +123,11 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
 
     private func notebookLocation(for point: CGPoint) -> CGPoint {
         guard let notebookCanvas else { return point }
-        // The overlay tracks the visible bounds. MaLiang reports overlay-local
-        // coordinates; PencilKit stores coordinates in the page content space.
-        let visible = notebookCanvas.convert(point, from: maliangCanvas)
-        return CGPoint(x: visible.x + notebookCanvas.contentOffset.x,
-                       y: visible.y + notebookCanvas.contentOffset.y)
+        // UIView.convert already returns coordinates in the notebook canvas'
+        // content coordinate space. Its bounds origin is contentOffset, so adding
+        // contentOffset again shifts every committed stroke twice as far while
+        // scrolling/zooming (and can place it outside the visible page).
+        return notebookCanvas.convert(point, from: maliangCanvas)
     }
 
     private func makePoint(_ location: CGPoint, width: CGFloat, time: TimeInterval) -> PKStrokePoint {
