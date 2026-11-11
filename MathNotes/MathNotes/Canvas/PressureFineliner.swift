@@ -1,12 +1,12 @@
 import UIKit
 import PencilKit
-@preconcurrency import MaLiang
+import MaLiang
 
 /// Uses the actual MaLiang Canvas/Brush for live ink, then converts MaLiang's
 /// finished line strip into a regular PKStroke for the notebook's existing
 /// persistence, undo, replay and export pipeline.
 @MainActor
-final class MaLiangFinelinerCaptureView: UIView, ActionObserver {
+final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver {
     weak var notebookCanvas: PageCanvasView?
     let maliangCanvas: Canvas
     var onStrokeCommitted: ((PKDrawing, PKStroke) -> Void)?
