@@ -52,7 +52,7 @@ final class PressureFinelinerCaptureView: UIView {
             // learned monoline calibration used by ordinary notebook strokes.
             baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
                 * InkCalibration.factor(for: .monoline)
-            pressureAmount = CGFloat(min(max(preset.pressureAmount ?? 0.08, 0), 0.5))
+            pressureAmount = CGFloat(min(max(preset.pressureAmount ?? 0.08, 0), 1))
             inkColor = preset.uiColor
             preview.fillColor = inkColor.cgColor
         }
@@ -142,10 +142,14 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     private func widthFactor(_ force: CGFloat) -> CGFloat {
-        // The selected width is the reference at half force. The in-app slider
-        // controls the full width variation on either side of that reference.
-        let centredForce = min(max(force, 0), 1) * 2 - 1
-        return max(0.5, 1 + centredForce * pressureAmount)
+        // Match MaLiang Brush.makeLine: half force is the selected reference
+        // width; lighter force tapers toward 43%, while heavier force reaches
+        // the reference width. The slider controls the curve (0...1).
+        let minimumForceRatio: CGFloat = 0.43
+        let normalizedPressure = min(max(force, 0), 1)
+        let pressure = min(normalizedPressure * 2, 1)
+        let curve = 1 + min(max(pressureAmount, 0), 1) * 3
+        return minimumForceRatio + (1 - minimumForceRatio) * pow(pressure, curve)
     }
 
     private func refreshPreview() {
