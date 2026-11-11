@@ -430,10 +430,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.delegate = self
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.delaysContentTouches = false
-        // Match the MaLiang lab's touch-delivery configuration. The page scroll
-        // view must never cancel or delay the Pencil stream delivered to the
-        // MaLiang child surface; otherwise a stroke can be dropped before it
-        // reaches MaLiang's Metal renderer.
+        // Preserve the PencilKit touch stream. The page scroll view must not
+        // cancel or delay Pencil movement before it reaches the page canvas.
         scrollView.canCancelContentTouches = false
         scrollView.panGestureRecognizer.cancelsTouchesInView = false
         scrollView.panGestureRecognizer.delaysTouchesBegan = false
@@ -1049,7 +1047,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func setDrawingEnabled(_ enabled: Bool, _ canvas: PageCanvasView) {
-        // MaLiang owns monoline input in both pressure modes. Other ink types stay on PencilKit.
         // PencilKit owns the complete Pencil stroke lifecycle for every ink type.
         // The live stroke and saved PKDrawing therefore use the same renderer.
         canvas.drawingGestureRecognizer.isEnabled = enabled
@@ -1107,9 +1104,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if canvas.frame != target { canvas.frame = target }
         if canvas.contentSize != size { canvas.contentSize = size }
         if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
-        // A UIScrollView's bounds origin follows contentOffset. Position the MaLiang
-        // overlay only after updating the offset, so it always covers the visible
-        // canvas viewport rather than the previous overscanned content origin.
     }
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
@@ -1994,8 +1988,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         case _ where textOverlay != nil: true
         case _ where inkLasso != nil: false
         case _ where document.isReadOnly || replay != nil || isFinding: false
-        // The MaLiang fineliner reserves finger input for page navigation.
-        // Pencil strokes are captured by its Pencil-only surface.
+        // Fineliner reserves finger input for page navigation; PencilKit
+        // captures Apple Pencil strokes on the canvas.
         case .anyInput where toolbox.pen?.inkType == .monoline: false
         case .anyInput: true
         default: false
