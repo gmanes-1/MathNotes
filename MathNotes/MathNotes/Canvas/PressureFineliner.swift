@@ -48,10 +48,11 @@ final class PressureFinelinerCaptureView: UIView {
         isUserInteractionEnabled = shouldEnable
         self.allowsFingerDrawing = shouldEnable && allowsFingerDrawing
         if let preset {
-            // Match the selected app width (including zoom scaling) and the same
-            // learned monoline calibration used by ordinary notebook strokes.
+            // The tray's width is already the actual PencilKit point width.
+            // Do not apply InkCalibration again: that calibration is learned from
+            // PencilKit's own rendered strokes and would make this custom path
+            // narrower than the width the user selected.
             baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
-                * InkCalibration.factor(for: .monoline)
             pressureAmount = CGFloat(min(max(preset.pressureAmount ?? 0.08, 0), 1))
             inkColor = preset.uiColor
             preview.fillColor = inkColor.cgColor
@@ -125,12 +126,11 @@ final class PressureFinelinerCaptureView: UIView {
         guard let canvas else { return }
         let visiblePoint = touch.location(in: self)
         let canvasPoint = canvas.convert(visiblePoint, from: self)
-        // UIView conversion lands in the canvas' visible coordinate space.
-        // PKDrawing stores points in the canvas' scrolling content space, so
-        // restore the current content offset or strokes jump toward the page origin
-        // as soon as the live preview is replaced by the committed PencilKit stroke.
-        let contentPoint = CGPoint(x: canvasPoint.x + canvas.contentOffset.x,
-                                   y: canvasPoint.y + canvas.contentOffset.y)
+        // The overlay's frame already follows canvas.bounds.origin (the scroll
+        // content offset). Converting into the canvas therefore already produces
+        // the PKDrawing content coordinate; adding contentOffset again would
+        // double-shift the committed stroke away from its live preview.
+        let contentPoint = canvasPoint
         let rawForce = touch.type == .pencil ? normalizedForce(for: touch) : 0.5
         let force = samples.last.map { $0.force * 0.62 + rawForce * 0.38 } ?? rawForce
         if let last = samples.last, hypot(last.location.x - contentPoint.x, last.location.y - contentPoint.y) < 0.12,
@@ -150,14 +150,13 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     private func widthFactor(_ force: CGFloat) -> CGFloat {
-        // Match MaLiang Brush.makeLine: half force is the selected reference
-        // width; lighter force tapers toward 43%, while heavier force reaches
-        // the reference width. The slider controls the curve (0...1).
-        let minimumForceRatio: CGFloat = 0.43
+        // Keep the width selected in the tray as the reference width at
+        // ordinary Pencil pressure. Pressure changes it symmetrically instead
+        // of shrinking every stroke to 43% of the selected width. At slider 0
+        // the pen is constant-width; at 1 the range is 0.65x...1.35x.
         let normalizedPressure = min(max(force, 0), 1)
-        let pressure = min(normalizedPressure * 2, 1)
-        let curve = 1 + min(max(pressureAmount, 0), 1) * 3
-        return minimumForceRatio + (1 - minimumForceRatio) * pow(pressure, curve)
+        let strength = min(max(pressureAmount, 0), 1)
+        return 1 + strength * (normalizedPressure - 0.5) * 0.7
     }
 
     private func refreshPreview() {
