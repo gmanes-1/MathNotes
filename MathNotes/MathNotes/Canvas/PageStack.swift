@@ -3064,7 +3064,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
-        [laserGesture, itemTap, itemHold, strokeHold, tapeTap, pasteHold].contains { $0 === gestureRecognizer || $0 === other }
+        // Pinch-to-zoom must not be blocked by the page's tap/hold recognizers.
+        if gestureRecognizer === scrollView.pinchGestureRecognizer ||
+            other === scrollView.pinchGestureRecognizer {
+            return true
+        }
+        return [laserGesture, itemTap, itemHold, strokeHold, tapeTap, pasteHold]
+            .contains { $0 === gestureRecognizer || $0 === other }
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
