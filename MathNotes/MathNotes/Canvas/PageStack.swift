@@ -431,6 +431,15 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.delegate = self
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.delaysContentTouches = false
+        // Match the MaLiang lab's touch-delivery configuration. The page scroll
+        // view must never cancel or delay the Pencil stream delivered to the
+        // MaLiang child surface; otherwise a stroke can be dropped before it
+        // reaches MaLiang's Metal renderer.
+        scrollView.canCancelContentTouches = false
+        scrollView.panGestureRecognizer.cancelsTouchesInView = false
+        scrollView.panGestureRecognizer.delaysTouchesBegan = false
+        scrollView.pinchGestureRecognizer?.cancelsTouchesInView = false
+        scrollView.pinchGestureRecognizer?.delaysTouchesBegan = false
         scrollView.bouncesZoom = false
         scrollView.alwaysBounceHorizontal = false
         scrollView.panGestureRecognizer.allowedTouchTypes = Self.scrollTouchTypes
