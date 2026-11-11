@@ -98,7 +98,7 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
                                       y: line.end.y * renderScale - renderOffset.y)
             let start = notebookLocation(for: startInCanvas)
             let end = notebookLocation(for: endInCanvas)
-            let width = min(max(line.pointSize * renderScale, 0.2), referenceWidth)
+            let width = max(line.pointSize * renderScale / max(notebookCanvas.zoomScale, 0.001), 0.2)
             // MaLiang's Metal renderer stamps many dots along each short line.
             // Keeping only the segment endpoints in PencilKit made the saved
             // stroke visibly faceted. Resample each segment into sub-point steps
@@ -138,10 +138,15 @@ final class MaLiangFinelinerCaptureView: UIView, @preconcurrency ActionObserver 
 
     private func notebookLocation(for point: CGPoint) -> CGPoint {
         guard let notebookCanvas else { return point }
-        // The point passed here has already been converted out of MaLiang's
-        // render-target scale and offset. UIView.convert supplies the page's
-        // content-coordinate transform, including its current scroll offset.
-        return notebookCanvas.convert(point, from: maliangCanvas)
+        // MaLiang is pinned to the visible viewport of the zooming PKCanvasView.
+        // UIView.convert therefore gives viewport-local coordinates, not the
+        // notebook's document coordinates. Restore the scroll offset and undo
+        // PKCanvasView's zoom before storing the stroke in PKDrawing.
+        let viewportPoint = notebookCanvas.convert(point, from: maliangCanvas)
+        let offset = notebookCanvas.contentOffset
+        let scale = max(notebookCanvas.zoomScale, 0.001)
+        return CGPoint(x: (viewportPoint.x + offset.x) / scale,
+                       y: (viewportPoint.y + offset.y) / scale)
     }
 
     private func makePoint(_ location: CGPoint, width: CGFloat, time: TimeInterval) -> PKStrokePoint {
