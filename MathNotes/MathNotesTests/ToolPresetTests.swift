@@ -396,6 +396,9 @@ final class ToolPresetTests: XCTestCase {
                                 path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
         XCTAssertEqual(FinelinerPressure.adjusted(constant, maximumWidth: 1).path.map(\.size.width),
                        [1, 1, 1], "constant half-force stays at the selected maximum width")
+        let fine = FinelinerPressure.adjusted(stroke, maximumWidth: 0.1)
+        XCTAssertLessThanOrEqual(fine.path.map(\.size.width).max() ?? 0, 0.1,
+                                 "the pressure response never exceeds the selected maximum, even at fine widths")
     }
 
     private func makeDocument() throws -> NotebookDocument {

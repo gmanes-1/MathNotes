@@ -1154,7 +1154,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             return
         }
 
-        let adjusted = FinelinerPressure.adjusted(drawing.strokes[index], maximumWidth: max(tool.width, 0.2))
+        let adjusted = FinelinerPressure.adjusted(drawing.strokes[index], maximumWidth: max(tool.width, 0.1))
         var strokes = drawing.strokes
         strokes[index] = adjusted
         canvas.pressureAdjustmentApplied = stamp

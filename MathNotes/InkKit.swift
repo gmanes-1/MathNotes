@@ -80,13 +80,14 @@ enum FinelinerPressure {
     /// Rebuilds only the stroke's width profile. Location, timing, force, colour,
     /// opacity, transform, mask and PencilKit's smooth vector rendering are kept.
     static func adjusted(_ stroke: PKStroke, maximumWidth: CGFloat) -> PKStroke {
-        guard maximumWidth > 0, !stroke.path.isEmpty else { return stroke }
+        guard maximumWidth > 0, stroke.path.count > 0 else { return stroke }
         var previousForce: CGFloat?
         let points = stroke.path.map { point -> PKStrokePoint in
             let ratio = widthRatio(for: point.force, previousForce: previousForce)
             let force = min(max(point.force, 0), 1)
             previousForce = previousForce.map { $0 * 0.95 + force * 0.05 } ?? force
-            let width = max(maximumWidth * ratio, 0.2)
+            let visibleFloor = min(maximumWidth, 0.2)
+            let width = max(maximumWidth * ratio, visibleFloor)
             return PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
                                  size: CGSize(width: width, height: width), opacity: point.opacity,
                                  force: point.force, azimuth: point.azimuth, altitude: point.altitude,
