@@ -1972,7 +1972,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         // outer page scroll view for one-finger panning and two-finger zooming.
         // PKCanvasView must not compete with those gestures for finger input.
         if toolbox.pen?.inkType == .monoline { return .pencilOnly }
-        switch drawingPolicy {
+        return switch drawingPolicy {
         case .anyInput, .pencilOnly: drawingPolicy
         default: session.showsToolTray && !UIPencilInteraction.prefersPencilOnlyDrawing ? .anyInput : .pencilOnly
         }
