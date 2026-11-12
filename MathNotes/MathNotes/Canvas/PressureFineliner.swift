@@ -47,7 +47,9 @@ final class PressureFinelinerCaptureView: UIView {
         isUserInteractionEnabled = shouldEnable
         self.allowsFingerDrawing = shouldEnable && allowsFingerDrawing
         if let preset {
-            baseWidth = CGFloat((canvas?.tool as? PKInkingTool)?.width ?? CGFloat(preset.width))
+            // Use the selected Fineliner width, not canvas.tool.width: the latter is
+            // already scaled down for PencilKit's native pressure tool.
+            baseWidth = CGFloat(preset.width)
             inkColor = preset.uiColor
             preview.fillColor = inkColor.cgColor
         }
@@ -131,15 +133,14 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     private func widthFactor(_ force: CGFloat) -> CGFloat {
-        // Keep pressure variation, but limit the thickest stroke at maximum Pencil force.
-        // The response remains 0.58 at zero force and tops out at about 0.95.
-        let response = 0.58 + 0.24 * pow(min(max(force, 0), 2.0), 0.65)
-        return min(max(response, 0.58), 0.95)
+        // Preserve pressure variation from 58% to 100% of the input width.
+        let response = 0.58 + 0.42 * pow(min(max(force, 0), 2.0), 0.65)
+        return min(max(response, 0.58), 1.0)
     }
 
     private func refreshPreview() {
         guard !samples.isEmpty, canvas != nil else { preview.path = nil; return }
-        let points = samples.map { ($0.viewLocation, max(baseWidth * 0.55 * widthFactor($0.force) / 2, 0.12)) }
+        let points = samples.map { ($0.viewLocation, max(baseWidth * 0.5 * widthFactor($0.force) / 2, 0.12)) }
         let path = CGMutablePath()
         if points.count == 1 {
             let p = points[0].0, r = points[0].1
@@ -201,7 +202,7 @@ final class PressureFinelinerCaptureView: UIView {
         defer { cancelStroke() }
         guard let canvas, !samples.isEmpty else { return }
         var controlPoints = samples.map { sample in
-            let width = max(baseWidth * 0.55 * widthFactor(sample.force), 0.12)
+            let width = max(baseWidth * 0.5 * widthFactor(sample.force), 0.12)
             return PKStrokePoint(location: sample.location, timeOffset: sample.time,
                                  size: CGSize(width: width, height: width), opacity: 1,
                                  force: sample.force, azimuth: sample.azimuth, altitude: sample.altitude)
