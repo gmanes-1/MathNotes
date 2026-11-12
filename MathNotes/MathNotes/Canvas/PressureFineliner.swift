@@ -131,9 +131,10 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     private func widthFactor(_ force: CGFloat) -> CGFloat {
-        // UIKit's Pencil force is calibrated around 1.0 for an average touch.
-        let response = 0.58 + 0.42 * pow(min(max(force, 0), 2.0), 0.65)
-        return min(max(response, 0.58), 1.16)
+        // Keep pressure variation, but limit the thickest stroke at maximum Pencil force.
+        // The response remains 0.58 at zero force and tops out at about 0.95.
+        let response = 0.58 + 0.24 * pow(min(max(force, 0), 2.0), 0.65)
+        return min(max(response, 0.58), 0.95)
     }
 
     private func refreshPreview() {
