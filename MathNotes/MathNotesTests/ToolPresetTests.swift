@@ -52,7 +52,7 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(FinelinerPressure.widthRatio(for: 1), 1, accuracy: 0.001)
 
         let filtered = FinelinerPressure.widthRatio(for: 0.8, previousForce: 0.2)
-        let expected = 0.43 + 0.57 * pow(0.23, 1.24)
+        let expected = CGFloat(0.43 + 0.57 * pow(0.23, 1.24))
         XCTAssertEqual(filtered, expected, accuracy: 0.001)
     }
 
