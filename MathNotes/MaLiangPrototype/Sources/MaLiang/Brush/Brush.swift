@@ -343,12 +343,12 @@ open class Brush {
 // MARK: - Deprecated
 extension Brush {
     @available(*, deprecated, message: "", renamed: "makeLine(from:to:)")
-    open func pan(from: Pan, to: Pan) -> MLLine {
+    public func pan(from: Pan, to: Pan) -> MLLine {
         return makeLine(from: from, to: to).first!
     }
     
     @available(*, deprecated, message: "", renamed: "makeLine(from:to:force:)")
-    open func line(from: CGPoint, to: CGPoint, force: CGFloat = 1) -> MLLine {
+    public func line(from: CGPoint, to: CGPoint, force: CGFloat = 1) -> MLLine {
         return makeLine(from: from, to: to, force: force).first!
     }
 }
