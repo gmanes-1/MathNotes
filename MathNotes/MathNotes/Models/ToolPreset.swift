@@ -89,13 +89,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // PencilKit supplies the smooth live path in both modes. Pressure mode
-        // uses .pen for force samples; the completed stroke receives the Fineliner's
-        // MaLiang-calibrated width profile while remaining a PencilKit stroke.
-        let renderingType: PKInkingTool.InkType =
-            inkType == .monoline && pressureSensitive == true ? .pen : inkType
+        // Both pressure and non-pressure modes use the same smooth Monoline renderer.
+        // Pressure changes only the completed stroke's point widths.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        return PKInkingTool(renderingType, color: uiColor, width: selectedWidth)
+        return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.

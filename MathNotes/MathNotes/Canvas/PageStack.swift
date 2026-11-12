@@ -1146,7 +1146,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             }
             return
         }
-        guard let tool = canvas.tool as? PKInkingTool, tool.inkType == .pen else {
+        guard let tool = canvas.tool as? PKInkingTool, tool.inkType == .monoline else {
             canvas.pressureAdjustmentPending = nil
             return
         }

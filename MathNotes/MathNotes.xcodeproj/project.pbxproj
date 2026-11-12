@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A11CE0010000000000000011 /* MaLiang in Frameworks */ = {isa = PBXBuildFile; productRef = A11CE0010000000000000031 /* MaLiang */; };
 		57A1DE70000000000000000C /* MathNotesWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57A1DE700000000000000001 /* MathNotesWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A11CE0010000000000000011 /* MaLiang in Frameworks */ = {isa = PBXBuildFile; productRef = A11CE0010000000000000031 /* MaLiang */; };
 		E3AAC6A23090F7C3002849D3 /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3AED2D23090ED9700868E02 /* llama.xcframework */; };
 		E3AAC6A33090F7C3002849D3 /* llama.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E3AED2D23090ED9700868E02 /* llama.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E3AED3D03090ED9700868E02 /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3AED2D23090ED9700868E02 /* llama.xcframework */; };
@@ -285,23 +285,23 @@
 				App/LaunchOverlay.swift,
 				App/MathNotesApp.swift,
 				App/WidgetBridge.swift,
-				Canvas/MaLiangFinelinerPrototypeView.swift,
-				Canvas/MaLiangLabView.swift,
 				Canvas/CanvasUndoProxy.swift,
 				Canvas/InkLasso.swift,
 				Canvas/InkTyping.swift,
 				Canvas/LaserPointer.swift,
+				Canvas/MaLiangFinelinerPrototypeView.swift,
+				Canvas/MaLiangLabView.swift,
 				Canvas/PageItemViews.swift,
 				Canvas/PageMasthead.swift,
 				Canvas/PagePaper.swift,
 				Canvas/PageRenderer.swift,
 				Canvas/PageStack.swift,
-				Canvas/PressureFineliner.swift,
 				Canvas/PageText.swift,
 				Canvas/PaperRuling.swift,
 				Canvas/PaperTemplates.swift,
 				Canvas/PDFText.swift,
 				Canvas/PencilGestures.swift,
+				Canvas/PressureFineliner.swift,
 				Canvas/ShapeSnap.swift,
 				Canvas/StickerCutout.swift,
 				Canvas/Stickers.swift,
@@ -320,6 +320,7 @@
 				Editor/ExternalDisplay.swift,
 				Editor/InkDish.swift,
 				Editor/InkKit.swift,
+				FinelinerPressure.swift,
 				Editor/InkSelectionMenu.swift,
 				Editor/InkTextSheet.swift,
 				Editor/LinkSheet.swift,
@@ -435,9 +436,9 @@
 				LibraryListUITests.swift,
 				LocalizationUITests.swift,
 				LockUITests.swift,
-				NotebookTabsUITests.swift,
 				MathNotesUITests.swift,
 				MathNotesUITestsLaunchTests.swift,
+				NotebookTabsUITests.swift,
 				ParityUITests.swift,
 				PDFTextUITests.swift,
 				PencilGestureUITests.swift,
@@ -473,9 +474,9 @@
 				LibraryListUITests.swift,
 				LocalizationUITests.swift,
 				LockUITests.swift,
-				NotebookTabsUITests.swift,
 				MathNotesUITests.swift,
 				MathNotesUITestsLaunchTests.swift,
+				NotebookTabsUITests.swift,
 				ParityUITests.swift,
 				PDFTextUITests.swift,
 				PencilGestureUITests.swift,
@@ -511,9 +512,9 @@
 				LibraryListUITests.swift,
 				LocalizationUITests.swift,
 				LockUITests.swift,
-				NotebookTabsUITests.swift,
 				MathNotesUITests.swift,
 				MathNotesUITestsLaunchTests.swift,
+				NotebookTabsUITests.swift,
 				ParityUITests.swift,
 				PDFTextUITests.swift,
 				PencilGestureUITests.swift,
@@ -706,12 +707,12 @@
 				E3AED5CF3090EF7A00868E02 /* MathNotesTests */,
 			);
 			name = MathNotes;
-			productName = MathNotes;
-			productReference = 96D9BDAF2C13E3AC00726199 /* MathNotes.app */;
-			productType = "com.apple.product-type.application";
 			packageProductDependencies = (
 				A11CE0010000000000000031 /* MaLiang */,
 			);
+			productName = MathNotes;
+			productReference = 96D9BDAF2C13E3AC00726199 /* MathNotes.app */;
+			productType = "com.apple.product-type.application";
 		};
 		96D9BDBE2C13E3B100726199 /* MathNotesTests */ = {
 			isa = PBXNativeTarget;
@@ -786,11 +787,11 @@
 				de,
 			);
 			mainGroup = 96D9BDA62C13E3AC00726199;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 96D9BDB02C13E3AC00726199 /* Products */;
 			packageReferences = (
 				A11CE0010000000000000021 /* XCLocalSwiftPackageReference "MaLiangPrototype" */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 96D9BDB02C13E3AC00726199 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -881,21 +882,6 @@
 			targetProxy = 96D9BDCA2C13E3B100726199 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		A11CE0010000000000000021 /* XCLocalSwiftPackageReference "MaLiangPrototype" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = MaLiangPrototype;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		A11CE0010000000000000031 /* MaLiang */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A11CE0010000000000000021 /* XCLocalSwiftPackageReference "MaLiangPrototype" */;
-			productName = MaLiang;
-		};
-/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		57A1DE700000000000000009 /* Debug */ = {
@@ -1272,6 +1258,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A11CE0010000000000000021 /* XCLocalSwiftPackageReference "MaLiangPrototype" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = MaLiangPrototype;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A11CE0010000000000000031 /* MaLiang */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A11CE0010000000000000021 /* XCLocalSwiftPackageReference "MaLiangPrototype" */;
+			productName = MaLiang;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 96D9BDA72C13E3AC00726199 /* Project object */;
 }
