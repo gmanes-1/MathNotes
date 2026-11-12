@@ -462,11 +462,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         view.addGestureRecognizer(laserGesture)
         view.addInteraction(UIDropInteraction(delegate: self))
         view.addInteraction(UIPencilInteraction(delegate: self))
-        if PencilGestures.squeezeIsScripted {
-            let squeeze = UITapGestureRecognizer(target: self, action: #selector(scriptedSqueeze))
-            squeeze.numberOfTouchesRequired = 2
-            view.addGestureRecognizer(squeeze)
-        }
         itemTap.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
         itemHold.minimumPressDuration = 0.45
         for recognizer in [itemTap, itemHold, strokeHold, tapeTap] {
