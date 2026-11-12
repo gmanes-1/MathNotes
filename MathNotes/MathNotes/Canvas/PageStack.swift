@@ -81,6 +81,9 @@ final class PageCanvasView: PKCanvasView {
     var isLoaded = false
     weak var undoProxy: UndoManager?
     var strokeCount: Int?
+    var usesFinelinerPressureResponse = false
+    var pressureAdjustmentPending: Date?
+    var pressureAdjustmentApplied: Date?
     override var undoManager: UndoManager? { undoProxy ?? super.undoManager }
 
     override var accessibilityValue: String? {
@@ -984,6 +987,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         canvas.scrollsToTop = false
         canvas.overrideUserInterfaceStyle = .light
         canvas.drawingPolicy = effectivePolicy
+        canvas.drawingGestureRecognizer.addTarget(self, action: #selector(drawingGestureDidEnd(_:)))
         canvas.maximumSupportedContentVersion = .latest
         canvas.isAccessibilityElement = true
         canvas.accessibilityTraits = .allowsDirectInteraction
@@ -991,6 +995,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func syncTool(_ canvas: PageCanvasView) {
+        let preset = toolbox.pen
+        canvas.usesFinelinerPressureResponse = preset?.inkType == .monoline && preset?.pressureSensitive == true
         let selected = toolbox.tool
         if canvas === zoomCanvas, let ink = selected as? PKInkingTool {
             // PKCanvasView records widths in its own content coordinates. The zoom window has a
@@ -1061,6 +1067,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if canvas.isFirstResponder { anchor.becomeFirstResponder() }
         canvas.removeFromSuperview()
         canvas.pageID = nil
+        canvas.usesFinelinerPressureResponse = false
+        canvas.pressureAdjustmentPending = nil
+        canvas.pressureAdjustmentApplied = nil
         replayPages[id] = nil
         canvas.isLoaded = false
         canvas.overrideUserInterfaceStyle = .light
@@ -1109,6 +1118,53 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if canvas.contentOffset != target.origin { canvas.contentOffset = target.origin }
     }
 
+    @objc private func drawingGestureDidEnd(_ recognizer: UIGestureRecognizer) {
+        guard recognizer.state == .ended,
+              let canvas = recognizer.view as? PageCanvasView,
+              canvas.usesFinelinerPressureResponse,
+              let pageID = canvas.pageID,
+              let stroke = canvas.drawing.strokes.last else { return }
+        let stamp = stroke.path.creationDate
+        guard canvas.pressureAdjustmentPending != stamp,
+              canvas.pressureAdjustmentApplied != stamp else { return }
+        canvas.pressureAdjustmentPending = stamp
+        // Let PencilKit finish publishing the native stroke first. This is a
+        // model replacement, not a second undoable drawing action.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self, weak canvas] in
+            self?.applyFinelinerPressure(on: canvas, pageID: pageID, stamp: stamp, attempts: 5)
+        }
+    }
+
+    private func applyFinelinerPressure(on canvas: PageCanvasView?, pageID: UUID, stamp: Date, attempts: Int) {
+        guard let canvas, canvas.pageID == pageID else { return }
+        guard canvas.usesFinelinerPressureResponse,
+              let drawing = document.loadedInk(pageID),
+              let index = drawing.strokes.firstIndex(where: { $0.path.creationDate == stamp }) else {
+            guard attempts > 0 else {
+                canvas.pressureAdjustmentPending = nil
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self, weak canvas] in
+                self?.applyFinelinerPressure(on: canvas, pageID: pageID, stamp: stamp, attempts: attempts - 1)
+            }
+            return
+        }
+        guard let tool = canvas.tool as? PKInkingTool, tool.inkType == .pen else {
+            canvas.pressureAdjustmentPending = nil
+            return
+        }
+
+        let adjusted = FinelinerPressure.adjusted(drawing.strokes[index], maximumWidth: max(tool.width, 0.2))
+        var strokes = drawing.strokes
+        strokes[index] = adjusted
+        canvas.pressureAdjustmentApplied = stamp
+        canvas.pressureAdjustmentPending = nil
+        // replaceInk adds no second undo step, so undoing the original Pencil
+        // stroke still removes it in one action. Its observer updates both
+        // the page canvas and zoom writing canvas from this same PKDrawing.
+        document.replaceInk(pageID, with: PKDrawing(strokes: strokes))
+    }
+
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isApplyingDrawing, let canvas = canvasView as? PageCanvasView, canvas.isLoaded, let id = canvas.pageID else { return }
         canvas.strokeCount = nil
@@ -1120,7 +1176,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last,
-           let tool = canvas.tool as? PKInkingTool, canvas !== zoomCanvas {
+           let tool = canvas.tool as? PKInkingTool, canvas !== zoomCanvas,
+           !canvas.usesFinelinerPressureResponse {
             // Learn from the exact tool PencilKit received. Never scale the stroke transform:
             // that changes the path's length as well as its thickness.
             InkCalibration.learn(from: drawn, writtenWith: tool)
