@@ -79,18 +79,14 @@ final class NativeInkCanvasView: UIView {
     var onStrokeCommitted: ((NativeInkStroke) -> Void)?
 
     private var activePoints: [NativeInkPoint] = []
-    private let previewLayer = CAShapeLayer()
-    private var committedLayers: [UUID: CAShapeLayer] = [:]
+    private var previewLayers: [CAShapeLayer] = []
+    private var committedLayers: [UUID: [CAShapeLayer]] = [:]
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         isMultipleTouchEnabled = false
         isOpaque = false
         backgroundColor = .clear
-        previewLayer.fillColor = UIColor.clear.cgColor
-        previewLayer.lineCap = .round
-        previewLayer.lineJoin = .round
-        layer.addSublayer(previewLayer)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -139,13 +135,10 @@ final class NativeInkCanvasView: UIView {
     }
 
     private func updatePreview() {
-        previewLayer.path = NativeInkGeometry.path(for: activePoints).cgPath
-        previewLayer.strokeColor = selectedColor.cgColor
-        previewLayer.lineWidth = NativeInkGeometry.width(
-            base: selectedWidth,
-            force: activePoints.last?.force ?? 1,
-            pressureSensitive: pressureSensitive
-        )
+        previewLayers.forEach { $0.removeFromSuperlayer() }
+        previewLayers = makeSegmentLayers(points: activePoints, baseWidth: selectedWidth,
+                                          pressure: pressureSensitive, color: selectedColor)
+        previewLayers.forEach { layer.addSublayer($0) }
     }
 
     private func finishStroke() {
@@ -153,14 +146,9 @@ final class NativeInkCanvasView: UIView {
         let rgba = Self.rgba(selectedColor)
         let stroke = NativeInkStroke(colorRGBA: rgba, baseWidth: max(selectedWidth, 0.1),
                                      pressureSensitive: pressureSensitive, points: activePoints)
-        let committed = CAShapeLayer()
-        committed.path = NativeInkGeometry.path(for: activePoints).cgPath
-        committed.fillColor = UIColor.clear.cgColor
-        committed.strokeColor = selectedColor.cgColor
-        committed.lineWidth = max(selectedWidth, 0.1)
-        committed.lineCap = .round
-        committed.lineJoin = .round
-        layer.insertSublayer(committed, below: previewLayer)
+        let committed = makeSegmentLayers(points: activePoints, baseWidth: selectedWidth,
+                                          pressure: pressureSensitive, color: selectedColor)
+        committed.forEach { layer.insertSublayer($0, at: 0) }
         committedLayers[stroke.id] = committed
         onStrokeCommitted?(stroke)
         cancelStroke()
@@ -168,7 +156,8 @@ final class NativeInkCanvasView: UIView {
 
     private func cancelStroke() {
         activePoints.removeAll(keepingCapacity: true)
-        previewLayer.path = nil
+        previewLayers.forEach { $0.removeFromSuperlayer() }
+        previewLayers.removeAll()
     }
 
     private static func rgba(_ color: UIColor) -> UInt32 {
@@ -179,28 +168,46 @@ final class NativeInkCanvasView: UIView {
     }
 
     func display(_ document: NativeInkDocument) {
-        committedLayers.values.forEach { $0.removeFromSuperlayer() }
+        committedLayers.values.flatMap { $0 }.forEach { $0.removeFromSuperlayer() }
         committedLayers.removeAll()
         for stroke in document.strokes {
-            let shape = CAShapeLayer()
-            shape.path = NativeInkGeometry.path(for: stroke.points).cgPath
-            shape.fillColor = UIColor.clear.cgColor
-            shape.strokeColor = UIColor(
+            let color = UIColor(
                 red: CGFloat((stroke.colorRGBA >> 24) & 255) / 255,
                 green: CGFloat((stroke.colorRGBA >> 16) & 255) / 255,
                 blue: CGFloat((stroke.colorRGBA >> 8) & 255) / 255,
                 alpha: CGFloat(stroke.colorRGBA & 255) / 255
-            ).cgColor
-            shape.lineWidth = stroke.baseWidth
-            shape.lineCap = .round
-            shape.lineJoin = .round
-            layer.insertSublayer(shape, below: previewLayer)
-            committedLayers[stroke.id] = shape
+            )
+            let shapes = makeSegmentLayers(points: stroke.points, baseWidth: stroke.baseWidth,
+                                           pressure: stroke.pressureSensitive, color: color)
+            shapes.forEach { layer.insertSublayer($0, at: 0) }
+            committedLayers[stroke.id] = shapes
         }
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        previewLayer.frame = bounds
+    }
+
+    private func makeSegmentLayers(points: [NativeInkPoint], baseWidth: CGFloat,
+                                   pressure: Bool, color: UIColor) -> [CAShapeLayer] {
+        guard !points.isEmpty else { return [] }
+        let pairs: [(NativeInkPoint, NativeInkPoint)] = points.count == 1
+            ? [(points[0], points[0])]
+            : (1..<points.count).map { (points[$0 - 1], points[$0]) }
+        return pairs.map { start, end in
+            let shape = CAShapeLayer()
+            let path = UIBezierPath()
+            path.move(to: start.location)
+            path.addLine(to: end.location)
+            shape.path = path.cgPath
+            shape.fillColor = UIColor.clear.cgColor
+            shape.strokeColor = color.cgColor
+            let force = (start.force + end.force) * 0.5
+            shape.lineWidth = NativeInkGeometry.width(base: baseWidth, force: force,
+                                                      pressureSensitive: pressure)
+            shape.lineCap = .round
+            shape.lineJoin = .round
+            return shape
+        }
     }
 }
