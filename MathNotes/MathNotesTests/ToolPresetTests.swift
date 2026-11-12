@@ -381,7 +381,7 @@ final class ToolPresetTests: XCTestCase {
         let path = PKStrokePath(controlPoints: points, creationDate: date)
         let stroke = PKStroke(ink: PKInk(.pen, color: .black), path: path)
         let pressure = FinelinerPressure.adjusted(stroke, maximumWidth: 1)
-        let widths = pressure.path.map(\\.size.width)
+        let widths = pressure.path.map(\.size.width)
 
         XCTAssertEqual(widths.count, points.count)
         XCTAssertLessThan(widths.first ?? 1, widths.last ?? 0)
@@ -394,7 +394,7 @@ final class ToolPresetTests: XCTestCase {
 
         let constant = PKStroke(ink: stroke.ink,
                                 path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
-        XCTAssertEqual(FinelinerPressure.adjusted(constant, maximumWidth: 1).path.map(\\.size.width),
+        XCTAssertEqual(FinelinerPressure.adjusted(constant, maximumWidth: 1).path.map(\.size.width),
                        [1, 1, 1], "constant half-force stays at the selected maximum width")
     }
 
