@@ -133,9 +133,9 @@ final class PressureFinelinerCaptureView: UIView {
     }
 
     private func widthFactor(_ force: CGFloat) -> CGFloat {
-        // Preserve pressure variation from 60% to 100% of the selected input width.
-        let response = 0.60 + 0.40 * pow(min(max(force, 0), 2.0), 0.65)
-        return min(max(response, 0.60), 1.0)
+        // Make light pressure thinner while retaining full width at maximum pressure.
+        let response = 0.30 + 0.70 * pow(min(max(force, 0), 2.0), 0.65)
+        return min(max(response, 0.30), 1.0)
     }
 
     private func refreshPreview() {
