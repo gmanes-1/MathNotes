@@ -46,12 +46,22 @@ final class ToolPresetTests: XCTestCase {
         }
     }
 
+    func testFinelinerPressureCurveUsesMaLiangForceResponse() {
+        XCTAssertEqual(FinelinerPressure.widthRatio(for: 0), 0.43, accuracy: 0.001)
+        XCTAssertEqual(FinelinerPressure.widthRatio(for: 0.5), 1, accuracy: 0.001)
+        XCTAssertEqual(FinelinerPressure.widthRatio(for: 1), 1, accuracy: 0.001)
+
+        let filtered = FinelinerPressure.widthRatio(for: 0.8, previousForce: 0.2)
+        let expected = CGFloat(0.43 + 0.57 * pow(0.23, 1.24))
+        XCTAssertEqual(filtered, expected, accuracy: 0.001)
+    }
+
     func testFinelinerPressureCanBeToggledAndSurvivesSaving() throws {
         var fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 0.6)
         XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "off keeps the current uniform Fineliner")
         fineliner.pressureSensitive = true
         let pressureTool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(pressureTool.inkType, .monoline, "custom live pressure capture retains Monoline ink")
+        XCTAssertEqual(pressureTool.inkType, .pen, "PencilKit provides the smooth live pressure path")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
         XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.001, "pressure mode preserves the selected Monoline base width")
         fineliner.width = 0.3
@@ -60,7 +70,7 @@ final class ToolPresetTests: XCTestCase {
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true)
-        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .monoline)
+        XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .pen)
 
         let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":0.6}"#.data(using: .utf8)!
         let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
@@ -361,7 +371,7 @@ final class ToolPresetTests: XCTestCase {
         }
     }
 
-    func testPressureInkTurnsRecordedForceIntoVisibleVariableWidth() {
+    func testFinelinerPressureAdjustmentPreservesSmoothVariableWidth() {
         let date = Date()
         let points = [CGFloat(0.1), 0.25, 0.5, 0.75, 1.0].enumerated().map { index, force in
             PKStrokePoint(location: CGPoint(x: index * 10, y: 20), timeOffset: Double(index) * 0.01,
@@ -370,19 +380,25 @@ final class ToolPresetTests: XCTestCase {
         }
         let path = PKStrokePath(controlPoints: points, creationDate: date)
         let stroke = PKStroke(ink: PKInk(.pen, color: .black), path: path)
-        let pressure = PressureInk.varying(stroke, baseWidth: 1)
+        let pressure = FinelinerPressure.adjusted(stroke, maximumWidth: 1)
         let widths = pressure.path.map(\.size.width)
+
         XCTAssertEqual(widths.count, points.count)
         XCTAssertLessThan(widths.first ?? 1, widths.last ?? 0)
-        XCTAssertEqual(widths.first ?? 0, 0.83, accuracy: 0.03)
-        XCTAssertEqual(widths.last ?? 0, 1.17, accuracy: 0.03)
+        XCTAssertEqual(widths.first ?? 0, 0.51, accuracy: 0.03)
+        XCTAssertEqual(widths.last ?? 0, 0.61, accuracy: 0.03)
         XCTAssertTrue(zip(widths, widths.dropFirst()).allSatisfy { pair in pair.0 <= pair.1 })
-        XCTAssertLessThan(widths.last ?? 0, 1.25, "pressure must not turn the fine pen into a broad brush")
+        XCTAssertEqual(pressure.path.first?.location.x, points.first?.location.x)
+        XCTAssertEqual(pressure.path.last?.location.x, points.last?.location.x)
+        XCTAssertEqual(pressure.path.first?.force, points.first?.force)
 
         let constant = PKStroke(ink: stroke.ink,
                                 path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
-        XCTAssertEqual(PressureInk.varying(constant, baseWidth: 1).path.map(\.size.width),
-                       constant.path.map(\.size.width), "constant force does not invent pressure variation")
+        XCTAssertEqual(FinelinerPressure.adjusted(constant, maximumWidth: 1).path.map(\.size.width),
+                       [1, 1, 1], "constant half-force stays at the selected maximum width")
+        let fine = FinelinerPressure.adjusted(stroke, maximumWidth: 0.1)
+        XCTAssertLessThanOrEqual(fine.path.map(\.size.width).max() ?? 0, 0.1,
+                                 "the pressure response never exceeds the selected maximum, even at fine widths")
     }
 
     private func makeDocument() throws -> NotebookDocument {
