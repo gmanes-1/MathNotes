@@ -430,25 +430,14 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.delegate = self
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.delaysContentTouches = false
-        // Preserve the PencilKit touch stream. The page scroll view must not
-        // cancel or delay Pencil movement before it reaches the page canvas.
-        scrollView.canCancelContentTouches = false
-        scrollView.panGestureRecognizer.cancelsTouchesInView = false
-        scrollView.panGestureRecognizer.delaysTouchesBegan = false
-        // Use UIKit's native UIScrollView pinch recognizer for smooth,
-        // system-managed zooming. Restrict it to direct finger touches so
-        // Apple Pencil input remains dedicated to drawing.
-        scrollView.pinchGestureRecognizer?.allowedTouchTypes = [
-            NSNumber(value: UITouch.TouchType.direct.rawValue)
-        ]
+        // The scroll view must stay free to take a touch over from the page canvases. With
+        // `canCancelContentTouches` off, a canvas that is already tracking a finger (always the case
+        // while fingers draw) can never be pre-empted, so neither the two-finger pan nor the pinch can
+        // begin. Pencil is unaffected: the pan and pinch below never accept Pencil touches.
+        scrollView.canCancelContentTouches = true
         scrollView.bouncesZoom = false
         scrollView.alwaysBounceHorizontal = false
         scrollView.panGestureRecognizer.allowedTouchTypes = Self.scrollTouchTypes
-        // Keep the scroll-view pan recognizer strictly one-finger. In finger-
-        // drawing mode updateScrollTouches raises its minimum to two, which
-        // disables panning rather than letting a two-finger pan compete with
-        // the native pinch recognizer.
-        scrollView.panGestureRecognizer.maximumNumberOfTouches = 1
         scrollView.scrollsToTop = true
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
@@ -467,6 +456,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         view.addGestureRecognizer(laserGesture)
         view.addInteraction(UIDropInteraction(delegate: self))
         view.addInteraction(UIPencilInteraction(delegate: self))
+        if PencilGestures.squeezeIsScripted {
+            let squeeze = UITapGestureRecognizer(target: self, action: #selector(scriptedSqueeze))
+            squeeze.numberOfTouchesRequired = 2
+            view.addGestureRecognizer(squeeze)
+        }
         itemTap.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue)]
         itemHold.minimumPressDuration = 0.45
         for recognizer in [itemTap, itemHold, strokeHold, tapeTap] {
@@ -668,6 +662,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.contentSize = contentView.frame.size
         scrollView.minimumZoomScale = min(1, minimumZoom / zoom)
         scrollView.maximumZoomScale = max(1, maximumZoom / zoom)
+        // Set after the zoom range above: in viewDidLoad the range is still empty and the pinch
+        // recogniser may not exist yet, which would make this a silent no-op.
+        scrollView.pinchGestureRecognizer?.allowedTouchTypes = Self.scrollTouchTypes
         if let restore {
             updateInsets()
             var offset = restore(bakedScale)
