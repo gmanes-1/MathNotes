@@ -119,7 +119,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: String(localized: "Pen")
         case .pencil: String(localized: "Pencil")
         case .marker: String(localized: "Highlighter")
-        case .monoline, .pen: String(localized: "Pen")
+        case .monoline: String(localized: "Pen")
         case .fountainPen: String(localized: "Fountain Pen")
         case .watercolor: String(localized: "Watercolour")
         case .crayon: String(localized: "Crayon")
@@ -132,7 +132,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: "pencil.tip"
         case .pencil: "pencil"
         case .marker: "highlighter"
-        case .monoline, .pen: "pencil.tip"
+        case .monoline: "pencil.tip"
         case .watercolor: "paintbrush"
         case .crayon: "scribble"
         default: "paintbrush.pointed"
