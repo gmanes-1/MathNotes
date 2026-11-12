@@ -444,6 +444,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.bouncesZoom = false
         scrollView.alwaysBounceHorizontal = false
         scrollView.panGestureRecognizer.allowedTouchTypes = Self.scrollTouchTypes
+        // Keep the scroll-view pan recognizer strictly one-finger. In finger-
+        // drawing mode updateScrollTouches raises its minimum to two, which
+        // disables panning rather than letting a two-finger pan compete with
+        // the native pinch recognizer.
+        scrollView.panGestureRecognizer.maximumNumberOfTouches = 1
         scrollView.scrollsToTop = true
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
@@ -663,7 +668,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         scrollView.contentSize = contentView.frame.size
         scrollView.minimumZoomScale = min(1, minimumZoom / zoom)
         scrollView.maximumZoomScale = max(1, maximumZoom / zoom)
-        scrollView.pinchGestureRecognizer?.allowedTouchTypes = Self.scrollTouchTypes
         if let restore {
             updateInsets()
             var offset = restore(bakedScale)
