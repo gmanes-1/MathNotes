@@ -311,7 +311,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var bakedScale: CGFloat = 1
     private(set) var zoom: CGFloat = 1
     private(set) var minimumZoom: CGFloat = 1
-    private(set) var maximumZoom: CGFloat = 5
+    private(set) var maximumZoom: CGFloat = 4
 
     private var slots: [UUID: PageSlotView] = [:]
     private var canvases: [UUID: PageCanvasView] = [:]
