@@ -546,6 +546,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         keepsAnchor = false
+        toolPicker?.setVisible(false, forFirstResponder: anchor)
         endTextEditing()
         typingTimer?.cancel()
         session.dish = nil
