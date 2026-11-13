@@ -66,15 +66,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
                 blue: CGFloat(color >> 8 & 0xFF) / 255, alpha: CGFloat(color & 0xFF) / 255)
     }
 
-    /// The app's displayed width range, including fine values below PencilKit's picker minimum.
+    /// Use PencilKit's own supported width range for each native ink type.
     static func widthRange(of ink: PKInkingTool.InkType) -> ClosedRange<Double> {
         let valid = ink.validWidthRange
-        // These are app-authored widths, not PencilKit's picker limits. Keep the requested fine
-        // values available even when PencilKit reports a higher minimum for its standard picker.
-        let minimum: Double = (ink == .monoline || ink == .pen) ? 0.1 : Double(valid.lowerBound)
-        // The unified Precision Pen spans the fine Fineliner end through the former regular-Pen range.
-        let maximum = (ink == .monoline || ink == .pen) ? max(Double(valid.upperBound), Double(PKInkingTool.InkType.pen.validWidthRange.upperBound)) : Double(valid.upperBound)
-        return minimum...maximum
+        return Double(valid.lowerBound)...Double(valid.upperBound)
     }
 
     static func clamped(_ width: Double, to range: ClosedRange<Double>) -> Double {
@@ -160,18 +155,12 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// Explicit width steps remain useful to VoiceOver and legacy callers; the tray itself uses a continuous slider.
     static func widthSteps(of ink: PKInkingTool.InkType) -> [Double] {
         let range = widthRange(of: ink)
-        if ink == .monoline {
-            return [0.1, 0.2, 0.3, 0.6, 1.0, 1.5, 2.5, range.upperBound]
-        }
-        if ink == .pen {
-            return [0.9, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, range.upperBound]
-        }
         let fractions: [Double] = [0, 0.025, 0.07, 0.16, 0.30, 0.50, 0.73, 1]
-        return fractions.map { range.lowerBound + (range.upperBound - range.lowerBound) * $0 * $0 }
+        return fractions.map { range.lowerBound + (range.upperBound - range.lowerBound) * $0 }
     }
 
     /// The reverse of `width(at:of:)`.
-    var widthTravel: Double { widthFraction.squareRoot() }
+    var widthTravel: Double { widthFraction }
 
     /// The colour in a word, for VoiceOver and the Large Content Viewer.
     var colorName: String { Self.colorName(color) }
