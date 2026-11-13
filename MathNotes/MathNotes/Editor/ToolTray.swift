@@ -465,12 +465,13 @@ private struct PenOptions: View {
                     Spacer()
                     Text(width).font(.subheadline.monospacedDigit()).foregroundStyle(Color.textSecondary)
                 }
-                Slider(value: Binding(get: { pen.widthTravel }, set: { travel in
-                    toolbox.changePen(id) { $0.width = ToolPreset.width(at: travel, of: ink) }
-                }), in: 0...1)
-                .tint(Color.accentColor)
-                .accessibilityLabel(Text("Pen width"))
-                .accessibilityValue(Text(width))
+                PenWidthLevels(
+                    ink: ink,
+                    selectedWidth: pen.width,
+                    onSelect: { selected in
+                        toolbox.changePen(id) { $0.width = selected }
+                    }
+                )
                 .accessibilityIdentifier("editor.tools.pen.width")
             }
             // Opacity moves in steps of a twentieth, so the figure beside it is a round one.
@@ -546,6 +547,55 @@ private struct PenOptions: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(ToolPreset.colorName(color)))
         .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+}
+
+/// Three native PencilKit width choices, drawn as the progressively thicker marks used by Apple Notes.
+private struct PenWidthLevels: View {
+    let ink: PKInkingTool.InkType
+    let selectedWidth: Double
+    let onSelect: (Double) -> Void
+
+    private static let fractions: [Double] = [0.08, 0.35, 0.72]
+    private static let names = [String(localized: "Thin"), String(localized: "Medium"), String(localized: "Thick")]
+
+    private var widths: [Double] {
+        Self.fractions.map { ToolPreset.width(at: $0, of: ink) }
+    }
+
+    private var selectedIndex: Int {
+        widths.indices.min(by: { abs(widths[$0] - selectedWidth) < abs(widths[$1] - selectedWidth) }) ?? 1
+    }
+
+    var body: some View {
+        HStack(spacing: Space.x2) {
+            ForEach(widths.indices, id: \.self) { index in
+                let chosen = index == selectedIndex
+                Button { onSelect(widths[index]) } label: {
+                    VStack(spacing: Space.x2) {
+                        Capsule()
+                            .fill(Color.ink)
+                            .frame(width: 34, height: [2.0, 4.0, 7.0][index])
+                            .frame(height: 16)
+                        Text(Self.names[index])
+                            .font(.caption.weight(chosen ? .semibold : .regular))
+                            .foregroundStyle(chosen ? Color.ink : Color.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(chosen ? Color.well : Color.clear, in: RoundedRectangle.plate)
+                    .overlay {
+                        RoundedRectangle.plate.strokeBorder(chosen ? Color.accentColor : Color.hairline,
+                                                            lineWidth: chosen ? 1.5 : 1)
+                    }
+                    .contentShape(RoundedRectangle.plate)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Pen width, \(Self.names[index])"))
+                .accessibilityValue(Text(widths[index].formatted(.number.precision(.fractionLength(0...1)))))
+                .accessibilityAddTraits(chosen ? .isSelected : [])
+                .accessibilityIdentifier("editor.tools.pen.width.\(index + 1)")
+            }
+        }
     }
 }
 
