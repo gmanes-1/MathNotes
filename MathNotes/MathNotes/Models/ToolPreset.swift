@@ -86,12 +86,9 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Fineliner uses PencilKit's native pressure-sensitive Pen ink. Keep the selected
-        // width fine; ordinary pens and markers retain their own native ink type and width.
+        // Use PencilKit's native ink type and selected width without custom pressure scaling.
         let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
-        let nativeType: PKInkingTool.InkType = pressureSensitive == true ? .pen : inkType
-        let nativeWidth = selectedWidth * (pressureSensitive == true ? 0.005 : 1)
-        return PKInkingTool(nativeType, color: uiColor, width: nativeWidth)
+        return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 
     /// Where the width lies in what this kind of ink allows, from 0 to 1.
