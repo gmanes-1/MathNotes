@@ -428,36 +428,6 @@ final class Toolbox {
         }
     }
 
-    /// Adopt a tool selected in PencilKit's native picker while keeping the shelf and its selected slot.
-    func adoptNativeTool(_ tool: PKTool) {
-        if tool is PKEraserTool {
-            take(.eraser)
-            return
-        }
-        if tool is PKLassoTool {
-            take(.lasso)
-            return
-        }
-        guard let preset = ToolPreset(tool) else { return }
-        let id: UUID
-        if case .pen(let current) = choice {
-            id = current
-        } else {
-            id = shelf.usable.first?.id ?? UUID()
-            if !shelf.usable.contains(where: { $0.id == id }) {
-                guard shelf.add(preset) else { return }
-                take(.pen(preset.id))
-                return
-            }
-        }
-        changePen(id) { current in
-            current.ink = preset.ink
-            current.color = preset.color
-            current.width = preset.width
-        }
-        take(.pen(id))
-    }
-
     func take(_ new: ToolChoice) {
         if case .pen(let id) = new, !shelf.usable.contains(where: { $0.id == id }) { return }
         guard new != choice else { return }
