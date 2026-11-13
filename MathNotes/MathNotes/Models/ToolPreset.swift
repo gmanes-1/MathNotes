@@ -149,7 +149,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// writing is done.
     static func width(at fraction: Double, of ink: PKInkingTool.InkType) -> Double {
         let range = widthRange(of: ink), clamped = min(max(fraction, 0), 1)
-        return range.lowerBound + (range.upperBound - range.lowerBound) * clamped * clamped
+        return range.lowerBound + (range.upperBound - range.lowerBound) * clamped
     }
 
     /// Explicit width steps remain useful to VoiceOver and legacy callers; the tray itself uses a continuous slider.
