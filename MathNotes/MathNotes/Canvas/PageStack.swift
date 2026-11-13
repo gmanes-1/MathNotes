@@ -295,12 +295,13 @@ final class PageSlotView: UIView {
 @MainActor
 final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanvasViewDelegate,
                                  InkObserver, EditorCanvasControlling, UIGestureRecognizerDelegate, UIDropInteractionDelegate, UITextViewDelegate,
-                                 UIPencilInteractionDelegate {
+                                 UIPencilInteractionDelegate, PKToolPickerObserver {
     private let session: EditorSession
     private var document: NotebookDocument { session.document }
     private let scrollView = PageScrollView()
     private let contentView = UIView()
     private let anchor = ResponderAnchor()
+    private var toolPicker: PKToolPicker?
     private let toolbox: Toolbox
     private let undoProxy: CanvasUndoProxy
     private let signposter = OSSignposter(subsystem: "com.owais.MathNotes", category: "editor")
@@ -506,6 +507,29 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         super.viewDidAppear(animated)
         keepsAnchor = true
         toolTrayDidChange()
+        configureNativeToolPicker()
+    }
+
+    /// Let PencilKit own the actual ink tools and their native width/pressure controls.
+    private func configureNativeToolPicker() {
+        guard let window = view.window, let picker = PKToolPicker.shared(for: window) else { return }
+        if toolPicker !== picker {
+            toolPicker?.removeObserver(self)
+            toolPicker = picker
+            picker.addObserver(self)
+        }
+        picker.selectedTool = toolbox.tool
+        picker.isRulerActive = toolbox.isRulerActive
+        picker.setVisible(true, forFirstResponder: anchor)
+        if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
+    }
+
+    func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
+        toolbox.adoptNativeTool(toolPicker.selectedTool)
+    }
+
+    func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
+        toolbox.isRulerActive = toolPicker.isRulerActive
     }
 
     private func reclaimAnchor() {
@@ -982,6 +1006,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     private func syncTool(_ canvas: PageCanvasView) {
         let selected = toolbox.tool
+        if let toolPicker {
+            toolPicker.selectedTool = selected
+            toolPicker.isRulerActive = toolbox.isRulerActive
+        }
         if canvas === zoomCanvas, let ink = selected as? PKInkingTool {
             // PKCanvasView records widths in its own content coordinates. The zoom window has a
             // different points-per-page-point scale from the main canvas, so compensate the tool
