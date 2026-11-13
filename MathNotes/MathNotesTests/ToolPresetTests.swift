@@ -47,24 +47,25 @@ final class ToolPresetTests: XCTestCase {
     }
 
     func testLegacyPressureFlagDoesNotOverrideNativePencilKitInk() throws {
-        var fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 0.6)
-        XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "off keeps the current uniform Fineliner")
+        let range = ToolPreset.widthRange(of: .monoline)
+        let selectedWidth = range.lowerBound + (range.upperBound - range.lowerBound) * 0.25
+        var fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: selectedWidth)
+        XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline)
         fineliner.pressureSensitive = true
-        let pressureTool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(pressureTool.inkType, .monoline, "the legacy pressure flag does not replace the selected native ink")
-        XCTAssertEqual(pressureTool.color, fineliner.uiColor)
-        XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.001, "pressure mode preserves the selected Monoline base width")
-        fineliner.width = 0.3
-        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), 0.3, accuracy: 0.001,
-                       "pressure mode does not shrink the selected width")
+        let nativeTool = try XCTUnwrap(fineliner.tool)
+        XCTAssertEqual(nativeTool.inkType, .monoline, "the legacy pressure flag does not replace the selected native ink")
+        XCTAssertEqual(nativeTool.color, fineliner.uiColor)
+        XCTAssertEqual(Double(nativeTool.width), selectedWidth, accuracy: 0.001)
+        fineliner.width = range.upperBound
+        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), range.upperBound, accuracy: 0.001)
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true, "the legacy field remains decodable")
         XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .monoline)
 
-        let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":0.6}"#.data(using: .utf8)!
+        let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":2}"#.data(using: .utf8)!
         let oldPreset = try JSONDecoder().decode(ToolPreset.self, from: legacy)
-        XCTAssertFalse(oldPreset.pressureSensitive ?? false, "saved presets from before the toggle stay off")
+        XCTAssertFalse(oldPreset.pressureSensitive ?? false)
         XCTAssertEqual(try XCTUnwrap(oldPreset.tool).inkType, .monoline)
     }
 
