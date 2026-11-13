@@ -15,7 +15,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     init(id: UUID = UUID(), ink: PKInkingTool.InkType, color: UInt32, width: Double) {
         self.id = id
-        self.ink = (ink == .pen ? .monoline : ink).rawValue
+        self.ink = ink.rawValue
         self.color = color
         self.width = width
     }
@@ -113,7 +113,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: String(localized: "Pen")
         case .pencil: String(localized: "Pencil")
         case .marker: String(localized: "Highlighter")
-        case .monoline, .pen: String(localized: "Pen")
+        case .monoline: String(localized: "Monoline")
         case .fountainPen: String(localized: "Fountain Pen")
         case .watercolor: String(localized: "Watercolour")
         case .crayon: String(localized: "Crayon")
@@ -126,7 +126,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: "pencil.tip"
         case .pencil: "pencil"
         case .marker: "highlighter"
-        case .monoline, .pen: "pencil.tip"
+        case .monoline: "pencil.tip"
         case .watercolor: "paintbrush"
         case .crayon: "scribble"
         default: "paintbrush.pointed"
@@ -135,7 +135,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
 
     /// The kinds of ink a pen can be given, in the order they are offered.
     static var kinds: [PKInkingTool.InkType] {
-        var kinds: [PKInkingTool.InkType] = [.monoline, .fountainPen, .pencil, .marker, .crayon, .watercolor]
+        var kinds: [PKInkingTool.InkType] = [.pen, .monoline, .fountainPen, .pencil, .marker, .crayon, .watercolor]
         if #available(iOS 26, *) { kinds.insert(.reed, at: 3) }
         return kinds
     }
@@ -228,15 +228,8 @@ final class ToolShelf {
         #endif
         self.defaults = store
         var loaded = store?.data(forKey: SettingsKey.toolPresets).flatMap { try? JSONDecoder().decode([ToolPreset].self, from: $0) } ?? Self.starters
-        // Fold legacy regular-Pen presets into the single unified Pen/Fineliner tool.
-        // Keep IDs, colours, widths and order so saved tray choices continue to resolve.
-        let original = loaded
-        for index in loaded.indices where loaded[index].inkType == .pen {
-            loaded[index].ink = PKInkingTool.InkType.monoline.rawValue
-            loaded[index].width = ToolPreset.clamped(loaded[index].width, to: ToolPreset.widthRange(of: .monoline))
-        }
+        // Keep PencilKit Pen and Monoline as separate native tools.
         presets = loaded
-        if store != nil, loaded != original { save() }
     }
 
     /// The tools this build can use; one of a kind it doesn't know stays saved and isn't shown.
