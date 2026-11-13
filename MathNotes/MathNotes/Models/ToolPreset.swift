@@ -145,8 +145,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         ink == .marker ? tints + inks : inks + tints
     }
 
-    /// Where a width at `fraction` of the way lies for a kind of ink. The thin end has most of the travel, where
-    /// writing is done.
+    /// Where a width at `fraction` of the way lies across PencilKit's native width range.
     static func width(at fraction: Double, of ink: PKInkingTool.InkType) -> Double {
         let range = widthRange(of: ink), clamped = min(max(fraction, 0), 1)
         return range.lowerBound + (range.upperBound - range.lowerBound) * clamped
