@@ -42,10 +42,10 @@ final class PressureFinelinerCaptureView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(preset: ToolPreset?, enabled: Bool, allowsFingerDrawing: Bool = false) {
-        let shouldEnable = enabled && preset?.pressureSensitive == true
-        isEnabled = shouldEnable
-        isUserInteractionEnabled = shouldEnable
-        self.allowsFingerDrawing = shouldEnable && allowsFingerDrawing
+        // Use PencilKit's native stroke rendering; the custom pressure overlay is disabled.
+        isEnabled = false
+        isUserInteractionEnabled = false
+        self.allowsFingerDrawing = false
         if let preset {
             // Use the selected Fineliner width, not canvas.tool.width: the latter is
             // already scaled down for PencilKit's native pressure tool.
@@ -53,7 +53,7 @@ final class PressureFinelinerCaptureView: UIView {
             inkColor = preset.uiColor
             preview.fillColor = inkColor.cgColor
         }
-        if !shouldEnable { cancelStroke() }
+        cancelStroke()
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
