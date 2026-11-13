@@ -46,12 +46,12 @@ final class ToolPresetTests: XCTestCase {
         }
     }
 
-    func testFinelinerPressureCanBeToggledAndSurvivesSaving() throws {
+    func testLegacyPressureFlagDoesNotOverrideNativePencilKitInk() throws {
         var fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 0.6)
         XCTAssertEqual(try XCTUnwrap(fineliner.tool).inkType, .monoline, "off keeps the current uniform Fineliner")
         fineliner.pressureSensitive = true
         let pressureTool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(pressureTool.inkType, .monoline, "custom live pressure capture retains Monoline ink")
+        XCTAssertEqual(pressureTool.inkType, .monoline, "the legacy pressure flag does not replace the selected native ink")
         XCTAssertEqual(pressureTool.color, fineliner.uiColor)
         XCTAssertEqual(Double(pressureTool.width), 0.6, accuracy: 0.001, "pressure mode preserves the selected Monoline base width")
         fineliner.width = 0.3
@@ -59,7 +59,7 @@ final class ToolPresetTests: XCTestCase {
                        "pressure mode does not shrink the selected width")
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
-        XCTAssertEqual(restored.pressureSensitive, true)
+        XCTAssertEqual(restored.pressureSensitive, true, "the legacy field remains decodable")
         XCTAssertEqual(try XCTUnwrap(restored.tool).inkType, .monoline)
 
         let legacy = #"{"id":"00000000-0000-0000-0000-000000000001","ink":"com.apple.ink.monoline","color":255,"width":0.6}"#.data(using: .utf8)!
@@ -69,9 +69,10 @@ final class ToolPresetTests: XCTestCase {
     }
 
     func testEachKindOfInkHasARangeOfItsOwnThatNeverStartsAtNothing() {
-        XCTAssertEqual(ToolPreset.widthRange(of: .monoline), 0.1...8)
-        XCTAssertEqual(ToolPreset.widthRange(of: .pen), 0.1...8)
-        XCTAssertEqual(ToolPreset.widthRange(of: .marker), 5...30)
+        for kind in ToolPreset.kinds {
+            let valid = kind.validWidthRange
+            XCTAssertEqual(ToolPreset.widthRange(of: kind), Double(valid.lowerBound)...Double(valid.upperBound))
+        }
         for kind in ToolPreset.kinds {
             let range = ToolPreset.widthRange(of: kind)
             XCTAssertGreaterThan(range.lowerBound, 0)
@@ -101,9 +102,10 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(name(0x2747_B8FF), "Blue")
         XCTAssertEqual(name(0x3D5A_40FF), "Green")
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20).name, "Highlighter, Mustard")
-        XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 1).kindName, "Pen")
-        XCTAssertEqual(ToolPreset.widthSteps(of: .monoline).first, 0.1)
-        XCTAssertEqual(ToolPreset.widthSteps(of: .monoline).last, 8)
+        XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 1).kindName, "Monoline")
+        let nativeRange = ToolPreset.widthRange(of: .monoline)
+        XCTAssertEqual(ToolPreset.widthSteps(of: .monoline).first, nativeRange.lowerBound)
+        XCTAssertEqual(ToolPreset.widthSteps(of: .monoline).last, nativeRange.upperBound)
     }
 
     func testAPenIsAsFaintAsItIsSetWhateverItsColour() throws {
@@ -208,7 +210,7 @@ final class ToolPresetTests: XCTestCase {
         let shelf = ToolShelf(defaults: defaults)
         XCTAssertEqual(shelf.presets.count, 2)
         XCTAssertEqual(shelf.usable.count, 1)
-        XCTAssertEqual(shelf.usable.first?.inkType, .monoline, "a saved regular Pen becomes the unified Pen")
+        XCTAssertEqual(shelf.usable.first?.inkType, .pen, "a saved regular Pen remains PencilKit Pen")
         shelf.add(ToolPreset(ink: .marker, color: 0xE8B0_23FF, width: 20))
         XCTAssertEqual(ToolShelf(defaults: defaults).presets.first?.ink, "com.apple.ink.future", "saving again doesn't drop it")
     }
