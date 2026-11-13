@@ -121,7 +121,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         case .pen: "pencil.tip"
         case .pencil: "pencil"
         case .marker: "highlighter"
-        case .monoline: "pencil.tip"
+        case .monoline: "pencil.tip.crop.circle"
         case .watercolor: "paintbrush"
         case .crayon: "scribble"
         default: "paintbrush.pointed"
