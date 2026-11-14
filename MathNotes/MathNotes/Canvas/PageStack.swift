@@ -1078,17 +1078,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func syncTool(_ canvas: PageCanvasView) {
-        let selected = toolbox.tool
-        if canvas === zoomCanvas, let ink = selected as? PKInkingTool {
-            // PKCanvasView records widths in its own content coordinates. The zoom window has a
-            // different points-per-page-point scale from the main canvas, so compensate the tool
-            // width to keep the resulting stroke the same size in the notebook.
-            let scale = canvas.zoomScale / max(bakedScale, 0.001)
-            // Preserve the app's explicit fine widths; do not re-clamp them to the picker range.
-            canvas.tool = PKInkingTool(ink.inkType, color: ink.color, width: ink.width * scale)
-        } else {
-            canvas.tool = selected
-        }
+        // Main and zoom-window canvases both use page points as their drawing coordinates.
+        // PencilKit applies each canvas's zoomScale when displaying the page; keep the native
+        // selected tool unchanged so width and pressure remain entirely PencilKit-controlled.
+        canvas.tool = toolbox.tool
         canvas.isRulerActive = toolbox.isRulerActive
     }
 
@@ -1176,7 +1169,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         let full = slot.bounds
         let viewport = slot.convert(scrollView.bounds, from: scrollView)
-        let size = CGSize(width: slot.page.size.width * s, height: slot.page.size.height * s)
+        // contentSize is expressed in page points. UIScrollView/PencilKit applies zoomScale
+        // to that size; passing already-scaled dimensions here would scale the page twice.
+        let size = slot.page.size
         let needed = viewport.intersection(full)
         if !force, !rescaled, canvas.contentSize == size, canvas.frame.width > 0,
            needed.isNull || canvas.frame.insetBy(dx: -0.5, dy: -0.5).contains(needed) {
@@ -2804,7 +2799,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             canvas.maximumZoomScale = scale
         }
         if canvas.frame != area { canvas.frame = area }
-        let size = CGSize(width: page.size.width * scale, height: page.size.height * scale)
+        // Keep the zoom canvas in the same page-point coordinate space as the main canvas.
+        // Its zoomScale magnifies that coordinate space for the zoom-window viewport.
+        let size = page.size
         if canvas.contentSize != size { canvas.contentSize = size }
         let offset = CGPoint(x: window.rect.minX * scale, y: window.rect.minY * scale)
         if canvas.contentOffset != offset { canvas.contentOffset = offset }
