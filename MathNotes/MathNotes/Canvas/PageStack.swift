@@ -790,7 +790,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     private var toolsObscured: CGFloat {
         guard session.showsToolTray else { return 0 }
-        return ToolTray.height + ToolTray.gap + max(view.safeAreaInsets.bottom, zoomPanel.map { view.bounds.maxY - $0.frame.minY } ?? 0)
+        return max(view.safeAreaInsets.bottom, zoomPanel.map { view.bounds.maxY - $0.frame.minY } ?? 0)
     }
 
     func fitZoom(_ fit: PageFit, page index: Int) -> CGFloat {
