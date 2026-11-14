@@ -87,9 +87,9 @@ struct NewNotebookView: View {
                 }
                 .padding(Space.x6)
             }
-            .background(Color.surface)
+            .background(Color.paper)
             .navigationTitle("New Notebook")
-            .barGround(.surface)
+            .barGround(Color.paper)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -214,22 +214,12 @@ struct NewNotebookView: View {
     private var pageOptions: some View {
         VStack(alignment: .leading, spacing: Space.x4) {
             Divider().overlay(Color.hairline)
-            LabeledContent {
-                MathNotesMenu(Text("Page Size")) {
-                    MathNotesPicker(selection: $pageSize) {
-                        ForEach(PageSize.allCases) { Text($0.displayName).tag($0) }
-                    }
-                } label: {
-                    HStack(spacing: Space.x2) {
-                        Text(pageSize.displayName)
-                        Image(systemName: "chevron.up.chevron.down").imageScale(.small).foregroundStyle(Color.textSecondary)
-                    }
-                }
-                .buttonStyle(.mathNotes(.secondary, compact: true))
-                .accessibilityLabel(Text("Page Size"))
-                .accessibilityValue(Text(pageSize.displayName))
-            } label: {
+            VStack(alignment: .leading, spacing: Space.x2) {
                 Text("Page Size").foregroundStyle(Color.ink)
+                MathNotesSegmentedPicker("Page Size", selection: $pageSize, options: PageSize.allCases) {
+                    Text($0.displayName)
+                }
+                .accessibilityIdentifier("newNotebook.pageSize")
             }
         }
     }
