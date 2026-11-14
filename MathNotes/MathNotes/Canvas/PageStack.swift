@@ -520,7 +520,15 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 PKToolPickerInkingItem(type: .crayon, color: nil, width: nil, identifier: "com.mathnotes.crayon"),
                 PKToolPickerInkingItem(type: .watercolor, color: nil, width: nil, identifier: "com.mathnotes.watercolor")
             ]
-            let picker = PKToolPicker(toolItems: PKToolPicker.defaultToolItems + additionalInks)
+            if #available(iOS 26.0, *) {
+                additionalInks.append(PKToolPickerInkingItem(type: .reed, color: nil, width: nil, identifier: "com.mathnotes.reed"))
+            }
+            let additionalTypes: [PKInkingTool.InkType] = [.fountainPen, .monoline, .crayon, .watercolor]
+            let standardItems = PKToolPicker.defaultToolItems.filter { item in
+                guard let ink = item.tool as? PKInkingTool else { return true }
+                return !additionalTypes.contains(ink.inkType)
+            }
+            let picker = PKToolPicker(toolItems: standardItems + additionalInks)
             picker.stateAutosaveName = "com.mathnotes.nativeToolPicker"
             picker.selectedTool = toolbox.tool
             picker.isRulerActive = toolbox.isRulerActive
