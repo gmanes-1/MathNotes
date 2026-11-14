@@ -249,17 +249,13 @@ private struct AdaptingPanel<Panel: View>: ViewModifier {
     @Binding var isPresented: Bool
     let adapts: Bool
     @ViewBuilder var content: () -> Panel
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     func body(content anchor: Content) -> some View {
-        if adapts, sizeClass == .compact {
-            anchor.sheet(isPresented: $isPresented) {
-                content().presentationBackground(Color.surface).presentationCornerRadius(Radius.sheet)
-            }
-        } else {
-            anchor.modifier(PanelPresenter(isPresented: $isPresented) {
-                PanelChrome(done: adapts ? { isPresented = false } : nil) { title } content: { content() }
-            })
+        anchor.popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+            content()
+                .presentationCompactAdaptation(adapts ? .sheet : .popover)
+                .presentationBackground(Color.surface)
+                .presentationCornerRadius(Radius.sheet)
         }
     }
 }
@@ -547,13 +543,14 @@ private struct MenuRowBody: ButtonStyle {
 // MARK: Notices
 
 extension View {
-    /// Stands a notice in the middle of the screen while `isPresented` is true: the app's own alert. A button with the
-    /// cancel role is its way out, and one that destroys turns its edge tomato.
+    /// Uses the platform alert presentation so confirmations match the rest of iOS.
     func notice<Actions: View>(_ title: Text, isPresented: Binding<Bool>, message: Text? = nil,
                                @ViewBuilder actions: @escaping () -> Actions) -> some View {
-        modifier(PanelPresenter(isPresented: isPresented, notice: true) {
-            NoticeCard(title: title, message: message) { EmptyView() } actions: { actions() }
-        })
+        alert(title, isPresented: isPresented) {
+            actions()
+        } message: {
+            if let message { message }
+        }
     }
 
     func notice<Actions: View>(_ title: LocalizedStringKey, isPresented: Binding<Bool>, message: Text? = nil,
@@ -561,13 +558,16 @@ extension View {
         notice(Text(title), isPresented: isPresented, message: message, actions: actions)
     }
 
-    /// A notice that asks for something to be typed: its first field is ready to type in as it opens.
+    /// Native alert with editable fields, for rename and other short input prompts.
     func notice<Fields: View, Actions: View>(_ title: LocalizedStringKey, isPresented: Binding<Bool>, message: Text? = nil,
                                              @ViewBuilder fields: @escaping () -> Fields,
                                              @ViewBuilder actions: @escaping () -> Actions) -> some View {
-        modifier(PanelPresenter(isPresented: isPresented, notice: true) {
-            NoticeCard(title: Text(title), message: message) { fields() } actions: { actions() }
-        })
+        alert(title, isPresented: isPresented) {
+            fields()
+            actions()
+        } message: {
+            if let message { message }
+        }
     }
 }
 
