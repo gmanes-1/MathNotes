@@ -162,16 +162,16 @@ struct LibrarySidebar: View {
                     if !tags.isEmpty {
                         Button { shelfDraft = SmartShelfDraft(tags: tags.map(\.name)) } label: {
                             if dynamicTypeSize.isAccessibilitySize {
-                                Text("New Smart Shelf")
+                                Text("New Smart Folder")
                             } else {
-                                Label("New Smart Shelf", systemImage: "plus.rectangle.on.rectangle")
+                                Label("New Smart Folder", systemImage: "plus.rectangle.on.rectangle")
                             }
                         }
                         .accessibilityIdentifier("sidebar.newSmartShelf")
                         .background(CellFocusRing(shown: true))
                     }
                 } header: {
-                    Text("Smart shelves").metaStyle(.footnote)
+                    Text("Smart Folders").metaStyle(.footnote)
                 }
             }
             if !tags.isEmpty {
@@ -187,9 +187,9 @@ struct LibrarySidebar: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.surface)
-        .tint(Color.sidebarTint)
-        .navigationTitle("MathNotes")
+        .background(Color(uiColor: .systemGroupedBackground))
+        .tint(Color.accentColor)
+        .navigationTitle("Notes")
         // With a board button of its own, the system's is taken out here as well as over the shelves: iPadOS 27 keeps it otherwise.
         .toolbar(removing: hideSidebar == nil ? nil : .sidebarToggle)
         .modifier(SidebarHeader {
@@ -219,7 +219,7 @@ struct LibrarySidebar: View {
             Button("Save") { if let editingFolder { store.renameFolder(editingFolder, to: folderName) } }
         }
         .notice("Rename Tag", isPresented: Binding(get: { renamingTag != nil }, set: { if !$0 { renamingTag = nil } }),
-                message: Text("Every notebook and page carrying it takes the new name.")) {
+                message: Text("Every note and page carrying it takes the new name.")) {
             TextField("Name", text: $tagName)
         } actions: {
             Button("Cancel", role: .cancel) {}
@@ -250,7 +250,7 @@ struct LibrarySidebar: View {
 
     private func tagRow(_ tag: TagCount) -> some View {
         row(tag.name, icon: "tag", count: tag.count)
-            .accessibilityLabel(String(localized: "\(tag.name), tag, \(tag.count) notebooks"))
+            .accessibilityLabel(String(localized: "\(tag.name), tag, \(tag.count) notes"))
             .accessibilityIdentifier("tag.\(tag.name)")
     }
 
@@ -305,7 +305,8 @@ struct LibrarySidebar: View {
     private func folderRow(_ folder: FolderRecord, row: FolderTree.Row, tree: FolderTree, count: Int) -> some View {
         let folded = collapsed.contains(folder.id)
         return HStack(spacing: Space.x3) {
-            SpineChip(cloth: folder.cloth)
+            Image(systemName: "folder")
+                .foregroundStyle(Color.accentColor)
             Text(folder.name).lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             Spacer()
             if count > 0, !dynamicTypeSize.isAccessibilitySize {
@@ -327,7 +328,7 @@ struct LibrarySidebar: View {
         .padding(.leading, CGFloat(row.depth) * Space.x4)
         .foregroundStyle(RowInk(resting: .ink))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "\(folder.name), folder, \(count) notebooks"))
+        .accessibilityLabel(String(localized: "\(folder.name), folder, \(count) notes"))
         .accessibilityValue(tree.parent(of: folder.id).map { String(localized: "Inside \(tree.name(of: $0))") } ?? "")
         .accessibilityAddTraits(.isButton)
         .accessibilityActions {
