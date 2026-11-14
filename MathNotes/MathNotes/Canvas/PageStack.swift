@@ -514,7 +514,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private func configureNativeToolPicker() {
         guard view.window != nil else { return }
         if toolPicker == nil {
-            let additionalInks: [PKToolPickerItem] = [
+            var additionalInks: [PKToolPickerItem] = [
                 PKToolPickerInkingItem(type: .fountainPen, color: nil, width: nil, identifier: "com.mathnotes.fountainPen"),
                 PKToolPickerInkingItem(type: .monoline, color: nil, width: nil, identifier: "com.mathnotes.monoline"),
                 PKToolPickerInkingItem(type: .crayon, color: nil, width: nil, identifier: "com.mathnotes.crayon"),
@@ -524,19 +524,21 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
                 additionalInks.append(PKToolPickerInkingItem(type: .reed, color: nil, width: nil, identifier: "com.mathnotes.reed"))
             }
             let additionalTypes: [PKInkingTool.InkType] = [.fountainPen, .monoline, .crayon, .watercolor]
-            let standardItems = PKToolPicker.defaultToolItems.filter { item in
+            // Build from iOS 18+ default picker items; defaultToolItems itself is iOS 26+.
+            let standardItems = PKToolPicker().toolItems.filter { item in
                 guard let ink = item.tool as? PKInkingTool else { return true }
                 return !additionalTypes.contains(ink.inkType)
             }
             let picker = PKToolPicker(toolItems: standardItems + additionalInks)
             picker.stateAutosaveName = "com.mathnotes.nativeToolPicker"
-            picker.selectedTool = toolbox.tool
-            picker.isRulerActive = toolbox.isRulerActive
             picker.addObserver(self)
             toolPicker = picker
         }
         guard let picker = toolPicker else { return }
-        if !sameTool(picker.selectedTool, toolbox.tool) { picker.selectedTool = toolbox.tool }
+        if let item = pickerItem(for: toolbox.tool, in: picker),
+           picker.selectedToolItem.identifier != item.identifier {
+            picker.selectedToolItem = item
+        }
         if picker.isRulerActive != toolbox.isRulerActive { picker.isRulerActive = toolbox.isRulerActive }
         if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
         let shouldShow = session.showsNativeTools || session.mode == .selecting
@@ -551,7 +553,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
         guard self.toolPicker === toolPicker else { return }
-        toolbox.adoptNativeTool(toolPicker.selectedTool)
+        if let tool = toolPicker.selectedToolItem.tool { toolbox.adoptNativeTool(tool) }
     }
 
     func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
@@ -1035,6 +1037,24 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         canvas.isAccessibilityElement = true
         canvas.accessibilityTraits = .allowsDirectInteraction
         return canvas
+    }
+
+    private func pickerItem(for tool: PKTool, in picker: PKToolPicker) -> PKToolPickerItem? {
+        let items = picker.toolItems
+        if let exact = items.first(where: { item in
+            guard let candidate = item.tool else { return false }
+            return sameTool(candidate, tool)
+        }) { return exact }
+        return items.first { item in
+            guard let candidate = item.tool else { return false }
+            if let lhs = candidate as? PKInkingTool, let rhs = tool as? PKInkingTool {
+                return lhs.inkType == rhs.inkType
+            }
+            if let lhs = candidate as? PKEraserTool, let rhs = tool as? PKEraserTool {
+                return lhs.eraserType == rhs.eraserType
+            }
+            return candidate is PKLassoTool && tool is PKLassoTool
+        }
     }
 
     private func sameTool(_ lhs: PKTool, _ rhs: PKTool) -> Bool {
@@ -3092,7 +3112,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     @objc private func toolChanged() {
         if let toolPicker {
-            if !sameTool(toolPicker.selectedTool, toolbox.tool) { toolPicker.selectedTool = toolbox.tool }
+            if let item = pickerItem(for: toolbox.tool, in: toolPicker),
+               toolPicker.selectedToolItem.identifier != item.identifier {
+                toolPicker.selectedToolItem = item
+            }
             if toolPicker.isRulerActive != toolbox.isRulerActive { toolPicker.isRulerActive = toolbox.isRulerActive }
         }
         for canvas in allCanvases + pool {
