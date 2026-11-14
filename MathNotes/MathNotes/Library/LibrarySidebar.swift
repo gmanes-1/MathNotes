@@ -256,7 +256,7 @@ struct LibrarySidebar: View {
 
     private func smartRow(_ shelf: SmartShelf) -> some View {
         row(shelf.name, icon: "line.3.horizontal.decrease.circle", count: nil)
-            .accessibilityLabel(String(localized: "\(shelf.name), smart shelf"))
+            .accessibilityLabel(String(localized: "\(shelf.name), smart folder"))
             .accessibilityValue(Text(shelf.tags.formatted(.list(type: shelf.match == .all ? .and : .or))))
             .accessibilityIdentifier("smart.\(shelf.name)")
     }
