@@ -66,7 +66,7 @@ final class EditorSession {
     let recorder: NotebookRecorder
     let finder: NotebookFinder
     var currentPage: Int
-    /// Whether the tools are out. The tray itself also waits on the mode, see `showsNativeTools`.
+    /// Whether the native PencilKit palette is enabled.
     var showsTools = true
     /// Where the lasso's selection is on the page view, in its points. Nil while nothing is selected, while a lasso is
     /// being drawn, and while the selection is being dragged: the menu over the selection waits on it.
@@ -506,7 +506,7 @@ final class EditorSession {
         }
     }
 
-    /// The tool tray is at the foot of the editor while the page can be written on and nothing is being typed.
+    /// Whether the native palette is available while the page can be written on.
     var showsNativeTools: Bool {
         showsTools && (mode == .writing || mode == .focus) && !document.isReadOnly && !isEditingText
     }
@@ -709,7 +709,7 @@ fileprivate struct EditorContent: View {
                 pageStack
                 if side == .trailing { AnyView(sidePanels) }
             }
-            .background(Color.desk.ignoresSafeArea())
+            .background(Color(uiColor: .systemBackground).ignoresSafeArea())
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { paneWidth = $0 }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
