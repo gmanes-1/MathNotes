@@ -295,12 +295,13 @@ final class PageSlotView: UIView {
 @MainActor
 final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanvasViewDelegate,
                                  InkObserver, EditorCanvasControlling, UIGestureRecognizerDelegate, UIDropInteractionDelegate, UITextViewDelegate,
-                                 UIPencilInteractionDelegate {
+                                 UIPencilInteractionDelegate, PKToolPickerObserver {
     private let session: EditorSession
     private var document: NotebookDocument { session.document }
     private let scrollView = PageScrollView()
     private let contentView = UIView()
     private let anchor = ResponderAnchor()
+    private var toolPicker: PKToolPicker?
     private let toolbox: Toolbox
     private let undoProxy: CanvasUndoProxy
     private let signposter = OSSignposter(subsystem: "com.owais.MathNotes", category: "editor")
@@ -505,7 +506,33 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         keepsAnchor = true
+        configureNativeToolPicker()
         toolTrayDidChange()
+    }
+
+    /// PencilKit owns the drawing tools, colours, widths, eraser and ruler UI.
+    private func configureNativeToolPicker() {
+        guard view.window != nil else { return }
+        if toolPicker == nil {
+            let picker = PKToolPicker()
+            picker.selectedTool = toolbox.tool
+            picker.isRulerActive = toolbox.isRulerActive
+            picker.addObserver(self)
+            toolPicker = picker
+        }
+        guard let picker = toolPicker else { return }
+        if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
+        picker.setVisible(session.showsToolTray || session.mode == .selecting, forFirstResponder: anchor)
+    }
+
+    func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
+        guard self.toolPicker === toolPicker else { return }
+        toolbox.adoptNativeTool(toolPicker.selectedTool)
+    }
+
+    func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
+        guard self.toolPicker === toolPicker else { return }
+        toolbox.isRulerActive = toolPicker.isRulerActive
     }
 
     private func reclaimAnchor() {
@@ -526,6 +553,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         typingTimer?.cancel()
         session.dish = nil
         ExternalDisplay.shared.end(for: self)
+        if let toolPicker {
+            toolPicker.setVisible(false, forFirstResponder: anchor)
+            toolPicker.removeObserver(self)
+            self.toolPicker = nil
+        }
         anchor.resignFirstResponder()
         UIApplication.shared.isIdleTimerDisabled = false
     }
@@ -1935,7 +1967,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         applyDrawingPolicy(drawingPolicy)
         layoutZoomPanel()
         updateInsets()
-        if !isModalShowing, textView == nil, !anchor.isFirstResponder { anchor.becomeFirstResponder() }
+        guard !isModalShowing, textView == nil else { return }
+        configureNativeToolPicker()
     }
 
     func setModalShowing(_ showing: Bool) {
@@ -3022,6 +3055,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     @objc private func toolChanged() {
+        if let toolPicker {
+            if !toolPicker.selectedTool.isEqual(toolbox.tool) { toolPicker.selectedTool = toolbox.tool }
+            if toolPicker.isRulerActive != toolbox.isRulerActive { toolPicker.isRulerActive = toolbox.isRulerActive }
+        }
         for canvas in allCanvases + pool {
             syncTool(canvas)
             setDrawingEnabled(canvas.isLoaded && !document.isReadOnly && !isLocked, canvas)
