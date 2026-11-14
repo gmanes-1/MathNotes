@@ -512,15 +512,14 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     /// PencilKit owns the drawing tools, colours, widths, eraser and ruler UI.
     private func configureNativeToolPicker() {
-        guard view.window != nil else { return }
-        if toolPicker == nil {
-            let picker = PKToolPicker()
+        guard let window = view.window, let picker = PKToolPicker.shared(for: window) else { return }
+        if toolPicker !== picker {
+            toolPicker?.removeObserver(self)
+            toolPicker = picker
             picker.selectedTool = toolbox.tool
             picker.isRulerActive = toolbox.isRulerActive
             picker.addObserver(self)
-            toolPicker = picker
         }
-        guard let picker = toolPicker else { return }
         if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
         picker.setVisible(session.showsToolTray || session.mode == .selecting, forFirstResponder: anchor)
     }
