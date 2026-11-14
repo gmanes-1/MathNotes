@@ -643,7 +643,7 @@ struct ShelfView: View {
                             .accessibilityIdentifier("library.journal")
                         MathNotesMenu {
                             Button { onCreate() } label: { Label("New Notebook", systemImage: "book.closed") }
-                                                        Button { onWhiteboard() } label: { Label("Whiteboard", systemImage: "scribble.variable") }
+                            Button { onWhiteboard() } label: { Label("Whiteboard", systemImage: "scribble.variable") }
                                 .accessibilityIdentifier("library.new.board")
                             Button { importingPDF = true } label: { Label("Import PDF…", systemImage: "doc.richtext") }
                             if DocumentScan.isAvailable {
@@ -708,13 +708,13 @@ struct ShelfView: View {
                 Label(record.isFavorite ? "Unfavourite" : "Favourite", systemImage: record.isFavorite ? "star.slash" : "star")
             }
             MathNotesMenu {
-                Button { move([record], to: nil) } label: { Label("Not on a shelf", systemImage: record.folder == nil ? "checkmark" : "tray") }
+                Button { move([record], to: nil) } label: { Label("Not in a Folder", systemImage: record.folder == nil ? "checkmark" : "tray") }
                 ForEach(folders) { folder in
                     Button { move([record], to: folder) } label: {
                         Label(tree.path(of: folder.id), systemImage: record.folder?.id == folder.id ? "checkmark" : "folder")
                     }
                 }
-            } label: { Label("Move to Shelf", systemImage: "folder") }
+            } label: { Label("Move to Folder", systemImage: "folder") }
             Button {
                 Task { do { try await store.duplicate(record) } catch { errorMessage = error.localizedDescription } }
             } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
