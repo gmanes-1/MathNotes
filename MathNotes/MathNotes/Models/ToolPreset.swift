@@ -76,8 +76,15 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// App widths are sent to PencilKit directly, without applying its picker-range clamp.
-    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat { 1 }
+    /// The native PencilKit width slider is deliberately retained, but Pen and Monoline
+    /// are rendered finer on the page so their minimum is useful for small handwriting.
+    /// Widths are converted back to the native slider's scale when adopting a picker tool.
+    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
+        switch ink {
+        case .pen, .monoline: 0.5
+        default: 1
+        }
+    }
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
