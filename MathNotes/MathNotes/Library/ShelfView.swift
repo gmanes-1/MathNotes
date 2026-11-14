@@ -181,7 +181,7 @@ struct ShelfView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
         .toolbarTitleDisplayMode(.large)
-        .barGround(Color(uiColor: .systemBackground))
+        .barGround(Color.paper)
         .background(SearchActivator(isSearching: searchFocused, isCovered: isCovered) { searchFocused = true })
         .toolbar { toolbar(visible) }
         .toolbar { if isSelecting { selectionBar(visible) } }
