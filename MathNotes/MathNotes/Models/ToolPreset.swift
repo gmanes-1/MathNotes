@@ -215,7 +215,7 @@ final class ToolShelf {
         if LaunchOptions.arguments.contains("-freshToolPresets") { store = nil }
         #endif
         self.defaults = store
-        var loaded = store?.data(forKey: SettingsKey.toolPresets).flatMap { try? JSONDecoder().decode([ToolPreset].self, from: $0) } ?? Self.starters
+        let loaded = store?.data(forKey: SettingsKey.toolPresets).flatMap { try? JSONDecoder().decode([ToolPreset].self, from: $0) } ?? Self.starters
         // Keep PencilKit Pen and Monoline as separate native tools.
         presets = loaded
     }
