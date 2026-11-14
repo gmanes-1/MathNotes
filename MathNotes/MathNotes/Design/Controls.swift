@@ -194,76 +194,42 @@ struct MathNotesButtonStyle: ButtonStyle {
     var inBar = false
 
     func makeBody(configuration: Configuration) -> some View {
-        MathNotesButton(configuration: configuration, role: role, compact: compact, inBar: inBar)
+        let enabled = configuration.isPressed || true
+        let height: CGFloat = compact ? 34 : (inBar ? 40 : 44)
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        return configuration.label
+            .font(.system(compact ? .subheadline : (inBar ? .callout : .body), weight: role == .secondary ? .medium : .semibold))
+            .lineLimit(1)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(foreground)
+            .padding(.horizontal, compact || inBar ? Space.x3 : Space.x4)
+            .frame(minWidth: 44, minHeight: height)
+            .background(shape.fill(fill))
+            .overlay {
+                if role == .secondary {
+                    shape.strokeBorder(Color(uiColor: .separator).opacity(0.55), lineWidth: 1)
+                }
+            }
+            .opacity(enabled ? 1 : 0.45)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .contentShape(shape)
+            .hoverEffect(.highlight)
+            .padding(.vertical, (44 - height) / 2)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 
-    private struct MathNotesButton: View {
-        let configuration: Configuration
-        let role: Role
-        let compact: Bool
-        let inBar: Bool
-        @Environment(\.isEnabled) private var isEnabled
-        @Environment(\.colorScheme) private var scheme
-        @Environment(\.colorSchemeContrast) private var contrast
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
-        @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-        private let shape = RoundedRectangle.pill
-        private var height: CGFloat { compact ? 34 : (inBar ? Bar.height : 44) }
-
-        var body: some View {
-            let pressed = configuration.isPressed && isEnabled
-            let cloth = role != .secondary
-            let wraps = !inBar && dynamicTypeSize.isAccessibilitySize
-            configuration.label
-                .font(.system(compact ? .subheadline : (inBar ? .callout : .body), weight: cloth ? .semibold : .medium))
-                .lineLimit(wraps ? 3 : 1)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: inBar, vertical: true)
-                .foregroundStyle(foreground)
-                .padding(.horizontal, compact || inBar ? Space.x3 : Space.x4)
-                .padding(.vertical, wraps ? Space.x2 : 0)
-                .frame(minWidth: 44, minHeight: height)
-                .fixedSize(horizontal: inBar, vertical: false)
-                .background { if cloth { filled(pressed: pressed) } }
-                .modifier(Ground(kind: cloth ? .none : (inBar ? .plate : .board), shape: shape, pressed: pressed, flat: !isEnabled))
-                .scaleEffect(pressed && !reduceMotion ? 0.97 : 1)
-                .contentShape([.hoverEffect, .accessibility], shape)
-                .hoverEffect(.highlight)
-                .padding(.vertical, (44 - height) / 2)
-                .contentShape(Rectangle())
-                .animation(Motion.quick, value: pressed)
-                .modifier(BarLimit(active: inBar))
+    private var foreground: Color {
+        switch role {
+        case .primary, .destructive: .white
+        case .secondary: .primary
         }
+    }
 
-        private var foreground: Color {
-            guard isEnabled else { return .textSecondary }
-            switch role {
-            case .primary: return .onPrimaryCloth
-            case .secondary: return .ink
-            case .destructive: return .onDestructiveCloth
-            }
-        }
-
-        @ViewBuilder
-        private func filled(pressed: Bool) -> some View {
-            if !isEnabled {
-                shape.fill(Color.well)
-            } else {
-                let dark = scheme == .dark
-                shape
-                    .fill(role == .destructive ? Color.destructiveCloth : Color.primaryCloth)
-                    .shadow(color: Elevation.shade(dark).opacity(pressed ? 0 : (dark ? 0.22 : 0.10)), radius: 4, y: 2)
-                    .shadow(color: Elevation.shade(dark).opacity(dark ? 0.40 : 0.12), radius: 0.5, y: 0.5)
-                    .overlay { if contrast != .increased { shape.fill(ImagePaint(image: ClothWeave.tile, scale: 1)) } }
-                    .overlay { if pressed { shape.fill(.black.opacity(dark ? 0.12 : 0.16)) } }
-                    .overlay {
-                        if contrast != .increased {
-                            shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.18), .white.opacity(0), .black.opacity(0.20)],
-                                                              startPoint: .top, endPoint: .bottom), lineWidth: 1)
-                        }
-                    }
-            }
+    private var fill: Color {
+        switch role {
+        case .primary: .accentColor
+        case .destructive: .red
+        case .secondary: Color(uiColor: .secondarySystemBackground)
         }
     }
 }
