@@ -33,7 +33,7 @@ struct ShelfView: View {
     @Query(sort: \FolderRecord.sortIndex) private var folders: [FolderRecord]
     @AppStorage(SettingsKey.librarySort) private var sort: LibrarySortOrder = .opened
     @AppStorage(SettingsKey.librarySortReversed) private var sortReversed = false
-    @AppStorage(SettingsKey.libraryLayout) private var layout: LibraryLayout = .shelf
+    @AppStorage("libraryLayout.appleNotes.v1") private var layout: LibraryLayout = .list
     @AppStorage("libraryGrouping") private var grouping: LibraryGrouping = .recency
     @AppStorage(SettingsKey.dailyJournalID) private var journalID = ""
     @AppStorage(SettingsKey.trashLength) private var trashLength: TrashLength = .initial
@@ -71,7 +71,7 @@ struct ShelfView: View {
 
     private var title: String {
         switch scope {
-        case .all: String(localized: "MathNotes")
+        case .all: String(localized: "Notes")
         case .favorites: String(localized: "Favourites")
         case .trash: String(localized: "Recently deleted")
         case .folder: folder?.name ?? String(localized: "Folder")
@@ -179,8 +179,8 @@ struct ShelfView: View {
             return frame.width - (frame.minX > 1 ? 0 : 130)
         } action: { barRoom = $0 }
         .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarTitleDisplayMode(.large)
         .barGround(.paper)
         .background(SearchActivator(isSearching: searchFocused, isCovered: isCovered) { searchFocused = true })
         .toolbar { toolbar(visible) }
@@ -294,34 +294,23 @@ struct ShelfView: View {
 
     /// Rows in columns, a board for each run, with as many columns as the pane and the text size leave room for.
     private func list(_ visible: [NotebookRecord]) -> some View {
-        let columns = ShelfColumns.fitting(width: listWidth, scale: textScale, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
-        return ScrollView {
-            LazyVStack(alignment: .leading, spacing: Space.x5) {
-                LibraryHeader(title: title, summary: subtitle(visible), showsRhythm: showsRhythm, onOpenPage: onOpenPage)
-                if !searchText.isEmpty, !pageHits.isEmpty, scope != .trash {
-                    PageHitsSection(records: visible, hits: pageHits, query: hitsQuery, zoomNamespace: zoomNamespace, onOpen: onOpenZoomed)
-                        .transition(.opacity)
-                }
-                if !visible.isEmpty, !columns.isEmpty {
-                    ShelfListHeadings(columns: columns, isSelecting: isSelecting, sort: $sort, reversed: $sortReversed)
-                        .padding(.bottom, -Space.x3)
-                }
-                ForEach(groups(visible)) { shelf in
-                    ShelfListBoard(title: shelf.title, cloth: shelf.cloth) {
-                        ForEach(shelf.records) { record in row(record, columns: columns) }
+        List {
+            if showsRhythm { WeekSummarySection(onOpenPage: onOpenPage) }
+            if !searchText.isEmpty, !pageHits.isEmpty, scope != .trash {
+                pageRows(visible, hits: pageHits, query: hitsQuery)
+            }
+            ForEach(groups(visible)) { group in
+                Section(group.title) {
+                    ForEach(group.records) { record in
+                        row(record, columns: [])
                     }
                 }
-                if showsTagPages {
-                    PageHitsSection(records: taggedNotebooks, hits: tagPages, query: "", zoomNamespace: zoomNamespace, onOpen: onOpenZoomed)
-                        .padding(.top, Space.x2)
-                        .transition(.opacity)
-                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { listWidth = $0 }
-            .padding(.horizontal, Space.x8)
-            .padding(.vertical, Space.x6)
+            if showsTagPages { pageRows(taggedNotebooks, hits: tagPages, query: "") }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color.paper)
         .scrollDismissesKeyboard(.immediately)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 56 } action: { showsBarTitle = $1 }
     }
@@ -630,10 +619,6 @@ struct ShelfView: View {
             } else {
                 HStack(spacing: Space.x2) {
                     if let sync = app?.sync, !sync.news.isEmpty { SyncNoticeButton(sync: sync, onOpen: onOpen) }
-                    MathNotesSegmentedPicker("Layout", selection: $layout, options: LibraryLayout.allCases, inBar: true,
-                                           identifier: { "library.layout.\($0.rawValue)" }) { option in
-                        Label(option.displayName, systemImage: option.symbol).labelStyle(.iconOnly)
-                    }
                     if scope == .trash {
                         Button("Empty") { confirmingEmptyTrash = true }.disabled(visible.isEmpty)
                     } else {
