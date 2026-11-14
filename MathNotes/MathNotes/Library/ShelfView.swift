@@ -164,7 +164,7 @@ struct ShelfView: View {
                 shelves(visible)
             }
         }
-        .background(layout == .list ? Color(uiColor: .systemBackground) : Color.paper)
+        .background(Color.paper)
         .overlay { if visible.isEmpty, !showsTagPages, !searchPending { emptyState } }
         .safeAreaInset(edge: .top, spacing: 0) {
             if !searchInBar {
@@ -309,7 +309,7 @@ struct ShelfView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(Color(uiColor: .systemBackground))
+        .background(Color.paper)
         .scrollDismissesKeyboard(.immediately)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 56 } action: { showsBarTitle = $1 }
     }
@@ -640,8 +640,12 @@ struct ShelfView: View {
                         Button(action: openJournal) { Label("Journal", systemImage: "calendar") }
                             .disabled(openingJournal)
                             .accessibilityIdentifier("library.journal")
+                        Button(action: onCreate) {
+                            Label("New Notebook", systemImage: "book.closed")
+                        }
+                        .buttonStyle(.mathNotes(.primary, inBar: true))
+                        .accessibilityIdentifier("library.new.notebook")
                         MathNotesMenu {
-                            Button { onCreate() } label: { Label("New Notebook", systemImage: "book.closed") }
                             Button { onWhiteboard() } label: { Label("Whiteboard", systemImage: "scribble.variable") }
                                 .accessibilityIdentifier("library.new.board")
                             Button { importingPDF = true } label: { Label("Import PDF…", systemImage: "doc.richtext") }
@@ -653,7 +657,7 @@ struct ShelfView: View {
                         } primaryAction: {
                             onQuickNote()
                         }
-                        .buttonStyle(.mathNotes(.primary, inBar: true))
+                        .buttonStyle(.mathNotes(.secondary, inBar: true))
                     }
                 }
                 .buttonStyle(.mathNotes(.secondary, inBar: true))
