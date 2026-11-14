@@ -526,7 +526,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             let additionalTypes: [PKInkingTool.InkType] = [.fountainPen, .monoline, .crayon, .watercolor]
             // Build from iOS 18+ default picker items; defaultToolItems itself is iOS 26+.
             let standardItems = PKToolPicker().toolItems.filter { item in
-                guard let ink = item.tool as? PKInkingTool else { return true }
+                guard let ink = representedTool(for: item) as? PKInkingTool else { return true }
                 return !additionalTypes.contains(ink.inkType)
             }
             let picker = PKToolPicker(toolItems: standardItems + additionalInks)
@@ -553,7 +553,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
         guard self.toolPicker === toolPicker else { return }
-        if let tool = toolPicker.selectedToolItem.tool { toolbox.adoptNativeTool(tool) }
+        if let tool = representedTool(for: toolPicker.selectedToolItem) { toolbox.adoptNativeTool(tool) }
     }
 
     func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
@@ -1039,14 +1039,23 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         return canvas
     }
 
+    /// Read the concrete tool from the iOS 18 picker-item subclasses.
+    /// The base PKToolPickerItem.tool property is only available on iOS 26.
+    private func representedTool(for item: PKToolPickerItem) -> PKTool? {
+        if let ink = item as? PKToolPickerInkingItem { return ink.inkingTool }
+        if let eraser = item as? PKToolPickerEraserItem { return eraser.eraserTool }
+        if let lasso = item as? PKToolPickerLassoItem { return lasso.lassoTool }
+        return nil
+    }
+
     private func pickerItem(for tool: PKTool, in picker: PKToolPicker) -> PKToolPickerItem? {
         let items = picker.toolItems
         if let exact = items.first(where: { item in
-            guard let candidate = item.tool else { return false }
+            guard let candidate = representedTool(for: item) else { return false }
             return sameTool(candidate, tool)
         }) { return exact }
         return items.first { item in
-            guard let candidate = item.tool else { return false }
+            guard let candidate = representedTool(for: item) else { return false }
             if let lhs = candidate as? PKInkingTool, let rhs = tool as? PKInkingTool {
                 return lhs.inkType == rhs.inkType
             }
