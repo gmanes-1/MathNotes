@@ -31,7 +31,7 @@ struct ShelfView: View {
     @Environment(AppModel.self) private var app: AppModel?
     @Query private var records: [NotebookRecord]
     @Query(sort: \FolderRecord.sortIndex) private var folders: [FolderRecord]
-    @AppStorage(SettingsKey.librarySort) private var sort: LibrarySortOrder = .opened
+    @AppStorage(SettingsKey.librarySort) private var sort: LibrarySortOrder = .modified
     @AppStorage(SettingsKey.librarySortReversed) private var sortReversed = false
     @AppStorage("libraryLayout.appleNotes.v1") private var layout: LibraryLayout = .list
     @AppStorage("libraryGrouping") private var grouping: LibraryGrouping = .recency
@@ -295,7 +295,6 @@ struct ShelfView: View {
     /// Rows in columns, a board for each run, with as many columns as the pane and the text size leave room for.
     private func list(_ visible: [NotebookRecord]) -> some View {
         List {
-            if showsRhythm { WeekSummarySection(onOpenPage: onOpenPage) }
             if !searchText.isEmpty, !pageHits.isEmpty, scope != .trash {
                 pageRows(visible, hits: pageHits, query: hitsQuery)
             }
