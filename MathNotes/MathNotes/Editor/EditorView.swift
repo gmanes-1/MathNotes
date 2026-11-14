@@ -709,11 +709,11 @@ fileprivate struct EditorContent: View {
                 pageStack
                 if side == .trailing { AnyView(sidePanels) }
             }
-            .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+            .background(Color.paper.ignoresSafeArea())
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { paneWidth = $0 }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
-            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+            .toolbarBackground(Color.paper, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             // FIX 1: Keep the nav bar visible during ink selection to prevent safe area page jumping
             .toolbar((session.mode == .writing || session.mode == .selecting) ? .visible : .hidden, for: .navigationBar)
