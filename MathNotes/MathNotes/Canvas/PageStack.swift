@@ -512,14 +512,22 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     /// PencilKit owns the drawing tools, colours, widths, eraser and ruler UI.
     private func configureNativeToolPicker() {
-        guard let window = view.window, let picker = PKToolPicker.shared(for: window) else { return }
-        if toolPicker !== picker {
-            toolPicker?.removeObserver(self)
-            toolPicker = picker
+        guard view.window != nil else { return }
+        if toolPicker == nil {
+            let additionalInks: [PKToolPickerItem] = [
+                PKToolPickerInkingItem(type: .fountainPen, color: nil, width: nil, identifier: "com.mathnotes.fountainPen"),
+                PKToolPickerInkingItem(type: .monoline, color: nil, width: nil, identifier: "com.mathnotes.monoline"),
+                PKToolPickerInkingItem(type: .crayon, color: nil, width: nil, identifier: "com.mathnotes.crayon"),
+                PKToolPickerInkingItem(type: .watercolor, color: nil, width: nil, identifier: "com.mathnotes.watercolor")
+            ]
+            let picker = PKToolPicker(toolItems: PKToolPicker.defaultToolItems + additionalInks)
+            picker.stateAutosaveName = "com.mathnotes.nativeToolPicker"
             picker.selectedTool = toolbox.tool
             picker.isRulerActive = toolbox.isRulerActive
             picker.addObserver(self)
+            toolPicker = picker
         }
+        guard let picker = toolPicker else { return }
         if !sameTool(picker.selectedTool, toolbox.tool) { picker.selectedTool = toolbox.tool }
         if picker.isRulerActive != toolbox.isRulerActive { picker.isRulerActive = toolbox.isRulerActive }
         if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
