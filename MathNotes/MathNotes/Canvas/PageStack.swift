@@ -520,6 +520,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             picker.isRulerActive = toolbox.isRulerActive
             picker.addObserver(self)
         }
+        if !sameTool(picker.selectedTool, toolbox.tool) { picker.selectedTool = toolbox.tool }
+        if picker.isRulerActive != toolbox.isRulerActive { picker.isRulerActive = toolbox.isRulerActive }
         if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
         picker.setVisible(session.showsToolTray || session.mode == .selecting, forFirstResponder: anchor)
     }
@@ -1009,6 +1011,17 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         canvas.isAccessibilityElement = true
         canvas.accessibilityTraits = .allowsDirectInteraction
         return canvas
+    }
+
+    private func sameTool(_ lhs: PKTool, _ rhs: PKTool) -> Bool {
+        if let a = lhs as? PKInkingTool, let b = rhs as? PKInkingTool {
+            return a.inkType == b.inkType && ToolPreset.bytes(of: a.color) == ToolPreset.bytes(of: b.color)
+                && abs(a.width - b.width) < 0.01
+        }
+        if let a = lhs as? PKEraserTool, let b = rhs as? PKEraserTool {
+            return a.eraserType == b.eraserType && abs(a.width - b.width) < 0.01
+        }
+        return lhs is PKLassoTool && rhs is PKLassoTool
     }
 
     private func syncTool(_ canvas: PageCanvasView) {
@@ -3055,7 +3068,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     @objc private func toolChanged() {
         if let toolPicker {
-            if !toolPicker.selectedTool.isEqual(toolbox.tool) { toolPicker.selectedTool = toolbox.tool }
+            if !sameTool(toolPicker.selectedTool, toolbox.tool) { toolPicker.selectedTool = toolbox.tool }
             if toolPicker.isRulerActive != toolbox.isRulerActive { toolPicker.isRulerActive = toolbox.isRulerActive }
         }
         for canvas in allCanvases + pool {
