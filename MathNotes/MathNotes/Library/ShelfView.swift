@@ -171,7 +171,7 @@ struct ShelfView: View {
                 searchField
                     .padding(.horizontal, Space.x8)
                     .padding(.bottom, Space.x2)
-                    .background(layout == .list ? Color(uiColor: .systemBackground) : Color.paper)
+                    .background(Color.paper)
             }
         }
         .onGeometryChange(for: CGFloat.self) { proxy in
