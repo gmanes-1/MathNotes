@@ -507,7 +507,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         super.viewDidAppear(animated)
         keepsAnchor = true
         configureNativeToolPicker()
-        toolTrayDidChange()
+        nativeToolPickerDidChange()
     }
 
     /// PencilKit owns the drawing tools, colours, widths, eraser and ruler UI.
@@ -531,7 +531,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if !sameTool(picker.selectedTool, toolbox.tool) { picker.selectedTool = toolbox.tool }
         if picker.isRulerActive != toolbox.isRulerActive { picker.isRulerActive = toolbox.isRulerActive }
         if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
-        picker.setVisible(session.showsToolTray || session.mode == .selecting, forFirstResponder: anchor)
+        picker.setVisible(session.showsNativeTools || session.mode == .selecting, forFirstResponder: anchor)
     }
 
     func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
@@ -798,7 +798,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private var toolsObscured: CGFloat {
-        guard session.showsToolTray else { return 0 }
+        guard session.showsNativeTools else { return 0 }
         return max(view.safeAreaInsets.bottom, zoomPanel.map { view.bounds.maxY - $0.frame.minY } ?? 0)
     }
 
@@ -1983,7 +1983,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
     }
 
-    func toolTrayDidChange() {
+    func nativeToolPickerDidChange() {
         applyDrawingPolicy(drawingPolicy)
         layoutZoomPanel()
         updateInsets()
@@ -2014,7 +2014,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var effectivePolicy: PKCanvasViewDrawingPolicy {
         switch drawingPolicy {
         case .anyInput, .pencilOnly: drawingPolicy
-        default: session.showsToolTray && !UIPencilInteraction.prefersPencilOnlyDrawing ? .anyInput : .pencilOnly
+        default: session.showsNativeTools && !UIPencilInteraction.prefersPencilOnlyDrawing ? .anyInput : .pencilOnly
         }
     }
 
@@ -2077,7 +2077,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             setInkSelection([:])
         }
         for canvas in canvases.values where canvas.isLoaded { setDrawingEnabled(!document.isReadOnly && !isLocked, canvas) }
-        toolTrayDidChange()
+        nativeToolPickerDidChange()
         updateScrollTouches()
     }
 
@@ -2494,7 +2494,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             setTextSelection(nil)
         }
         for canvas in canvases.values where canvas.isLoaded { setDrawingEnabled(!document.isReadOnly && !isLocked, canvas) }
-        toolTrayDidChange()
+        nativeToolPickerDidChange()
         updateScrollTouches()
     }
 
@@ -2591,7 +2591,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             for slot in slots.values { showFind(in: slot) }
         }
         for canvas in canvases.values where canvas.isLoaded { setDrawingEnabled(!document.isReadOnly && !isLocked, canvas) }
-        toolTrayDidChange()
+        nativeToolPickerDidChange()
         updateScrollTouches()
         updateInsets()
     }
@@ -2909,7 +2909,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             undoProxy.isSuspended = replay != nil
             if replay != nil { select(nil) }
             for canvas in canvases.values where canvas.isLoaded { setDrawingEnabled(!document.isReadOnly && !isLocked, canvas) }
-            toolTrayDidChange()
+            nativeToolPickerDidChange()
             updateScrollTouches()
         }
         for (id, canvas) in canvases where canvas.isLoaded {
@@ -2961,7 +2961,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if presenting { ExternalDisplay.shared.begin(for: self) } else { ExternalDisplay.shared.end(for: self) }
         if presenting { select(nil) }
         for canvas in canvases.values where canvas.isLoaded { setDrawingEnabled(!document.isReadOnly && !isLocked, canvas) }
-        toolTrayDidChange()
+        nativeToolPickerDidChange()
         updateScrollTouches()
         guard isViewLoaded, lastBounds != .zero else { return }
         if presenting {
