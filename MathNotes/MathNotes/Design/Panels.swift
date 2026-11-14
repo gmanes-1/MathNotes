@@ -268,47 +268,23 @@ private struct AdaptingPanel<Panel: View>: ViewModifier {
 
 /// A button that opens a card of rows under it. In another menu it is a row that opens the next card beside it.
 struct MathNotesMenu<Label: View, Content: View>: View {
-    private let title: Text?
-    private let primaryAction: (() -> Void)?
     private let content: Content
     private let label: Label
-    @State private var isOpen = false
-    @State private var held = false
-    @Environment(\.inPanelMenu) private var nested
+    private let primaryAction: (() -> Void)?
 
-    /// The band is named after the label unless it is given a `title`. With a `primaryAction` a tap does that, and holding opens the menu.
     init(_ title: Text? = nil, @ViewBuilder content: () -> Content, @ViewBuilder label: () -> Label, primaryAction: (() -> Void)? = nil) {
-        self.title = title
-        self.primaryAction = primaryAction
         self.content = content()
         self.label = label()
+        self.primaryAction = primaryAction
     }
 
     var body: some View {
-        trigger.modifier(PanelPresenter(isPresented: $isOpen, beside: nested, chained: nested) {
-            PanelChrome(fill: .board) {
-                if let title { title } else { label.labelStyle(.titleOnly) }
-            } content: {
-                MenuRows { content }
-            }
-        })
-    }
-
-    @ViewBuilder
-    private var trigger: some View {
-        if nested {
-            Button { isOpen = true } label: { label }
-                .buttonStyle(MenuRowBody(opens: true))
-        } else if let primaryAction {
-            Button { if held { held = false } else { primaryAction() } } label: { label }
-                .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in
-                    held = true
-                    isOpen = true
-                })
-                .onChange(of: isOpen) { _, open in if !open { held = false } }
-                .accessibilityAction(named: Text("Show Menu")) { isOpen = true }
+        if let primaryAction {
+            Menu { content } label: { label } primaryAction: { primaryAction() }
+                .menuStyle(.automatic)
         } else {
-            Button { isOpen = true } label: { label }
+            Menu { content } label: { label }
+                .menuStyle(.automatic)
         }
     }
 }
@@ -326,15 +302,13 @@ private struct HeldMenu<Rows: View>: ViewModifier {
     let enabled: Bool
     let draggable: Bool
     @ViewBuilder var rows: () -> Rows
-    @State private var isOpen = false
 
     func body(content: Content) -> some View {
-        content
-            .background { if enabled { HoldProbe(draggable: draggable) { isOpen = true } } }
-            .accessibilityActions { if enabled { Button("Show Menu") { isOpen = true } } }
-            .modifier(PanelPresenter(isPresented: $isOpen) {
-                PanelChrome(fill: .board) { title } content: { MenuRows { rows() } }
-            })
+        if enabled {
+            content.contextMenu { rows() }
+        } else {
+            content
+        }
     }
 }
 
