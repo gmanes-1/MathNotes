@@ -123,7 +123,7 @@ struct LibrarySidebar: View {
         let rows = tree.rows(collapsed: collapsed).compactMap { row in byID[row.id].map { (row: row, folder: $0) } }
         List(selection: $scope) {
             Section {
-                row(String(localized: "All notebooks"), icon: "books.vertical", count: notebooks.count).scoped(.all, chosen: scope)
+                row(String(localized: "All Notes"), icon: "note.text", count: notebooks.count).scoped(.all, chosen: scope)
                 row(String(localized: "Favourites"), icon: "star", count: counts.favorites).scoped(.favorites, chosen: scope)
                 row(String(localized: "Recently deleted"), icon: "trash", count: nil, bounces: changes.trashBumps).scoped(.trash, chosen: scope)
             }
@@ -149,7 +149,7 @@ struct LibrarySidebar: View {
                 }
                 .background(CellFocusRing(shown: true))
             } header: {
-                Text("Shelves").metaStyle(.footnote)
+                Text("Folders").metaStyle(.footnote)
             }
             // Tags appear once something is tagged; a shelf saved earlier stays reachable after its tags have gone.
             if !tags.isEmpty || !store.smartShelves.isEmpty {
