@@ -194,42 +194,53 @@ struct MathNotesButtonStyle: ButtonStyle {
     var inBar = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let enabled = configuration.isPressed || true
-        let height: CGFloat = compact ? 34 : (inBar ? 40 : 44)
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-        return configuration.label
-            .font(.system(compact ? .subheadline : (inBar ? .callout : .body), weight: role == .secondary ? .medium : .semibold))
-            .lineLimit(1)
-            .multilineTextAlignment(.center)
-            .foregroundStyle(foreground)
-            .padding(.horizontal, compact || inBar ? Space.x3 : Space.x4)
-            .frame(minWidth: 44, minHeight: height)
-            .background(shape.fill(fill))
-            .overlay {
-                if role == .secondary {
-                    shape.strokeBorder(Color(uiColor: .separator).opacity(0.55), lineWidth: 1)
+        StyledButton(configuration: configuration, role: role, compact: compact, inBar: inBar)
+    }
+
+    private struct StyledButton: View {
+        let configuration: Configuration
+        let role: Role
+        let compact: Bool
+        let inBar: Bool
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            let height: CGFloat = compact ? 34 : (inBar ? 40 : 44)
+            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+            configuration.label
+                .font(.system(compact ? .subheadline : (inBar ? .callout : .body), weight: role == .secondary ? .medium : .semibold))
+                .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(foreground)
+                .padding(.horizontal, compact || inBar ? Space.x3 : Space.x4)
+                .frame(minWidth: 44, minHeight: height)
+                .background(shape.fill(fill))
+                .overlay {
+                    if role == .secondary {
+                        shape.strokeBorder(Color(uiColor: .separator).opacity(0.55), lineWidth: 1)
+                    }
                 }
-            }
-            .opacity(enabled ? 1 : 0.45)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .contentShape(shape)
-            .hoverEffect(.highlight)
-            .padding(.vertical, (44 - height) / 2)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
-    }
-
-    private var foreground: Color {
-        switch role {
-        case .primary, .destructive: .white
-        case .secondary: .primary
+                .opacity(isEnabled ? 1 : 0.45)
+                .scaleEffect(configuration.isPressed && isEnabled ? 0.98 : 1)
+                .contentShape(shape)
+                .hoverEffect(.highlight)
+                .padding(.vertical, (44 - height) / 2)
+                .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
         }
-    }
 
-    private var fill: Color {
-        switch role {
-        case .primary: .accentColor
-        case .destructive: .red
-        case .secondary: Color(uiColor: .secondarySystemBackground)
+        private var foreground: Color {
+            switch role {
+            case .primary, .destructive: .white
+            case .secondary: .primary
+            }
+        }
+
+        private var fill: Color {
+            switch role {
+            case .primary: .accentColor
+            case .destructive: .red
+            case .secondary: Color(uiColor: .secondarySystemBackground)
+            }
         }
     }
 }
