@@ -507,7 +507,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         keepsAnchor = true
-        configureNativeToolPicker()
         nativeToolPickerDidChange()
     }
 
