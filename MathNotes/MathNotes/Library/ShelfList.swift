@@ -202,7 +202,7 @@ struct NotebookListRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color(uiColor: .secondarySystemGroupedBackground))
+        .listRowBackground(Color(uiColor: .systemBackground))
         .hoverEffect(.highlight)
     }
 }
