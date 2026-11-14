@@ -33,7 +33,7 @@ struct ShelfView: View {
     @Query(sort: \FolderRecord.sortIndex) private var folders: [FolderRecord]
     @AppStorage(SettingsKey.librarySort) private var sort: LibrarySortOrder = .modified
     @AppStorage(SettingsKey.librarySortReversed) private var sortReversed = false
-    @AppStorage("libraryLayout.appleNotes.v1") private var layout: LibraryLayout = .list
+    @AppStorage("libraryLayout.goodnotes.v1") private var layout: LibraryLayout = .shelf
     @AppStorage("libraryGrouping") private var grouping: LibraryGrouping = .recency
     @AppStorage(SettingsKey.dailyJournalID) private var journalID = ""
     @AppStorage(SettingsKey.trashLength) private var trashLength: TrashLength = .initial
