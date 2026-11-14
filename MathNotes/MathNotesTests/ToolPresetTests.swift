@@ -25,6 +25,27 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertNil(ToolPreset(PKLassoTool()))
     }
 
+    func testNativePickerKeepsMonolineAndPenAsDistinctInkTypes() throws {
+        let toolbox = Toolbox(defaults: try freshDefaults())
+        let selectedID = try XCTUnwrap(toolbox.pen?.id)
+        toolbox.adoptNativeTool(PKInkingTool(.monoline, color: .blue, width: 4))
+        XCTAssertEqual(toolbox.pen?.id, selectedID)
+        XCTAssertEqual(toolbox.pen?.inkType, .monoline)
+        XCTAssertEqual(toolbox.pen?.width ?? 0, 4, accuracy: 0.01)
+
+        toolbox.adoptNativeTool(PKInkingTool(.pen, color: .black, width: 2))
+        XCTAssertEqual(toolbox.pen?.inkType, .pen)
+        XCTAssertEqual(toolbox.pen?.width ?? 0, 2, accuracy: 0.01)
+    }
+
+    func testNativePickerEraserSettingsAreKept() throws {
+        let toolbox = Toolbox(defaults: try freshDefaults())
+        toolbox.adoptNativeTool(PKEraserTool(.fixedWidthBitmap, width: 37))
+        XCTAssertEqual(toolbox.choice, .eraser)
+        XCTAssertEqual(toolbox.eraser.kind, .part)
+        XCTAssertEqual(toolbox.eraser.width, 37, accuracy: 0.01)
+    }
+
     func testAWidthPastWhatTheInkAllowsIsBroughtBackIn() throws {
         let range = ToolPreset.widthRange(of: .monoline)
         let valid = PKInkingTool.InkType.monoline.validWidthRange
