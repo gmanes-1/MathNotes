@@ -165,68 +165,47 @@ struct NotebookListRow: View {
     let isSelecting: Bool
     let isSelected: Bool
     let action: () -> Void
-    @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: ShelfColumns.spacing) {
-                if isSelecting { SelectionBox(isSelected: isSelected) }
-                RecordCover(record: record, width: CoverWidth.row, showsShadow: false)
-                    .frame(width: 32)
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 12) {
+                if isSelecting {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                        .frame(width: 24)
+                }
+                VStack(alignment: .leading, spacing: 4) {
                     Text(record.title.isEmpty ? String(localized: "Untitled") : record.title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(2)
-                    if !folded.isEmpty {
-                        Text(folded)
-                            .font(.footnote.monospacedDigit())
-                            .foregroundStyle(Color.textSecondary)
-                            .lineLimit(columns.isEmpty ? nil : 2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if columns.contains(.pages) {
-                    Text(record.pageCountText).frame(width: ShelfColumns.width(of: .pages) * scale, alignment: .trailing)
-                }
-                if columns.contains(.changed) {
-                    Text(changed).frame(width: ShelfColumns.width(of: .changed) * scale, alignment: .leading)
-                }
-                if columns.contains(.folder) {
-                    HStack(spacing: Space.x2) {
-                        if let folder = record.folder {
-                            SpineChip(cloth: folder.cloth).scaleEffect(0.7)
-                            Text(folder.name)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(record.pageCountText)
+                        if !record.tags.isEmpty {
+                            Text("·")
+                            Text(Tags.line(record.tags)).lineLimit(1)
                         }
                     }
-                    .frame(width: ShelfColumns.width(of: .folder) * scale, alignment: .leading)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 }
-                if columns.contains(.tags) {
-                    Text(Tags.line(record.tags)).frame(width: ShelfColumns.width(of: .tags) * scale, alignment: .leading)
-                }
+                Spacer(minLength: 8)
+                Text(record.modifiedAt.formatted(.relative(presentation: .named)))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .fixedSize()
             }
-            .font(.subheadline.monospacedDigit())
-            .foregroundStyle(Color.textSecondary)
-            .lineLimit(1)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(ShelfListRowStyle(isSelected: isSelected))
-        .overlay(alignment: .top) { Rectangle().fill(Color.hairline).frame(height: 1).allowsHitTesting(false) }
+        .buttonStyle(.plain)
+        .listRowBackground(Color(uiColor: .secondarySystemGroupedBackground))
         .hoverEffect(.highlight)
     }
-
-    private var changed: String { record.modifiedAt.formatted(.relative(presentation: .named)) }
-
-    /// What the columns that went would have said.
-    private var folded: String {
-        var parts: [String] = []
-        if !columns.contains(.pages) { parts.append(record.pageCountText) }
-        if !columns.contains(.changed) { parts.append(changed) }
-        if !columns.contains(.folder), let folder = record.folder { parts.append(folder.name) }
-        if !columns.contains(.tags), !record.tags.isEmpty { parts.append(Tags.line(record.tags)) }
-        return parts.joined(separator: " · ")
-    }
 }
-
 /// A row is touched across its whole width and darkens under the finger. Chosen, it has a mustard edge.
 private struct ShelfListRowStyle: ButtonStyle {
     let isSelected: Bool
