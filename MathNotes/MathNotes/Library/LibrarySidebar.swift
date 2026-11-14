@@ -124,8 +124,8 @@ struct LibrarySidebar: View {
         List(selection: $scope) {
             Section {
                 row(String(localized: "All Notes"), icon: "note.text", count: notebooks.count).scoped(.all, chosen: scope)
-                row(String(localized: "Favourites"), icon: "star", count: counts.favorites).scoped(.favorites, chosen: scope)
-                row(String(localized: "Recently deleted"), icon: "trash", count: nil, bounces: changes.trashBumps).scoped(.trash, chosen: scope)
+                row(String(localized: "Favorites"), icon: "star", count: counts.favorites).scoped(.favorites, chosen: scope)
+                row(String(localized: "Recently Deleted"), icon: "trash", count: nil, bounces: changes.trashBumps).scoped(.trash, chosen: scope)
             }
             Section {
                 ForEach(rows, id: \.row.id) { row, folder in
