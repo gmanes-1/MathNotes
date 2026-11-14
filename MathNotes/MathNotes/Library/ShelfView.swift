@@ -784,7 +784,6 @@ struct ShelfView: View {
     }
 
     @ViewBuilder
-    @ViewBuilder
     private var emptyState: some View {
         if !searchText.isEmpty {
             ContentUnavailableView.search(text: searchText)
@@ -795,14 +794,14 @@ struct ShelfView: View {
             ContentUnavailableView("No Favorites", systemImage: "star",
                                     description: Text("Notes you favorite will appear here."))
         } else if case .tag(let name) = scope {
-            ContentUnavailableView("No Notes Tagged \\(name)", systemImage: "tag",
+            ContentUnavailableView("No Notes Tagged \(name)", systemImage: "tag",
                                     description: Text("Tag a note or page to find it here."))
         } else if case .smart = scope {
             ContentUnavailableView("No Notes Yet", systemImage: "folder.badge.gearshape",
                                     description: Text("Notes matching this Smart Folder will appear here."))
         } else if case .folder = scope, let name = folder?.name {
             ContentUnavailableView {
-                Label("No Notes in \\(name)", systemImage: "folder")
+                Label("No Notes in \(name)", systemImage: "folder")
             } description: {
                 Text("Create a note in this folder to get started.")
             } actions: {
