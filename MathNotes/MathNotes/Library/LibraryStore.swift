@@ -108,8 +108,8 @@ final class LibraryStore {
 
     /// A notebook with the default paper from Settings, dated rather than named, created without the sheet.
     func createQuickNote(folder: FolderRecord?) async throws -> UUID {
-        let template = defaults.string(forKey: SettingsKey.defaultTemplate).flatMap(PaperTemplate.init(rawValue:)) ?? .narrowRuled
-        let color = defaults.string(forKey: SettingsKey.defaultPaperColor).flatMap(PaperColor.init(rawValue:)) ?? .white
+        let template = PaperTemplate.blank
+        let color = PaperColor.white
         let size = defaults.string(forKey: SettingsKey.defaultPageSize).flatMap(PageSize.init(rawValue:)) ?? .letter
         let id = UUID()
         return try await createNotebook(id: id, title: String(localized: "Note \(Date.now.formatted(date: .abbreviated, time: .shortened))"),
