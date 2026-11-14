@@ -611,12 +611,6 @@ fileprivate struct EditorContent: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var paneWidth: CGFloat = 1024
     @State private var stackSize = CGSize(width: 1024, height: 768)
-    @AppStorage("editor.toolTray.dockEdge.v2") private var toolTrayDockEdge = "top"
-    @AppStorage("editor.toolTray.offsetX") private var toolTrayPositionX = 0.0
-    @AppStorage("editor.toolTray.offsetY") private var toolTrayPositionY = 0.0
-    @State private var isToolTrayDragging = false
-    @State private var toolTrayDropEdge: ToolTray.DockEdge?
-    @State private var toolTraySize = CGSize(width: 320, height: ToolTray.height)
     @State private var inkMenuSize = CGSize(width: 320, height: 52)
     @AppStorage("showsPageSidebar") private var showsPageSidebar = false
     @State private var pickingBeside = false
@@ -811,115 +805,6 @@ fileprivate struct EditorContent: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .overlay {
-                if isToolTrayDragging {
-                    GeometryReader { geometry in
-                        let currentDock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
-                        let trayLength = currentDock.isVertical ? toolTraySize.height : toolTraySize.width
-                        let horizontalWidth = min(trayLength, max(0, geometry.size.width - 16))
-                        let verticalLength = min(trayLength, max(0, geometry.size.height - 16))
-                        ZStack {
-                            dropZone(active: toolTrayDropEdge == .top)
-                                .frame(width: horizontalWidth, height: ToolTray.height)
-                                .position(x: geometry.size.width / 2, y: 8 + ToolTray.height / 2)
-                            dropZone(active: toolTrayDropEdge == .bottom)
-                                .frame(width: horizontalWidth, height: ToolTray.height)
-                                .position(x: geometry.size.width / 2, y: geometry.size.height - 8 - ToolTray.height / 2)
-                            dropZone(active: toolTrayDropEdge == .left)
-                                .frame(width: ToolTray.height, height: verticalLength)
-                                .position(x: 8 + ToolTray.height / 2, y: geometry.size.height / 2)
-                            dropZone(active: toolTrayDropEdge == .right)
-                                .frame(width: ToolTray.height, height: verticalLength)
-                                .position(x: geometry.size.width - 8 - ToolTray.height / 2, y: geometry.size.height / 2)
-                        }
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                    }
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
-                }
-            }
-            .overlay(alignment: (ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom).alignment) {
-                if session.mode != .presenting, session.mode != .replaying,
-                   (session.showsToolTray || session.mode == .selecting), !isCovered {
-                    let dock = ToolTray.DockEdge(rawValue: toolTrayDockEdge) ?? .bottom
-                    ToolTray(session: session, room: dock.isVertical ? stackSize.height : paneWidth, use: use,
-                             move: { delta in
-                                 let horizontalTravel = Double(max(0, (stackSize.width - toolTraySize.width) / 2))
-                                 let verticalTravel = Double(max(0, (stackSize.height - toolTraySize.height) / 2))
-                                 let minX = dock == .left ? 0.0 : dock == .right ? -2 * horizontalTravel : -horizontalTravel
-                                 let maxX = dock == .left ? 2 * horizontalTravel : dock == .right ? 0.0 : horizontalTravel
-                                 let minY = dock == .top ? 0.0 : dock == .bottom ? -2 * verticalTravel : -verticalTravel
-                                 let maxY = dock == .top ? 2 * verticalTravel : dock == .bottom ? 0.0 : verticalTravel
-                                 let nextX = min(max(toolTrayPositionX + Double(delta.width), minX), maxX)
-                                 let nextY = min(max(toolTrayPositionY + Double(delta.height), minY), maxY)
-                                 toolTrayPositionX = nextX
-                                 toolTrayPositionY = nextY
-                                 let edgeInset: CGFloat = 8
-                                 let baseX = dock == .left ? toolTraySize.width / 2 + edgeInset
-                                     : dock == .right ? stackSize.width - toolTraySize.width / 2 - edgeInset
-                                     : stackSize.width / 2
-                                 let baseY = dock == .top ? toolTraySize.height / 2 + edgeInset
-                                     : dock == .bottom ? stackSize.height - toolTraySize.height / 2 - edgeInset
-                                     : stackSize.height / 2
-                                 let x = baseX + nextX
-                                 let y = baseY + nextY
-                                 let center = CGPoint(x: x, y: y)
-                                 let trayLength = dock.isVertical ? toolTraySize.height : toolTraySize.width
-                                 let horizontalWidth = min(trayLength, max(0, stackSize.width - 16))
-                                 let verticalLength = min(trayLength, max(0, stackSize.height - 16))
-                                 let zones: [(ToolTray.DockEdge, CGRect)] = [
-                                     (.top, CGRect(x: (stackSize.width - horizontalWidth) / 2, y: 8,
-                                                   width: horizontalWidth, height: ToolTray.height)),
-                                     (.bottom, CGRect(x: (stackSize.width - horizontalWidth) / 2,
-                                                      y: stackSize.height - 8 - ToolTray.height,
-                                                      width: horizontalWidth, height: ToolTray.height)),
-                                     (.left, CGRect(x: 8, y: (stackSize.height - verticalLength) / 2,
-                                                    width: ToolTray.height, height: verticalLength)),
-                                     (.right, CGRect(x: stackSize.width - 8 - ToolTray.height,
-                                                     y: (stackSize.height - verticalLength) / 2,
-                                                     width: ToolTray.height, height: verticalLength))
-                                 ]
-                                 // Dock to whichever of the four drop-off zones is closest to the
-                                 // tray's centre. This keeps edge selection automatic even when the
-                                 // centre lands just outside a zone's bounds.
-                                 toolTrayDropEdge = zones.min { lhs, rhs in
-                                     func distanceSquared(to rect: CGRect) -> CGFloat {
-                                         let dx = max(max(rect.minX - center.x, 0), center.x - rect.maxX)
-                                         let dy = max(max(rect.minY - center.y, 0), center.y - rect.maxY)
-                                         return dx * dx + dy * dy
-                                     }
-                                     return distanceSquared(to: lhs.1) < distanceSquared(to: rhs.1)
-                                 }?.0
-                             },
-                             dragging: { isDragging in
-                                 isToolTrayDragging = isDragging
-                                 if !isDragging {
-                                     if let target = toolTrayDropEdge {
-                                         withAnimation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion)) {
-                                             toolTrayDockEdge = target.rawValue
-                                             toolTrayPositionX = 0
-                                             toolTrayPositionY = 0
-                                         }
-                                     }
-                                     toolTrayDropEdge = nil
-                                 }
-                             })
-                        // Measure the actual controls before the side-dock frame stretches the rotated tray.
-                        .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-                            toolTraySize = size
-                        }
-                        .fixedSize(horizontal: !dock.isVertical, vertical: dock.isVertical)
-                        .animation(Motion.adaptive(.spring(response: 0.42, dampingFraction: 0.84), reduceMotion: reduceMotion), value: dock)
-                        .frame(width: dock.isVertical ? ToolTray.height : nil,
-                               height: dock.isVertical ? toolTraySize.height : ToolTray.height, alignment: .center)
-                        .padding(dock == .bottom ? .bottom : dock == .top ? .top : dock == .left ? .leading : .trailing,
-                                 dock == .bottom ? ToolTray.gap + session.zoomPanelLift : Space.x2)
-                        .offset(x: toolTrayPositionX, y: toolTrayPositionY)
-                        .ignoresSafeArea(.keyboard, edges: .bottom)
-                        .transition(.opacity)
-                }
-            }
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { stackSize = $0 }
             .overlay(alignment: .topLeading) { inkSelectionOverlay }
             .overlay {
                 if let point = session.dish, session.mode == .writing || session.mode == .focus, !isCovered {
@@ -928,25 +813,7 @@ fileprivate struct EditorContent: View {
             }
             .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: session.showsToolTray)
             .onChange(of: session.showsToolTray) { session.canvas?.toolTrayDidChange() }
-            .onChange(of: session.mode) { session.dish = nil }
-    }
-
-    private func dropZone(active: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 16)
-            .fill(active ? Color.accentColor.opacity(0.30) : Color.accentColor.opacity(0.08))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(active ? Color.accentColor : Color.accentColor.opacity(0.45),
-                                  style: StrokeStyle(lineWidth: active ? 3 : 1.5, dash: active ? [] : [6, 5]))
-            }
-            .overlay {
-                if active {
-                    Image(systemName: "arrow.down.to.line")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-            .accessibilityHidden(true)
+            .onChange(of: session.mode) { session.dish = nil; session.canvas?.toolTrayDidChange() }
     }
 
     /// The menu over the lasso's selection, and the Paste chip where ink was held to paste. They sit on the page
@@ -1000,8 +867,7 @@ fileprivate struct EditorContent: View {
 
     /// The part of the page view the menu may stand in: clear of the tool tray at the foot of it.
     private var inkMenuVisibleArea: CGRect {
-        let tray = session.showsToolTray ? ToolTray.height + ToolTray.gap * 2 + session.zoomPanelLift : 0
-        return CGRect(x: 0, y: 0, width: stackSize.width, height: max(stackSize.height - tray, 0))
+        CGRect(x: 0, y: 0, width: stackSize.width, height: max(stackSize.height - session.zoomPanelLift, 0))
     }
 
     /// Above the selection when there is room, below it when there is not, and over its middle when there is neither,
