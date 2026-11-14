@@ -164,14 +164,14 @@ struct ShelfView: View {
                 shelves(visible)
             }
         }
-        .background(Color.paper)
+        .background(layout == .list ? Color(uiColor: .systemBackground) : Color.paper)
         .overlay { if visible.isEmpty, !showsTagPages, !searchPending { emptyState } }
         .safeAreaInset(edge: .top, spacing: 0) {
             if !searchInBar {
                 searchField
                     .padding(.horizontal, Space.x8)
                     .padding(.bottom, Space.x2)
-                    .background(Color.paper)
+                    .background(layout == .list ? Color(uiColor: .systemBackground) : Color.paper)
             }
         }
         .onGeometryChange(for: CGFloat.self) { proxy in
@@ -310,7 +310,7 @@ struct ShelfView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(Color.paper)
+        .background(Color(uiColor: .systemBackground))
         .scrollDismissesKeyboard(.immediately)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 56 } action: { showsBarTitle = $1 }
     }
