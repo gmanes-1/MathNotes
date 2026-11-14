@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 @MainActor
 protocol EditorCanvasControlling: AnyObject {
     func scrollToPage(_ index: Int, animated: Bool)
-    func toolTrayDidChange()
+    func nativeToolPickerDidChange()
     func setModalShowing(_ showing: Bool)
     func setDrawingPolicy(_ policy: PKCanvasViewDrawingPolicy)
     func fit(_ fit: PageFit)
@@ -66,7 +66,7 @@ final class EditorSession {
     let recorder: NotebookRecorder
     let finder: NotebookFinder
     var currentPage: Int
-    /// Whether the tools are out. The tray itself also waits on the mode, see `showsToolTray`.
+    /// Whether the tools are out. The tray itself also waits on the mode, see `showsNativeTools`.
     var showsTools = true
     /// Where the lasso's selection is on the page view, in its points. Nil while nothing is selected, while a lasso is
     /// being drawn, and while the selection is being dragged: the menu over the selection waits on it.
@@ -507,13 +507,13 @@ final class EditorSession {
     }
 
     /// The tool tray is at the foot of the editor while the page can be written on and nothing is being typed.
-    var showsToolTray: Bool {
+    var showsNativeTools: Bool {
         showsTools && (mode == .writing || mode == .focus) && !document.isReadOnly && !isEditingText
     }
 
     func toggleTools() {
         showsTools.toggle()
-        canvas?.toolTrayDidChange()
+        canvas?.nativeToolPickerDidChange()
     }
 
     /// The menu over selected ink asks for its Style sheet; the editor opens it.
@@ -811,9 +811,9 @@ fileprivate struct EditorContent: View {
                     InkDish(session: session, point: point)
                 }
             }
-            .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: session.showsToolTray)
-            .onChange(of: session.showsToolTray) { session.canvas?.toolTrayDidChange() }
-            .onChange(of: session.mode) { session.dish = nil; session.canvas?.toolTrayDidChange() }
+            .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: session.showsNativeTools)
+            .onChange(of: session.showsNativeTools) { session.canvas?.nativeToolPickerDidChange() }
+            .onChange(of: session.mode) { session.dish = nil; session.canvas?.nativeToolPickerDidChange() }
     }
 
     /// The menu over the lasso's selection, and the Paste chip where ink was held to paste. They sit on the page
