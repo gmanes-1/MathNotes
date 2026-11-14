@@ -302,6 +302,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private let contentView = UIView()
     private let anchor = ResponderAnchor()
     private var toolPicker: PKToolPicker?
+    private var toolPickerResponderRegistered = false
     private let toolbox: Toolbox
     private let undoProxy: CanvasUndoProxy
     private let signposter = OSSignposter(subsystem: "com.owais.MathNotes", category: "editor")
@@ -539,7 +540,14 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if !sameTool(picker.selectedTool, toolbox.tool) { picker.selectedTool = toolbox.tool }
         if picker.isRulerActive != toolbox.isRulerActive { picker.isRulerActive = toolbox.isRulerActive }
         if !anchor.isFirstResponder { anchor.becomeFirstResponder() }
-        picker.setVisible(session.showsNativeTools || session.mode == .selecting, forFirstResponder: anchor)
+        let shouldShow = session.showsNativeTools || session.mode == .selecting
+        if shouldShow, !toolPickerResponderRegistered {
+            picker.setVisible(true, forFirstResponder: anchor)
+            toolPickerResponderRegistered = true
+        } else if !shouldShow, toolPickerResponderRegistered {
+            picker.setVisible(false, forFirstResponder: anchor)
+            toolPickerResponderRegistered = false
+        }
     }
 
     func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
@@ -571,7 +579,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         session.dish = nil
         ExternalDisplay.shared.end(for: self)
         if let toolPicker {
-            toolPicker.setVisible(false, forFirstResponder: anchor)
+            if toolPickerResponderRegistered { toolPicker.setVisible(false, forFirstResponder: anchor) }
+            toolPickerResponderRegistered = false
             toolPicker.removeObserver(self)
             self.toolPicker = nil
         }
