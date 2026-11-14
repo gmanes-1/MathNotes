@@ -72,8 +72,8 @@ struct ShelfView: View {
     private var title: String {
         switch scope {
         case .all: String(localized: "Notes")
-        case .favorites: String(localized: "Favourites")
-        case .trash: String(localized: "Recently deleted")
+        case .favorites: String(localized: "Favorites")
+        case .trash: String(localized: "Recently Deleted")
         case .folder: folder?.name ?? String(localized: "Folder")
         case .tag(let name): name
         case .smart(let id): store.smartShelves.first { $0.id == id }?.name ?? String(localized: "Smart Shelf")
@@ -465,7 +465,7 @@ struct ShelfView: View {
                 return items.isEmpty ? nil : Shelf(id: id.uuidString, title: id == root ? folder.name : tree.path(of: id, from: root), records: items, cloth: folder.cloth)
             }
             let loose = visible.filter { $0.folder == nil }
-            if !loose.isEmpty { shelves.append(Shelf(id: "loose", title: String(localized: "Not on a shelf"), records: loose)) }
+            if !loose.isEmpty { shelves.append(Shelf(id: "loose", title: String(localized: "Not in a folder"), records: loose)) }
             return shelves
         }
         let calendar = Calendar.current
@@ -643,17 +643,16 @@ struct ShelfView: View {
                             .accessibilityIdentifier("library.journal")
                         MathNotesMenu {
                             Button { onCreate() } label: { Label("New Notebook", systemImage: "book.closed") }
-                            Button { onQuickNote() } label: { Label("Quick Note", systemImage: "square.and.pencil") }
-                            Button { onWhiteboard() } label: { Label("Whiteboard", systemImage: "scribble.variable") }
+                                                        Button { onWhiteboard() } label: { Label("Whiteboard", systemImage: "scribble.variable") }
                                 .accessibilityIdentifier("library.new.board")
                             Button { importingPDF = true } label: { Label("Import PDF…", systemImage: "doc.richtext") }
                             if DocumentScan.isAvailable {
                                 Button(action: startScan) { Label("Scan Documents…", systemImage: "doc.viewfinder") }
                             }
                         } label: {
-                            Label("New", systemImage: "plus")
+                            Label("New Note", systemImage: "square.and.pencil")
                         } primaryAction: {
-                            onCreate()
+                            onQuickNote()
                         }
                         .buttonStyle(.mathNotes(.primary, inBar: true))
                     }
