@@ -784,41 +784,38 @@ struct ShelfView: View {
     }
 
     @ViewBuilder
+    @ViewBuilder
     private var emptyState: some View {
         if !searchText.isEmpty {
-            EmptyShelf(title: String(localized: "Nothing found for “\(searchText)”"), message: String(localized: "Check the spelling, or try other words."))
+            ContentUnavailableView.search(text: searchText)
         } else if scope == .trash {
-            EmptyShelf(title: String(localized: "Nothing in the bin"), message: String(localized: "Deleted notebooks stay here for \(trashLength.days) days."))
+            ContentUnavailableView("Recently Deleted", systemImage: "trash",
+                                    description: Text("Deleted notes stay here for \\(trashLength.days) days."))
         } else if scope == .favorites {
-            EmptyShelf(title: String(localized: "No favourites yet"), message: String(localized: "Touch and hold a notebook, then choose Favourite."),
-                       illustration: { RibbonIllustration() })
+            ContentUnavailableView("No Favorites", systemImage: "star",
+                                    description: Text("Notes you favorite will appear here."))
         } else if case .tag(let name) = scope {
-            EmptyShelf(title: String(localized: "Nothing tagged “\(name)”."),
-                       message: String(localized: "Tag a notebook or a page with it and it stands here."),
-                       illustration: { ShelfIllustration(cloth: nil) })
+            ContentUnavailableView("No Notes Tagged \\(name)", systemImage: "tag",
+                                    description: Text("Tag a note or page to find it here."))
         } else if case .smart = scope {
-            EmptyShelf(title: String(localized: "Nothing on this shelf yet."),
-                       message: String(localized: "Notebooks and pages stand here once their tags match the shelf's."),
-                       illustration: { ShelfIllustration(cloth: nil) })
+            ContentUnavailableView("No Notes Yet", systemImage: "folder.badge.gearshape",
+                                    description: Text("Notes matching this Smart Folder will appear here."))
         } else if case .folder = scope, let name = folder?.name {
-            EmptyShelf(title: String(localized: "Nothing on \(name) yet."),
-                       message: String(localized: "Drag notebooks onto \(name) in the sidebar, or start one here.")) {
-                Button("New Notebook", action: onCreate).buttonStyle(.mathNotes(.primary))
-            } illustration: {
-                ShelfIllustration(cloth: nil)
+            ContentUnavailableView {
+                Label("No Notes in \\(name)", systemImage: "folder")
+            } description: {
+                Text("Create a note in this folder to get started.")
+            } actions: {
+                Button("New Note", action: onQuickNote).buttonStyle(.borderedProminent)
             }
         } else {
-            EmptyShelf(title: String(localized: "Your shelf is ready."),
-                       message: String(localized: "Create a notebook to start writing, import a PDF to annotate, or open your journal.")) {
-                Button("New Notebook", action: onCreate).buttonStyle(.mathNotes(.primary))
-                    .accessibilityIdentifier("empty.newNotebook")
-                Button("Import PDF") { importingPDF = true }.buttonStyle(.mathNotes)
-                    .accessibilityIdentifier("empty.importPDF")
-                Button("Journal", action: openJournal).buttonStyle(.mathNotes)
-                    .disabled(openingJournal)
-                    .accessibilityIdentifier("empty.journal")
-            } illustration: {
-                ShelfIllustration()
+            ContentUnavailableView {
+                Label("No Notes", systemImage: "note.text")
+            } description: {
+                Text("Create a note or import a PDF to get started.")
+            } actions: {
+                Button("New Note", action: onQuickNote).buttonStyle(.borderedProminent)
+                Button("Import PDF", action: { importingPDF = true }).buttonStyle(.bordered)
             }
         }
     }
