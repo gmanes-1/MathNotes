@@ -164,14 +164,14 @@ struct ShelfView: View {
                 shelves(visible)
             }
         }
-        .background(Color.paper)
+        .background(Color(uiColor: .systemGroupedBackground))
         .overlay { if visible.isEmpty, !showsTagPages, !searchPending { emptyState } }
         .safeAreaInset(edge: .top, spacing: 0) {
             if !searchInBar {
                 searchField
                     .padding(.horizontal, Space.x8)
                     .padding(.bottom, Space.x2)
-                    .background(Color.paper)
+                    .background(Color(uiColor: .systemGroupedBackground))
             }
         }
         .onGeometryChange(for: CGFloat.self) { proxy in
@@ -181,7 +181,7 @@ struct ShelfView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
         .toolbarTitleDisplayMode(.large)
-        .barGround(Color.paper)
+        .barGround(Color(uiColor: .systemGroupedBackground))
         .background(SearchActivator(isSearching: searchFocused, isCovered: isCovered) { searchFocused = true })
         .toolbar { toolbar(visible) }
         .toolbar { if isSelecting { selectionBar(visible) } }
@@ -309,7 +309,7 @@ struct ShelfView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(Color.paper)
+        .background(Color(uiColor: .systemGroupedBackground))
         .scrollDismissesKeyboard(.immediately)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 56 } action: { showsBarTitle = $1 }
     }
@@ -1036,7 +1036,7 @@ private struct JournalBadge: View {
             .foregroundStyle(Color.onPrimaryCloth)
             .frame(width: 26, height: 26)
             .background(Color.primaryCloth, in: Circle())
-            .overlay { Circle().strokeBorder(Color.paper, lineWidth: 2) }
+            .overlay { Circle().strokeBorder(Color(uiColor: .systemGroupedBackground), lineWidth: 2) }
             .accessibilityLabel(Text("Daily Journal"))
     }
 }
