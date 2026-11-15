@@ -1156,7 +1156,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         isApplyingDrawing = true
         canvas.drawing = replayed(ink, on: canvas.pageID)
         canvas.strokeCount = nil
-        if let slot = slots[canvas.pageID ?? UUID()] {
+        if let pageID = canvas.pageID, let slot = slots[pageID] {
             slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
         }
         isApplyingDrawing = false
@@ -1341,6 +1341,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         document.undoManager.setActionName(String(localized: "Scribble Erase"))
         isApplyingDrawing = true
         canvas.drawing = erased.drawing
+        if let slot = slots[pageID] {
+            slot.displayInk(erased.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
+        }
         isApplyingDrawing = false
         mirrorInk(from: canvas, pageID: pageID)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1397,6 +1400,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             let drawing = PKDrawing(strokes: strokes)
             isApplyingDrawing = true
             canvas.drawing = drawing
+            if let slot = slots[pageID] {
+                slot.displayInk(drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
+            }
             isApplyingDrawing = false
             document.canvasDidChangeInk(pageID, to: drawing)
             mirrorInk(from: canvas, pageID: pageID)
@@ -2275,6 +2281,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if let canvas = canvases[id] {
                 isApplyingDrawing = true
                 canvas.drawing = InkLasso.removing([id: indices], from: [id: ink])[id] ?? ink
+                if let slot = slots[id] {
+                    slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
+                }
                 isApplyingDrawing = false
             }
         }
@@ -2359,6 +2368,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             isApplyingDrawing = true
             canvas.drawing = base.restyled(Set(indices), widthScale: 1, tint: change.tint, opacity: nil)
             canvas.strokeCount = nil
+            if let slot = slots[id] {
+                slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
+            }
             isApplyingDrawing = false
         }
     }
