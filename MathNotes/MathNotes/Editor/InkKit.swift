@@ -59,8 +59,10 @@ enum InkCalibration {
         guard stroke.path.count >= 4, tool.width > 0,
               stroke.ink.inkType.rawValue == tool.inkType.rawValue,
               let middle = middleSize(of: stroke) else { return }
-        let setWidth = Double(tool.width) / Double(ToolPreset.writingScale(of: tool.inkType))
-        let sample = Double(middle) / setWidth
+        // `tool.width` is the width PencilKit actually received, including any app-side thinning.
+        // Compare the recorded stroke against that native width; reversing the thinning here
+        // would teach calibration from a width that was never passed to PencilKit.
+        let sample = Double(middle) / Double(tool.width)
         guard (0.2...6).contains(sample) else { return }
         let name = tool.inkType.rawValue
         let next = factors[name].map { $0 * 0.7 + sample * 0.3 } ?? sample
