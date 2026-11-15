@@ -67,12 +67,12 @@ final class ToolPresetTests: XCTestCase {
     }
 
     func testPenAndMonolineAreWrittenThinnerAndRoundTripToTheirSetWidth() throws {
-        XCTAssertEqual(ToolPreset.penThinning, 0.8, accuracy: 0.0001)
+        XCTAssertEqual(ToolPreset.penThinning, 0.2, accuracy: 0.0001)
         for kind in [PKInkingTool.InkType.pen, .monoline] {
             let preset = ToolPreset(ink: kind, color: 0x1B22_30FF, width: 2.7)
             let tool = try XCTUnwrap(preset.tool)
             XCTAssertEqual(tool.inkType, kind)
-            XCTAssertEqual(Double(tool.width), 2.7 * 0.8, accuracy: 0.001)
+            XCTAssertEqual(Double(tool.width), 2.7 * Double(ToolPreset.penThinning), accuracy: 0.001)
             XCTAssertEqual(preset.width, 2.7, accuracy: 0.001, "the saved preset remains unchanged")
             XCTAssertEqual(try XCTUnwrap(ToolPreset(tool)).width, 2.7, accuracy: 0.001)
         }
@@ -364,7 +364,7 @@ final class ToolPresetTests: XCTestCase {
         toolbox.take(.pen(marker.id))
         XCTAssertEqual((canvas.tool as? PKInkingTool).flatMap { ToolPreset($0) }?.color, marker.color)
         toolbox.changePen(marker.id) { $0.width = 30 }
-        XCTAssertEqual(try XCTUnwrap((canvas.tool as? PKInkingTool)?.width), 30 * Double(ToolPreset.penThinning), accuracy: 0.01, "the selected Monoline reaches the page at 80% width")
+        XCTAssertEqual(try XCTUnwrap((canvas.tool as? PKInkingTool)?.width), 30 * Double(ToolPreset.penThinning), accuracy: 0.01, "the selected Monoline reaches the page at 20% width")
         toolbox.take(.lasso)
         XCTAssertTrue(canvas.tool is PKLassoTool)
         toolbox.isRulerActive = true
