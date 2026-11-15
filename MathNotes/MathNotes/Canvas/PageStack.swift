@@ -293,6 +293,14 @@ final class PageSlotView: UIView {
 }
 
 @MainActor
+#if DEBUG
+private struct PenStrokeDiagnostic {
+    let startingStrokeCount: Int
+    let toolWidth: CGFloat
+    var ended = false
+}
+#endif
+
 final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanvasViewDelegate,
                                  InkObserver, EditorCanvasControlling, UIGestureRecognizerDelegate, UIDropInteractionDelegate, UITextViewDelegate,
                                  UIPencilInteractionDelegate, PKToolPickerObserver {
@@ -321,6 +329,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var canvasWindow: ClosedRange<Int>?
     private var night = false
     private var isApplyingDrawing = false
+#if DEBUG
+    private var penStrokeDiagnostics: [ObjectIdentifier: PenStrokeDiagnostic] = [:]
+#endif
     private var isBaking = false
     private var paperLevel = 0
     private var lastBounds: CGRect = .zero
@@ -1196,6 +1207,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isApplyingDrawing, let canvas = canvasView as? PageCanvasView, canvas.isLoaded, let id = canvas.pageID else { return }
+#if DEBUG
+        logCompletedPenStrokeIfReady(on: canvas)
+#endif
         canvas.strokeCount = nil
         let before = document.loadedInk(id)
         let rest = canvas === zoomCanvas ? nil : strokeHold.takeHold()
@@ -1368,12 +1382,77 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
+#if DEBUG
+        let key = ObjectIdentifier(canvasView)
+        if let tool = canvasView.tool as? PKInkingTool, tool.inkType == .pen {
+            penStrokeDiagnostics[key] = PenStrokeDiagnostic(startingStrokeCount: canvasView.drawing.strokes.count,
+                                                            toolWidth: tool.width)
+        } else {
+            penStrokeDiagnostics[key] = nil
+        }
+#endif
         if session.selection != nil { select(nil) }
         if !unreadWriting.isEmpty { typingTimer?.cancel() }
         guard canvasView === zoomCanvas else { return }
         zoomAdvance?.cancel()
         session.onTouchDown?()
     }
+
+    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
+#if DEBUG
+        let key = ObjectIdentifier(canvasView)
+        if var diagnostic = penStrokeDiagnostics[key] {
+            diagnostic.ended = true
+            penStrokeDiagnostics[key] = diagnostic
+        }
+#endif
+    }
+
+#if DEBUG
+    /// Runs only after PencilKit has delivered the final drawing change following pen-up.
+    /// Logs pressure/point-size correlation and the final rendered bounds; it never changes ink.
+    private func logCompletedPenStrokeIfReady(on canvas: PageCanvasView) {
+        let key = ObjectIdentifier(canvas)
+        guard let diagnostic = penStrokeDiagnostics[key], diagnostic.ended else { return }
+        let strokes = canvas.drawing.strokes
+        guard strokes.count > diagnostic.startingStrokeCount, let stroke = strokes.last else {
+            penStrokeDiagnostics[key] = nil
+            return
+        }
+        penStrokeDiagnostics[key] = nil
+        guard stroke.ink.inkType == .pen else { return }
+
+        let points = Array(stroke.path)
+        guard !points.isEmpty else {
+            print("[PenInkDebug] completed stroke has no path points")
+            return
+        }
+        let widths = points.map { Double($0.size.width) }.sorted()
+        let forces = points.map { Double($0.force) }
+        let minForce = forces.min() ?? 0
+        let maxForce = forces.max() ?? 0
+        let medianWidth = widths[widths.count / 2]
+        let minWidth = widths.first ?? 0
+        let maxWidth = widths.last ?? 0
+
+        var buckets: [(count: Int, totalWidth: Double)] = Array(repeating: (0, 0), count: 5)
+        let forceSpan = maxForce - minForce
+        for point in points {
+            let bucket = forceSpan > 0.0001
+                ? min(4, max(0, Int(((Double(point.force) - minForce) / forceSpan * 5).rounded(.down))))
+                : 0
+            buckets[bucket].count += 1
+            buckets[bucket].totalWidth += Double(point.size.width)
+        }
+        let trend = buckets.enumerated().compactMap { index, bucket -> String? in
+            guard bucket.count > 0 else { return nil }
+            return "F\(index + 1):\(String(format: "%.2f", bucket.totalWidth / Double(bucket.count)))pt(n=\(bucket.count))"
+        }.joined(separator: " ")
+
+        let bounds = stroke.renderBounds
+        print("[PenInkDebug] page=\(canvas.pageID?.uuidString ?? "unknown") toolWidth=\(String(format: "%.2f", Double(diagnostic.toolWidth)))pt points=\(points.count) force=\(String(format: "%.3f", minForce))...\(String(format: "%.3f", maxForce)) width=\(String(format: "%.2f", minWidth))/\(String(format: "%.2f", medianWidth))/\(String(format: "%.2f", maxWidth))pt[min/med/max] forceBuckets{\(trend)} renderBounds=\(String(format: "%.2f×%.2f", Double(bounds.width), Double(bounds.height)))")
+    }
+#endif
 
     func canvasViewDidFinishRendering(_ canvasView: PKCanvasView) {
         guard !firstInkReported, (canvasView as? PageCanvasView)?.pageID == firstInkPage,
