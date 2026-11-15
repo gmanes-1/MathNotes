@@ -1205,22 +1205,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last,
-           let tool = canvas.tool as? PKInkingTool {
-            // Learn from the exact tool PencilKit received on the main canvas.
-            if canvas !== zoomCanvas {
-                InkCalibration.learn(from: drawn, writtenWith: tool)
-            }
-
-            // PencilKit clamps native Pen widths at a visibly thicker minimum than Monoline.
-            // Keep the native Pen for input and pressure, then thin only the newly committed
-            // stroke's point sizes. Force, tilt, timing, position and ink type remain untouched.
-            if tool.inkType == .pen {
-                let lastIndex = canvas.drawing.strokes.count - 1
-                let thinned = canvas.drawing.restyled([lastIndex], widthScale: 0.5, tint: nil, opacity: nil)
-                isApplyingDrawing = true
-                canvas.drawing = thinned
-                isApplyingDrawing = false
-            }
+           let tool = canvas.tool as? PKInkingTool, canvas !== zoomCanvas {
+            // Learn from the exact tool PencilKit received. Never replace the drawing here:
+            // PencilKit can call this delegate while a stroke is still being committed.
+            InkCalibration.learn(from: drawn, writtenWith: tool)
         }
 
         document.canvasDidChangeInk(id, to: canvas.drawing)
