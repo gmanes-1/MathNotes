@@ -76,16 +76,18 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// Keep PencilKit's native stroke width unchanged for every ink type.
+    /// The regular pressure Pen is drawn at 75% of its selected width so its strokes stay finer.
+    /// Monoline and every other PencilKit ink keep their native selected width.
     /// Page zoom and canvas coordinate transforms are handled by the canvas views.
     static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
-        1
+        ink == .pen ? 0.75 : 1
     }
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Use PencilKit's native ink type and selected width without custom pressure scaling.
-        let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
+        // Keep PencilKit's native pressure response and ink type; only the Pen's base width is reduced.
+        let requestedWidth = width * Double(Self.writingScale(of: inkType))
+        let selectedWidth = CGFloat(Self.clamped(requestedWidth, to: Self.widthRange(of: inkType)))
         return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 

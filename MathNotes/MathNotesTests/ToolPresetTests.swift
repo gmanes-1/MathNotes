@@ -62,9 +62,17 @@ final class ToolPresetTests: XCTestCase {
         let tool = try XCTUnwrap(fineliner.tool)
         XCTAssertEqual(Double(tool.width), 2 * Double(ToolPreset.writingScale(of: .monoline)), accuracy: 0.01)
         XCTAssertEqual(try XCTUnwrap(ToolPreset(tool)).width, 2, accuracy: 0.01, "the pen reads back as it was set")
-        for kind in [PKInkingTool.InkType.pen, .pencil, .marker, .fountainPen] {
+        XCTAssertEqual(ToolPreset.writingScale(of: .pen), 0.75, accuracy: 0.001)
+        for kind in [PKInkingTool.InkType.pencil, .marker, .fountainPen, .monoline] {
             XCTAssertEqual(ToolPreset.writingScale(of: kind), 1)
         }
+
+        let pressurePen = ToolPreset(ink: .pen, color: 0x0000_00FF, width: 4)
+        let nativePen = try XCTUnwrap(pressurePen.tool)
+        XCTAssertEqual(nativePen.inkType, .pen)
+        XCTAssertEqual(Double(nativePen.width), 3, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(ToolPreset(nativePen)).width, 4, accuracy: 0.01,
+                       "the smaller native Pen width reads back as the selected tray width")
     }
 
     func testLegacyPressureFlagDoesNotOverrideNativePencilKitInk() throws {
