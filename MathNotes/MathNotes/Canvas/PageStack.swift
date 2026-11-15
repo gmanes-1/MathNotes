@@ -1454,6 +1454,9 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             isApplyingDrawing = false
             document.canvasDidChangeInk(pageID, to: thinned)
             mirrorInk(from: canvas, pageID: pageID)
+#if DEBUG
+            logCompletedPenStrokeIfReady(on: canvas)
+#endif
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: 5) }
     }
