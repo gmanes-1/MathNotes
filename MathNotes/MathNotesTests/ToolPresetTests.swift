@@ -50,29 +50,19 @@ final class ToolPresetTests: XCTestCase {
         let range = ToolPreset.widthRange(of: .monoline)
         let valid = PKInkingTool.InkType.monoline.validWidthRange
         let tool = try XCTUnwrap(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).tool)
-        let written = range.upperBound * Double(ToolPreset.writingScale(of: .monoline))
-        XCTAssertEqual(Double(tool.width), min(max(written, Double(valid.lowerBound)), Double(valid.upperBound)), accuracy: 0.01)
+        XCTAssertEqual(Double(tool.width), min(max(range.upperBound, Double(valid.lowerBound)), Double(valid.upperBound)), accuracy: 0.01)
         XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).widthFraction, 1)
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0x0000_00FF, width: 1).widthFraction, 0)
     }
 
-    func testTheFinelinerUsesItsExplicitWidthAndEveryOtherInkIsAsSet() throws {
-        XCTAssertEqual(ToolPreset.writingScale(of: .monoline), 1)
-        let fineliner = ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 2)
-        let tool = try XCTUnwrap(fineliner.tool)
-        XCTAssertEqual(Double(tool.width), 2 * Double(ToolPreset.writingScale(of: .monoline)), accuracy: 0.01)
-        XCTAssertEqual(try XCTUnwrap(ToolPreset(tool)).width, 2, accuracy: 0.01, "the pen reads back as it was set")
-        XCTAssertEqual(ToolPreset.writingScale(of: .pen), 0.75, accuracy: 0.001)
-        for kind in [PKInkingTool.InkType.pencil, .marker, .fountainPen, .monoline] {
-            XCTAssertEqual(ToolPreset.writingScale(of: kind), 1)
+    func testEveryInkUsesItsSelectedNativeWidth() throws {
+        for kind in [PKInkingTool.InkType.pen, .pencil, .marker, .fountainPen, .monoline] {
+            let preset = ToolPreset(ink: kind, color: 0x0000_00FF, width: 4)
+            let native = try XCTUnwrap(preset.tool)
+            XCTAssertEqual(native.inkType, kind)
+            XCTAssertEqual(Double(native.width), 4, accuracy: 0.01)
+            XCTAssertEqual(try XCTUnwrap(ToolPreset(native)).width, 4, accuracy: 0.01)
         }
-
-        let pressurePen = ToolPreset(ink: .pen, color: 0x0000_00FF, width: 4)
-        let nativePen = try XCTUnwrap(pressurePen.tool)
-        XCTAssertEqual(nativePen.inkType, .pen)
-        XCTAssertEqual(Double(nativePen.width), 3, accuracy: 0.01)
-        XCTAssertEqual(try XCTUnwrap(ToolPreset(nativePen)).width, 4, accuracy: 0.01,
-                       "the smaller native Pen width reads back as the selected tray width")
     }
 
     func testLegacyPressureFlagDoesNotOverrideNativePencilKitInk() throws {
@@ -415,6 +405,36 @@ final class ToolPresetTests: XCTestCase {
                                 path: PKStrokePath(controlPoints: Array(repeating: points[2], count: 3), creationDate: date))
         XCTAssertEqual(PressureInk.varying(constant, baseWidth: 1).path.map(\.size.width),
                        constant.path.map(\.size.width), "constant force does not invent pressure variation")
+    }
+
+    func testDisplayThinningMakesASeparateCopyAndPreservesPressureSamples() {
+        let date = Date()
+        let samples = [CGFloat(0.2), 0.55, 0.9].enumerated().map { index, force in
+            PKStrokePoint(location: CGPoint(x: index * 12, y: 18), timeOffset: Double(index) * 0.02,
+                          size: CGSize(width: 4 + CGFloat(index), height: 4 + CGFloat(index)),
+                          opacity: 1, force: force, azimuth: 0.3, altitude: .pi / 3)
+        }
+        let stroke = PKStroke(ink: PKInk(.pen, color: .black),
+                              path: PKStrokePath(controlPoints: samples, creationDate: date))
+        let original = PKDrawing(strokes: [stroke])
+        let display = original.displayThinner(by: 0.8)
+
+        XCTAssertEqual(display.strokes.count, original.strokes.count)
+        XCTAssertEqual(display.strokes[0].ink.inkType, original.strokes[0].ink.inkType)
+        XCTAssertEqual(display.strokes[0].path.count, original.strokes[0].path.count)
+        for index in samples.indices {
+            let before = original.strokes[0].path[index]
+            let after = display.strokes[0].path[index]
+            XCTAssertEqual(after.location, before.location)
+            XCTAssertEqual(after.force, before.force, accuracy: 0.0001)
+            XCTAssertEqual(after.azimuth, before.azimuth, accuracy: 0.0001)
+            XCTAssertEqual(after.altitude, before.altitude, accuracy: 0.0001)
+            XCTAssertEqual(after.timeOffset, before.timeOffset, accuracy: 0.0001)
+            XCTAssertEqual(after.size.width, before.size.width * 0.8, accuracy: 0.01)
+            XCTAssertEqual(after.size.height, before.size.height * 0.8, accuracy: 0.01)
+            XCTAssertEqual(original.strokes[0].path[index].size.width, before.size.width,
+                           accuracy: 0.0001, "the stored source drawing is untouched")
+        }
     }
 
     private func makeDocument() throws -> NotebookDocument {

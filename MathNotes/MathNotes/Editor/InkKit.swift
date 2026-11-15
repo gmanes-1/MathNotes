@@ -59,7 +59,7 @@ enum InkCalibration {
         guard stroke.path.count >= 4, tool.width > 0,
               stroke.ink.inkType.rawValue == tool.inkType.rawValue,
               let middle = middleSize(of: stroke) else { return }
-        let sample = Double(middle) / (Double(tool.width) / Double(ToolPreset.writingScale(of: tool.inkType)))
+        let sample = Double(middle) / Double(tool.width)
         guard (0.2...6).contains(sample) else { return }
         let name = tool.inkType.rawValue
         let next = factors[name].map { $0 * 0.7 + sample * 0.3 } ?? sample
@@ -115,6 +115,17 @@ extension PKDrawing {
             strokes[i] = Self.restyledStroke(strokes[i], widthScale: widthScale, inkType: inkType, tint: tint, opacity: opacity)
         }
         return PKDrawing(strokes: strokes)
+    }
+
+
+
+    /// A display-only experiment: make a separate copy with thinner point sizes while preserving
+    /// each sample's position, pressure, tilt, timing, ink, transform and mask.
+    @MainActor
+    func displayThinner(by factor: CGFloat = 0.8) -> PKDrawing {
+        let scale = min(max(factor, 0.1), 1)
+        guard scale < 1, !strokes.isEmpty else { return self }
+        return restyled(Set(strokes.indices), widthScale: scale, tint: nil, opacity: nil)
     }
 
     @MainActor

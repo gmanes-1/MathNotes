@@ -23,10 +23,9 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// A tool as it is on a canvas; nil for the eraser and the lasso.
     init?(_ tool: PKTool) {
         guard let inking = tool as? PKInkingTool else { return nil }
-        // A tool is written at the width the pen is set to, less what its kind of ink is scaled by.
+        // Keep the exact native width PencilKit is using.
         self.init(ink: inking.inkType, color: Self.bytes(of: inking.color),
-                  width: Self.clamped(Double(inking.width / Self.writingScale(of: inking.inkType)),
-                                      to: Self.widthRange(of: inking.inkType)))
+                  width: Self.clamped(Double(inking.width), to: Self.widthRange(of: inking.inkType)))
     }
 
     /// A colour as it is on light paper, a byte each for red, green, blue and alpha.
@@ -76,18 +75,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// The regular pressure Pen is drawn at 75% of its selected width so its strokes stay finer.
-    /// Monoline and every other PencilKit ink keep their native selected width.
-    /// Page zoom and canvas coordinate transforms are handled by the canvas views.
-    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
-        ink == .pen ? 0.75 : 1
-    }
-
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Keep PencilKit's native pressure response and ink type; only the Pen's base width is reduced.
-        let requestedWidth = width * Double(Self.writingScale(of: inkType))
-        let selectedWidth = CGFloat(Self.clamped(requestedWidth, to: Self.widthRange(of: inkType)))
+        // The selected width is passed to PencilKit unchanged; display styling belongs to the renderer.
+        let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
         return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 
