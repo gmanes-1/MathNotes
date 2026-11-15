@@ -79,7 +79,7 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// How much of a pen's set width PencilKit is given. Pen and Monoline are laid down thinner than the width
     /// on the slider; keeping the factor here lets the app tune their appearance without rewriting saved presets
     /// or existing strokes. PencilKit remains responsible for drawing and native pressure behaviour.
-    static let penThinning: CGFloat = 0.2
+    static let penThinning: CGFloat = 0.05
 
     /// The width given to PencilKit is the slider width times this factor. Reverse mappings divide by it.
     static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
