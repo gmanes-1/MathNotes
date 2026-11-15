@@ -87,9 +87,9 @@ struct NewNotebookView: View {
                 }
                 .padding(Space.x6)
             }
-            .background(Color.paper)
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("New Notebook")
-            .barGround(Color.paper)
+            .barGround(Color(uiColor: .systemGroupedBackground))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
