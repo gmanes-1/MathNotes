@@ -1434,12 +1434,28 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
               stroke.ink.inkType == .pen else { return }
         pendingPenStrokes[key] = nil
 
-        let index = strokes.count - 1
-        let thinned = canvas.drawing.restyled([index], widthScale: 0.5, tint: nil, opacity: nil)
-        guard thinned.strokes.count == strokes.count else { return }
-        isApplyingDrawing = true
-        canvas.drawing = thinned
-        isApplyingDrawing = false
+        // Do not assign to PKCanvasView.drawing from inside its delegate callback. PencilKit
+        // may still be finalizing its own commit, so perform the replacement on the next run loop.
+        let pageID = canvas.pageID
+        let count = strokes.count
+        let stamp = stroke.path.creationDate
+        let thinned = canvas.drawing.restyled([count - 1], widthScale: 0.5, tint: nil, opacity: nil)
+        guard thinned.strokes.count == count else { return }
+
+        func apply(tries: Int) {
+            guard let pageID, canvas.pageID == pageID, canvas.isLoaded,
+                  canvas.drawing.strokes.count == count,
+                  canvas.drawing.strokes.last?.path.creationDate == stamp else { return }
+            guard document.undoManager.groupingLevel == 0 || tries == 0 else {
+                return DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: tries - 1) }
+            }
+            isApplyingDrawing = true
+            canvas.drawing = thinned
+            isApplyingDrawing = false
+            document.canvasDidChangeInk(pageID, to: thinned)
+            mirrorInk(from: canvas, pageID: pageID)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: 5) }
     }
 
 #if DEBUG
