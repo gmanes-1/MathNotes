@@ -1130,10 +1130,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         place(canvas, in: slot, force: true)
         slot.addSubview(canvas)
         slot.canvas = canvas
-        // PencilKit remains the touch/undo/persistence surface. Its native ink layer is hidden
-        // visually; the sibling image view renders a thinner copy from the same drawing.
-        canvas.layer.opacity = 0
+        // Keep PencilKit fully visible and interactive. The separate display experiment is
+        // disabled here until it can be layered without interfering with live input.
+        canvas.layer.opacity = 1
         slot.installInkDisplay()
+        slot.clearDisplayedInk()
         canvases[page.id] = canvas
         slot.raiseTape()
         if let selectionView, selectionView.superview === slot { slot.bringSubviewToFront(selectionView) }
@@ -2749,7 +2750,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         syncTool(canvas)
         canvas.accessibilityIdentifier = "zoom.canvas"
         panel.host(canvas)
-        canvas.layer.opacity = 0
+        canvas.layer.opacity = 1
+        zoomInkDisplayView.isHidden = true
         zoomInkDisplayView.contentMode = .scaleToFill
         zoomInkDisplayView.backgroundColor = .clear
         zoomInkDisplayView.isUserInteractionEnabled = false
