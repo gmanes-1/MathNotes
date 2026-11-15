@@ -59,7 +59,8 @@ enum InkCalibration {
         guard stroke.path.count >= 4, tool.width > 0,
               stroke.ink.inkType.rawValue == tool.inkType.rawValue,
               let middle = middleSize(of: stroke) else { return }
-        let sample = Double(middle) / Double(tool.width)
+        let setWidth = Double(tool.width) / Double(ToolPreset.writingScale(of: tool.inkType))
+        let sample = Double(middle) / setWidth
         guard (0.2...6).contains(sample) else { return }
         let name = tool.inkType.rawValue
         let next = factors[name].map { $0 * 0.7 + sample * 0.3 } ?? sample
