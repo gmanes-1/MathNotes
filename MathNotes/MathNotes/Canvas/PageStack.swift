@@ -292,11 +292,6 @@ final class PageSlotView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 }
 
-private struct PendingPenStroke {
-    let startingStrokeCount: Int
-    var ended = false
-}
-
 #if DEBUG
 private struct PenStrokeDiagnostic {
     let startingStrokeCount: Int
@@ -334,7 +329,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var canvasWindow: ClosedRange<Int>?
     private var night = false
     private var isApplyingDrawing = false
-    private var pendingPenStrokes: [ObjectIdentifier: PendingPenStroke] = [:]
 #if DEBUG
     private var penStrokeDiagnostics: [ObjectIdentifier: PenStrokeDiagnostic] = [:]
 #endif
@@ -1213,7 +1207,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isApplyingDrawing, let canvas = canvasView as? PageCanvasView, canvas.isLoaded, let id = canvas.pageID else { return }
-        thinCompletedPenStrokeIfReady(on: canvas)
 #if DEBUG
         logCompletedPenStrokeIfReady(on: canvas)
 #endif
@@ -1390,11 +1383,6 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
         let key = ObjectIdentifier(canvasView)
-        if let tool = canvasView.tool as? PKInkingTool, tool.inkType == .pen {
-            pendingPenStrokes[key] = PendingPenStroke(startingStrokeCount: canvasView.drawing.strokes.count)
-        } else {
-            pendingPenStrokes[key] = nil
-        }
 #if DEBUG
         if let tool = canvasView.tool as? PKInkingTool, tool.inkType == .pen {
             penStrokeDiagnostics[key] = PenStrokeDiagnostic(startingStrokeCount: canvasView.drawing.strokes.count,
@@ -1412,53 +1400,12 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
         let key = ObjectIdentifier(canvasView)
-        if var pending = pendingPenStrokes[key] {
-            pending.ended = true
-            pendingPenStrokes[key] = pending
-        }
 #if DEBUG
         if var diagnostic = penStrokeDiagnostics[key] {
             diagnostic.ended = true
             penStrokeDiagnostics[key] = diagnostic
         }
 #endif
-    }
-
-    /// PencilKit owns the live stroke. Only after pen-up and its final drawing callback do we
-    /// thin the completed Pen's stored point widths; pressure and all point metadata stay intact.
-    private func thinCompletedPenStrokeIfReady(on canvas: PageCanvasView) {
-        let key = ObjectIdentifier(canvas)
-        guard let pending = pendingPenStrokes[key], pending.ended else { return }
-        let strokes = canvas.drawing.strokes
-        guard strokes.count > pending.startingStrokeCount, let stroke = strokes.last,
-              stroke.ink.inkType == .pen else { return }
-        pendingPenStrokes[key] = nil
-
-        // Do not assign to PKCanvasView.drawing from inside its delegate callback. PencilKit
-        // may still be finalizing its own commit, so perform the replacement on the next run loop.
-        let pageID = canvas.pageID
-        let count = strokes.count
-        let stamp = stroke.path.creationDate
-        let thinned = canvas.drawing.restyled([count - 1], widthScale: 0.5, tint: nil, opacity: nil)
-        guard thinned.strokes.count == count else { return }
-
-        func apply(tries: Int) {
-            guard let pageID, canvas.pageID == pageID, canvas.isLoaded,
-                  canvas.drawing.strokes.count == count,
-                  canvas.drawing.strokes.last?.path.creationDate == stamp else { return }
-            guard document.undoManager.groupingLevel == 0 || tries == 0 else {
-                return DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: tries - 1) }
-            }
-            isApplyingDrawing = true
-            canvas.drawing = thinned
-            isApplyingDrawing = false
-            document.canvasDidChangeInk(pageID, to: thinned)
-            mirrorInk(from: canvas, pageID: pageID)
-#if DEBUG
-            logCompletedPenStrokeIfReady(on: canvas)
-#endif
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { apply(tries: 5) }
     }
 
 #if DEBUG
