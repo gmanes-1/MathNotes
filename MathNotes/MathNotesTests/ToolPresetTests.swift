@@ -31,11 +31,11 @@ final class ToolPresetTests: XCTestCase {
         toolbox.adoptNativeTool(PKInkingTool(.monoline, color: .blue, width: 4))
         XCTAssertEqual(toolbox.pen?.id, selectedID)
         XCTAssertEqual(toolbox.pen?.inkType, .monoline)
-        XCTAssertEqual(toolbox.pen?.width ?? 0, 4, accuracy: 0.01)
+        XCTAssertEqual(toolbox.pen?.width ?? 0, 4 / Double(ToolPreset.penThinning), accuracy: 0.01)
 
         toolbox.adoptNativeTool(PKInkingTool(.pen, color: .black, width: 2))
         XCTAssertEqual(toolbox.pen?.inkType, .pen)
-        XCTAssertEqual(toolbox.pen?.width ?? 0, 2, accuracy: 0.01)
+        XCTAssertEqual(toolbox.pen?.width ?? 0, 2 / Double(ToolPreset.penThinning), accuracy: 0.01)
     }
 
     func testNativePickerEraserSettingsAreKept() throws {
@@ -50,7 +50,8 @@ final class ToolPresetTests: XCTestCase {
         let range = ToolPreset.widthRange(of: .monoline)
         let valid = PKInkingTool.InkType.monoline.validWidthRange
         let tool = try XCTUnwrap(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).tool)
-        XCTAssertEqual(Double(tool.width), min(max(range.upperBound, Double(valid.lowerBound)), Double(valid.upperBound)), accuracy: 0.01)
+        let written = range.upperBound * Double(ToolPreset.writingScale(of: .monoline))
+        XCTAssertEqual(Double(tool.width), min(max(written, Double(valid.lowerBound)), Double(valid.upperBound)), accuracy: 0.01)
         XCTAssertEqual(ToolPreset(ink: .monoline, color: 0x0000_00FF, width: 500).widthFraction, 1)
         XCTAssertEqual(ToolPreset(ink: .marker, color: 0x0000_00FF, width: 1).widthFraction, 0)
     }
@@ -60,8 +61,23 @@ final class ToolPresetTests: XCTestCase {
             let preset = ToolPreset(ink: kind, color: 0x0000_00FF, width: 4)
             let native = try XCTUnwrap(preset.tool)
             XCTAssertEqual(native.inkType, kind)
-            XCTAssertEqual(Double(native.width), 4, accuracy: 0.01)
-            XCTAssertEqual(try XCTUnwrap(ToolPreset(native)).width, 4, accuracy: 0.01)
+            XCTAssertEqual(Double(native.width), 4 * Double(ToolPreset.writingScale(of: kind)), accuracy: 0.01)
+            XCTAssertEqual(try XCTUnwrap(ToolPreset(native)).width, 4, accuracy: 0.01, "it reads back as it was set")
+        }
+    }
+
+    func testPenAndMonolineAreWrittenThinnerAndRoundTripToTheirSetWidth() throws {
+        XCTAssertEqual(ToolPreset.penThinning, 0.8, accuracy: 0.0001)
+        for kind in [PKInkingTool.InkType.pen, .monoline] {
+            let preset = ToolPreset(ink: kind, color: 0x1B22_30FF, width: 2.7)
+            let tool = try XCTUnwrap(preset.tool)
+            XCTAssertEqual(tool.inkType, kind)
+            XCTAssertEqual(Double(tool.width), 2.7 * 0.8, accuracy: 0.001)
+            XCTAssertEqual(preset.width, 2.7, accuracy: 0.001, "the saved preset remains unchanged")
+            XCTAssertEqual(try XCTUnwrap(ToolPreset(tool)).width, 2.7, accuracy: 0.001)
+        }
+        for kind in [PKInkingTool.InkType.pencil, .marker, .fountainPen] {
+            XCTAssertEqual(ToolPreset.writingScale(of: kind), 1)
         }
     }
 
@@ -74,9 +90,9 @@ final class ToolPresetTests: XCTestCase {
         let nativeTool = try XCTUnwrap(fineliner.tool)
         XCTAssertEqual(nativeTool.inkType, .monoline, "the legacy pressure flag does not replace the selected native ink")
         XCTAssertEqual(nativeTool.color, fineliner.uiColor)
-        XCTAssertEqual(Double(nativeTool.width), selectedWidth, accuracy: 0.001)
+        XCTAssertEqual(Double(nativeTool.width), selectedWidth * Double(ToolPreset.penThinning), accuracy: 0.001)
         fineliner.width = range.upperBound
-        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), range.upperBound, accuracy: 0.001)
+        XCTAssertEqual(Double(try XCTUnwrap(fineliner.tool).width), range.upperBound * Double(ToolPreset.penThinning), accuracy: 0.001)
 
         let restored = try JSONDecoder().decode(ToolPreset.self, from: JSONEncoder().encode(fineliner))
         XCTAssertEqual(restored.pressureSensitive, true, "the legacy field remains decodable")
@@ -348,7 +364,7 @@ final class ToolPresetTests: XCTestCase {
         toolbox.take(.pen(marker.id))
         XCTAssertEqual((canvas.tool as? PKInkingTool).flatMap { ToolPreset($0) }?.color, marker.color)
         toolbox.changePen(marker.id) { $0.width = 30 }
-        XCTAssertEqual(try XCTUnwrap((canvas.tool as? PKInkingTool)?.width), 30, accuracy: 0.01, "a change to the pen in hand reaches the page at once")
+        XCTAssertEqual(try XCTUnwrap((canvas.tool as? PKInkingTool)?.width), 30 * Double(ToolPreset.penThinning), accuracy: 0.01, "the selected Monoline reaches the page at 80% width")
         toolbox.take(.lasso)
         XCTAssertTrue(canvas.tool is PKLassoTool)
         toolbox.isRulerActive = true
