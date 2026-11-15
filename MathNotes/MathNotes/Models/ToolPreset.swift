@@ -23,9 +23,10 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
     /// A tool as it is on a canvas; nil for the eraser and the lasso.
     init?(_ tool: PKTool) {
         guard let inking = tool as? PKInkingTool else { return nil }
-        // Keep the exact native width PencilKit is using.
+        // Convert PencilKit's reduced writing width back to the width shown by the app's slider.
         self.init(ink: inking.inkType, color: Self.bytes(of: inking.color),
-                  width: Self.clamped(Double(inking.width), to: Self.widthRange(of: inking.inkType)))
+                  width: Self.clamped(Double(inking.width / Self.writingScale(of: inking.inkType)),
+                                      to: Self.widthRange(of: inking.inkType)))
     }
 
     /// A colour as it is on light paper, a byte each for red, green, blue and alpha.
@@ -75,10 +76,20 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
+    /// How much of a pen's set width PencilKit is given. Pen and Monoline are laid down thinner than the width
+    /// on the slider; keeping the factor here lets the app tune their appearance without rewriting saved presets
+    /// or existing strokes. PencilKit remains responsible for drawing and native pressure behaviour.
+    static let penThinning: CGFloat = 0.8
+
+    /// The width given to PencilKit is the slider width times this factor. Reverse mappings divide by it.
+    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
+        ink == .pen || ink == .monoline ? penThinning : 1
+    }
+
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // The selected width is passed to PencilKit unchanged; display styling belongs to the renderer.
-        let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType)))
+        // Clamp the app's selected width first, then apply the display tuning for the native ink.
+        let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))) * Self.writingScale(of: inkType)
         return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 
