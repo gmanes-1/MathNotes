@@ -61,6 +61,9 @@ struct MathNotesSettingsView: View {
                     syncSection
                     backupSection
                     aboutSection
+                    #if DEBUG
+                    inkDisplayPreviewSection
+                    #endif
                 }
                 .frame(maxWidth: 640)
                 .frame(maxWidth: .infinity)
@@ -322,6 +325,24 @@ struct MathNotesSettingsView: View {
         }
         .disabled(backupWork != nil)
     }
+
+    #if DEBUG
+    private var inkDisplayPreviewSection: some View {
+        SettingsSection("Developer Preview") {
+            NavigationLink {
+                InkDisplayComparisonView()
+            } label: {
+                HStack(spacing: Space.x3) {
+                    Label("Stroke Display Comparison", systemImage: "pencil.tip.crop.circle")
+                    Spacer(minLength: 0)
+                    SettingsRowGlyph(systemName: "chevron.forward")
+                }
+            }
+            .buttonStyle(.settingsRow)
+            .accessibilityIdentifier("settings.debug.inkDisplayComparison")
+        }
+    }
+    #endif
 
     private var aboutSection: some View {
         SettingsSection("About") {
