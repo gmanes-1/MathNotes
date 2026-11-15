@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import PencilKit
 
 /// An isolated visual check of the display-only stroke-width experiment.
