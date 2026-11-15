@@ -640,11 +640,6 @@ struct ShelfView: View {
                         Button(action: openJournal) { Label("Journal", systemImage: "calendar") }
                             .disabled(openingJournal)
                             .accessibilityIdentifier("library.journal")
-                        Button(action: onCreate) {
-                            Label("New Notebook", systemImage: "book.closed")
-                        }
-                        .buttonStyle(.mathNotes(.primary, inBar: true))
-                        .accessibilityIdentifier("library.new.notebook")
                         MathNotesMenu {
                             Button { onWhiteboard() } label: { Label("Whiteboard", systemImage: "scribble.variable") }
                                 .accessibilityIdentifier("library.new.board")
@@ -653,11 +648,12 @@ struct ShelfView: View {
                                 Button(action: startScan) { Label("Scan Documents…", systemImage: "doc.viewfinder") }
                             }
                         } label: {
-                            Label("New Note", systemImage: "square.and.pencil")
+                            Label("New Notebook", systemImage: "book.closed")
                         } primaryAction: {
-                            onQuickNote()
+                            onCreate()
                         }
-                        .buttonStyle(.mathNotes(.secondary, inBar: true))
+                        .buttonStyle(.mathNotes(.primary, inBar: true))
+                        .accessibilityIdentifier("library.new.notebook")
                     }
                 }
                 .buttonStyle(.mathNotes(.secondary, inBar: true))
