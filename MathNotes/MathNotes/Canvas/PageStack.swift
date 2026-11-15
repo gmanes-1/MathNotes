@@ -388,6 +388,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var zoomPanel: ZoomWindowPanel?
     private var zoomCanvas: PageCanvasView?
     private var zoomPaper: PagePaperView?
+    private let zoomInkDisplayView = UIImageView()
     private var zoomTarget: ZoomTargetView?
     private var zoomLevel = 1
     private var zoomDragOrigin: CGPoint?
@@ -1156,9 +1157,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         isApplyingDrawing = true
         canvas.drawing = replayed(ink, on: canvas.pageID)
         canvas.strokeCount = nil
-        if let pageID = canvas.pageID, let slot = slots[pageID] {
-            slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-        }
+        refreshDisplayedInk(for: canvas)
         isApplyingDrawing = false
         canvas.isLoaded = true
         setDrawingEnabled(!document.isReadOnly && !isLocked, canvas)
@@ -1231,9 +1230,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isApplyingDrawing, let canvas = canvasView as? PageCanvasView, canvas.isLoaded, let id = canvas.pageID else { return }
         canvas.strokeCount = nil
-        if let slot = slots[id] {
-            slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-        }
+        refreshDisplayedInk(for: canvas)
         let before = document.loadedInk(id)
         let rest = canvas === zoomCanvas ? nil : strokeHold.takeHold()
         if pencilGesture(on: canvas, pageID: id, before: before, rest: rest) {
@@ -1341,9 +1338,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         document.undoManager.setActionName(String(localized: "Scribble Erase"))
         isApplyingDrawing = true
         canvas.drawing = erased.drawing
-        if let slot = slots[pageID] {
-            slot.displayInk(erased.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-        }
+        refreshDisplayedInk(for: canvas)
         isApplyingDrawing = false
         mirrorInk(from: canvas, pageID: pageID)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1357,9 +1352,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         isApplyingDrawing = true
         other.drawing = canvas.drawing
         other.strokeCount = nil
-        if let slot = slots[pageID] {
-            slot.displayInk(other.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-        }
+        refreshDisplayedInk(for: other)
         isApplyingDrawing = false
     }
 
@@ -1400,9 +1393,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             let drawing = PKDrawing(strokes: strokes)
             isApplyingDrawing = true
             canvas.drawing = drawing
-            if let slot = slots[pageID] {
-                slot.displayInk(drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-            }
+            refreshDisplayedInk(for: canvas)
             isApplyingDrawing = false
             document.canvasDidChangeInk(pageID, to: drawing)
             mirrorInk(from: canvas, pageID: pageID)
@@ -2281,9 +2272,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if let canvas = canvases[id] {
                 isApplyingDrawing = true
                 canvas.drawing = InkLasso.removing([id: indices], from: [id: ink])[id] ?? ink
-                if let slot = slots[id] {
-                    slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-                }
+                refreshDisplayedInk(for: canvas)
                 isApplyingDrawing = false
             }
         }
@@ -2368,9 +2357,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             isApplyingDrawing = true
             canvas.drawing = base.restyled(Set(indices), widthScale: 1, tint: change.tint, opacity: nil)
             canvas.strokeCount = nil
-            if let slot = slots[id] {
-                slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-            }
+            refreshDisplayedInk(for: canvas)
             isApplyingDrawing = false
         }
     }
@@ -2761,6 +2748,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         syncTool(canvas)
         canvas.accessibilityIdentifier = "zoom.canvas"
         panel.host(canvas)
+        canvas.layer.opacity = 0
+        zoomInkDisplayView.contentMode = .scaleToFill
+        zoomInkDisplayView.backgroundColor = .clear
+        zoomInkDisplayView.isUserInteractionEnabled = false
+        zoomInkDisplayView.isAccessibilityElement = false
+        zoomInkDisplayView.accessibilityElementsHidden = true
+        panel.canvasArea.addSubview(zoomInkDisplayView)
         zoomCanvas = canvas
         let target = ZoomTargetView()
         target.pan.addTarget(self, action: #selector(zoomTargetPanned))
@@ -2782,6 +2776,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             if canvas.isFirstResponder { anchor.becomeFirstResponder() }
             canvas.delegate = nil
         }
+        zoomCanvas?.layer.opacity = 1
         zoomPanel?.removeFromSuperview()
         zoomTarget?.removeFromSuperview()
         zoomPanel = nil
@@ -2860,6 +2855,8 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         if canvas.contentSize != size { canvas.contentSize = size }
         let offset = CGPoint(x: window.rect.minX * scale, y: window.rect.minY * scale)
         if canvas.contentOffset != offset { canvas.contentOffset = offset }
+        zoomInkDisplayView.frame = area
+        refreshDisplayedInk(for: canvas)
         syncTool(canvas)
         canvas.overrideUserInterfaceStyle = page.inkAppearance(night: night)
         canvas.accessibilityLabel = String(localized: "Zoom window, page \(index + 1)")
@@ -2913,9 +2910,28 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         isApplyingDrawing = true
         canvas.drawing = ink
         canvas.strokeCount = nil
+        refreshDisplayedInk(for: canvas)
         isApplyingDrawing = false
         canvas.isLoaded = true
         setDrawingEnabled(!document.isReadOnly && !isLocked, canvas)
+    }
+
+    /// Render a separate 80% display copy while keeping the canvas drawing untouched for
+    /// PencilKit input, hit testing, undo and document persistence.
+    private func refreshDisplayedInk(for canvas: PageCanvasView) {
+        guard let pageID = canvas.pageID else { return }
+        let display = canvas.drawing.displayThinner(by: 0.8)
+        if let slot = slots[pageID] {
+            slot.displayInk(display, pixelScale: traitCollection.displayScale * bakedScale)
+        }
+        if canvas === zoomCanvas, let window = zoomWindow, let panel = zoomPanel {
+            let area = panel.canvasArea.bounds
+            let scale = area.width / max(window.rect.width, 1)
+            zoomInkDisplayView.frame = area
+            zoomInkDisplayView.image = display.strokes.isEmpty
+                ? nil
+                : display.image(from: window.rect, scale: min(max(traitCollection.displayScale * scale, 1), 3))
+        }
     }
 
     private func layoutZoomTarget() {
