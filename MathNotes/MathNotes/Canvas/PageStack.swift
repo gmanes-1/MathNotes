@@ -1209,6 +1209,17 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             // Learn from the exact tool PencilKit received. Never scale the stroke transform:
             // that changes the path's length as well as its thickness.
             InkCalibration.learn(from: drawn, writtenWith: tool)
+
+            // PencilKit clamps native Pen widths at a visibly thicker minimum than Monoline.
+            // Keep the native Pen for input and pressure, then thin only the newly committed
+            // stroke's point sizes. Force, tilt, timing, position and ink type remain untouched.
+            if tool.inkType == .pen {
+                let lastIndex = canvas.drawing.strokes.count - 1
+                let thinned = canvas.drawing.restyled([lastIndex], widthScale: 0.5, tint: nil, opacity: nil)
+                isApplyingDrawing = true
+                canvas.drawing = thinned
+                isApplyingDrawing = false
+            }
         }
 
         document.canvasDidChangeInk(id, to: canvas.drawing)
