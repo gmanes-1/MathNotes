@@ -425,7 +425,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .desk
+        view.backgroundColor = .systemGroupedBackground
         night = PaperNight.isOn(traitCollection)
         scrollView.frame = view.bounds
         scrollView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
