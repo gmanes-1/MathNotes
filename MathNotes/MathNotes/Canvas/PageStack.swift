@@ -292,6 +292,11 @@ final class PageSlotView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 }
 
+private struct PendingPenStroke {
+    let startingStrokeCount: Int
+    var ended = false
+}
+
 #if DEBUG
 private struct PenStrokeDiagnostic {
     let startingStrokeCount: Int
@@ -329,6 +334,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     private var canvasWindow: ClosedRange<Int>?
     private var night = false
     private var isApplyingDrawing = false
+    private var pendingPenStrokes: [ObjectIdentifier: PendingPenStroke] = [:]
 #if DEBUG
     private var penStrokeDiagnostics: [ObjectIdentifier: PenStrokeDiagnostic] = [:]
 #endif
@@ -1207,6 +1213,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         guard !isApplyingDrawing, let canvas = canvasView as? PageCanvasView, canvas.isLoaded, let id = canvas.pageID else { return }
+        thinCompletedPenStrokeIfReady(on: canvas)
 #if DEBUG
         logCompletedPenStrokeIfReady(on: canvas)
 #endif
@@ -1382,8 +1389,13 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
-#if DEBUG
         let key = ObjectIdentifier(canvasView)
+        if let tool = canvasView.tool as? PKInkingTool, tool.inkType == .pen {
+            pendingPenStrokes[key] = PendingPenStroke(startingStrokeCount: canvasView.drawing.strokes.count)
+        } else {
+            pendingPenStrokes[key] = nil
+        }
+#if DEBUG
         if let tool = canvasView.tool as? PKInkingTool, tool.inkType == .pen {
             penStrokeDiagnostics[key] = PenStrokeDiagnostic(startingStrokeCount: canvasView.drawing.strokes.count,
                                                             toolWidth: tool.width)
@@ -1399,13 +1411,35 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
-#if DEBUG
         let key = ObjectIdentifier(canvasView)
+        if var pending = pendingPenStrokes[key] {
+            pending.ended = true
+            pendingPenStrokes[key] = pending
+        }
+#if DEBUG
         if var diagnostic = penStrokeDiagnostics[key] {
             diagnostic.ended = true
             penStrokeDiagnostics[key] = diagnostic
         }
 #endif
+    }
+
+    /// PencilKit owns the live stroke. Only after pen-up and its final drawing callback do we
+    /// thin the completed Pen's stored point widths; pressure and all point metadata stay intact.
+    private func thinCompletedPenStrokeIfReady(on canvas: PageCanvasView) {
+        let key = ObjectIdentifier(canvas)
+        guard let pending = pendingPenStrokes[key], pending.ended else { return }
+        let strokes = canvas.drawing.strokes
+        guard strokes.count > pending.startingStrokeCount, let stroke = strokes.last,
+              stroke.ink.inkType == .pen else { return }
+        pendingPenStrokes[key] = nil
+
+        let index = strokes.count - 1
+        let thinned = canvas.drawing.restyled([index], widthScale: 0.5, tint: nil, opacity: nil)
+        guard thinned.strokes.count == strokes.count else { return }
+        isApplyingDrawing = true
+        canvas.drawing = thinned
+        isApplyingDrawing = false
     }
 
 #if DEBUG
