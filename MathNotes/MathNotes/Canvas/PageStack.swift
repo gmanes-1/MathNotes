@@ -1234,6 +1234,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let before = document.loadedInk(id)
         let rest = canvas === zoomCanvas ? nil : strokeHold.takeHold()
         if pencilGesture(on: canvas, pageID: id, before: before, rest: rest) {
+            refreshDisplayedInk(for: canvas)
             if !unreadWriting.isEmpty { readWritingAfterARest() }
             return
         }
@@ -3030,9 +3031,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
             guard written != replayPages[id]?.written, let ink = document.loadedInk(id) else { continue }
             isApplyingDrawing = true
             canvas.drawing = replayed(ink, on: id)
-            if let slot = slots[id] {
-                slot.displayInk(canvas.drawing.displayThinner(by: 0.8), pixelScale: traitCollection.displayScale * bakedScale)
-            }
+            refreshDisplayedInk(for: canvas)
             isApplyingDrawing = false
         }
         if replay == nil { replayPages = [:] }
