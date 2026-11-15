@@ -292,7 +292,6 @@ final class PageSlotView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 }
 
-@MainActor
 #if DEBUG
 private struct PenStrokeDiagnostic {
     let startingStrokeCount: Int
@@ -301,6 +300,7 @@ private struct PenStrokeDiagnostic {
 }
 #endif
 
+@MainActor
 final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanvasViewDelegate,
                                  InkObserver, EditorCanvasControlling, UIGestureRecognizerDelegate, UIDropInteractionDelegate, UITextViewDelegate,
                                  UIPencilInteractionDelegate, PKToolPickerObserver {
@@ -1415,10 +1415,7 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         let key = ObjectIdentifier(canvas)
         guard let diagnostic = penStrokeDiagnostics[key], diagnostic.ended else { return }
         let strokes = canvas.drawing.strokes
-        guard strokes.count > diagnostic.startingStrokeCount, let stroke = strokes.last else {
-            penStrokeDiagnostics[key] = nil
-            return
-        }
+        guard strokes.count > diagnostic.startingStrokeCount, let stroke = strokes.last else { return }
         penStrokeDiagnostics[key] = nil
         guard stroke.ink.inkType == .pen else { return }
 
