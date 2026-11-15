@@ -5,48 +5,92 @@ import PencilKit
 /// Isolated visual comparison using generated sample ink only.
 @MainActor
 struct InkDisplayComparisonView: View {
+    @Environment(\.dismiss) private var dismiss
+
     private let pageRect = CGRect(x: 0, y: 0, width: 340, height: 210)
     private let original = Self.makeSampleDrawing()
     private var thinner: PKDrawing { Self.thinCopy(of: original, factor: 0.8) }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Both samples use the same PencilKit strokes. The second is a separate copy with stroke point sizes reduced to 80%.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: 0) {
+            header
 
-                sample(title: "Original", drawing: original)
-                sample(title: "Thinner display · 80%", drawing: thinner)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Both samples use the same PencilKit strokes. The second is a separate copy with stroke point sizes reduced to 80%.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 1)
 
-                Text("This preview uses generated ink only. It does not change your notebooks or Apple Pencil pressure capture.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    sample(title: "Original", drawing: original)
+                    sample(title: "Thinner display · 80%", drawing: thinner)
+
+                    Text("This preview uses generated ink only. It does not change your notebooks or Apple Pencil pressure capture.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
+                }
+                .frame(maxWidth: 576, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 22)
+                .padding(.top, 14)
+                .padding(.bottom, 22)
             }
-            .frame(maxWidth: 560, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(16)
+            .scrollIndicators(.hidden)
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle("Stroke Display")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var header: some View {
+        ZStack {
+            Text("Stroke Display")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 40, height: 40)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: Circle())
+                        .overlay {
+                            Circle().stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back")
+
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(height: 54)
+        .padding(.horizontal, 18)
+        .padding(.top, 6)
     }
 
     private func sample(title: String, drawing: PKDrawing) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline)
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+
             Image(uiImage: drawing.image(from: pageRect, scale: 2))
                 .resizable()
                 .interpolation(.high)
                 .scaledToFit()
                 .frame(maxWidth: .infinity)
                 .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(uiColor: .separator), lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.primary.opacity(0.045), lineWidth: 1)
                 }
         }
     }
@@ -76,23 +120,22 @@ struct InkDisplayComparisonView: View {
     private static func makeSampleDrawing() -> PKDrawing {
         let now = Date()
         let strokes: [PKStroke] = [
-            makeStroke(points: (0..<48).map { index in
-                let t = CGFloat(index) / 47
-                return point(x: 28 + t * 280, y: 54 + sin(t * .pi * 2) * 17,
-                             time: t, width: 3.8 + sin(t * .pi) * 2.8,
+            makeStroke(points: (0..<64).map { index in
+                let t = CGFloat(index) / 63
+                return point(x: 28 + t * 280,
+                             y: 57 + sin(t * .pi * 2) * 17,
+                             time: t,
+                             width: 4.1 + sin(t * .pi) * 2.5,
                              force: 0.45 + 0.45 * sin(t * .pi))
             }, color: .black, date: now),
-            makeStroke(points: (0..<48).map { index in
-                let t = CGFloat(index) / 47
-                return point(x: 28 + t * 280, y: 112 + cos(t * .pi * 2) * 13,
-                             time: t, width: 2.6 + sin(t * .pi) * 2,
+            makeStroke(points: (0..<64).map { index in
+                let t = CGFloat(index) / 63
+                return point(x: 28 + t * 280,
+                             y: 128 + cos(t * .pi * 2) * 13,
+                             time: t,
+                             width: 2.5 + sin(t * .pi) * 1.8,
                              force: 0.35 + 0.5 * sin(t * .pi))
-            }, color: UIColor(red: 0.12, green: 0.34, blue: 0.72, alpha: 1), date: now),
-            makeStroke(points: (0..<34).map { index in
-                let t = CGFloat(index) / 33
-                return point(x: 38 + t * 255, y: 166 + sin(t * .pi * 3) * 5,
-                             time: t, width: 1.7, force: 0.5)
-            }, color: UIColor(red: 0.78, green: 0.18, blue: 0.16, alpha: 1), date: now)
+            }, color: UIColor(red: 0.12, green: 0.34, blue: 0.72, alpha: 1), date: now)
         ]
         return PKDrawing(strokes: strokes)
     }
