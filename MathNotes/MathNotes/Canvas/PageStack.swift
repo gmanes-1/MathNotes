@@ -1205,10 +1205,11 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
         }
         if let before, canvas.drawing.strokes.count == before.strokes.count + 1,
            let drawn = canvas.drawing.strokes.last,
-           let tool = canvas.tool as? PKInkingTool, canvas !== zoomCanvas {
-            // Learn from the exact tool PencilKit received. Never scale the stroke transform:
-            // that changes the path's length as well as its thickness.
-            InkCalibration.learn(from: drawn, writtenWith: tool)
+           let tool = canvas.tool as? PKInkingTool {
+            // Learn from the exact tool PencilKit received on the main canvas.
+            if canvas !== zoomCanvas {
+                InkCalibration.learn(from: drawn, writtenWith: tool)
+            }
 
             // PencilKit clamps native Pen widths at a visibly thicker minimum than Monoline.
             // Keep the native Pen for input and pressure, then thin only the newly committed
