@@ -20,12 +20,12 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         self.width = width
     }
 
-    /// A tool as it is on a canvas; nil for the eraser and the lasso.
+    /// A native PencilKit tool as selected in the picker; nil for the eraser and the lasso.
     init?(_ tool: PKTool) {
         guard let inking = tool as? PKInkingTool else { return nil }
-        // Convert PencilKit's reduced writing width back to the width shown by the app's slider.
+        // Reverse only the tray's Monoline mapping. Pressure Pen is scaled when the canvas installs it.
         self.init(ink: inking.inkType, color: Self.bytes(of: inking.color),
-                  width: Self.clamped(Double(inking.width / Self.writingScale(of: inking.inkType)),
+                  width: Self.clamped(Double(inking.width / Self.trayWritingScale(of: inking.inkType)),
                                       to: Self.widthRange(of: inking.inkType)))
     }
 
@@ -76,20 +76,19 @@ struct ToolPreset: Codable, Hashable, Identifiable, Sendable {
         min(max(width, range.lowerBound), range.upperBound)
     }
 
-    /// How much of a pen's set width PencilKit is given. Pen and Monoline are laid down thinner than the width
-    /// on the slider; keeping the factor here lets the app tune their appearance without rewriting saved presets
-    /// or existing strokes. PencilKit remains responsible for drawing and native pressure behaviour.
-    static let penThinning: CGFloat = 0.05
+    /// Keep the tray's existing Monoline fineliner mapping. Pressure Pen width is tuned at the canvas boundary,
+    /// where both the tray and native picker use the same selected width.
+    static let monolineWritingScale: CGFloat = 0.05
 
-    /// The width given to PencilKit is the slider width times this factor. Reverse mappings divide by it.
-    static func writingScale(of ink: PKInkingTool.InkType) -> CGFloat {
-        ink == .pen || ink == .monoline ? penThinning : 1
+    /// The tray's Monoline width is stored separately from the narrower width passed to PencilKit.
+    static func trayWritingScale(of ink: PKInkingTool.InkType) -> CGFloat {
+        ink == .monoline ? monolineWritingScale : 1
     }
 
     var tool: PKInkingTool? {
         guard let inkType else { return nil }
-        // Clamp the app's selected width first, then apply the display tuning for the native ink.
-        let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))) * Self.writingScale(of: inkType)
+        // Clamp the selected width first; only Monoline has a separate tray-to-canvas width mapping.
+        let selectedWidth = CGFloat(Self.clamped(width, to: Self.widthRange(of: inkType))) * Self.trayWritingScale(of: inkType)
         return PKInkingTool(inkType, color: uiColor, width: selectedWidth)
     }
 

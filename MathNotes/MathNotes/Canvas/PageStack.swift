@@ -1089,17 +1089,10 @@ final class PageStackController: UIViewController, UIScrollViewDelegate, PKCanva
     }
 
     private func syncTool(_ canvas: PageCanvasView) {
-        let selected = toolbox.tool
-        if canvas === zoomCanvas, let ink = selected as? PKInkingTool {
-            // PKCanvasView records widths in its own content coordinates. The zoom window has a
-            // different points-per-page-point scale from the main canvas, so compensate the tool
-            // width to keep the resulting stroke the same size in the notebook.
-            let scale = canvas.zoomScale / max(bakedScale, 0.001)
-            // Preserve the app's explicit fine widths; do not re-clamp them to the picker range.
-            canvas.tool = PKInkingTool(ink.inkType, color: ink.color, width: ink.width * scale)
-        } else {
-            canvas.tool = selected
-        }
+        // Keep PencilKit's native ink type and pressure response. The canvas renderer reduces only
+        // the pressure Pen's base width and retains the existing zoom-window compensation.
+        let zoomRatio = canvas === zoomCanvas ? canvas.zoomScale / max(bakedScale, 0.001) : 1
+        canvas.tool = CanvasInkRendering.tool(toolbox.tool, zoomRatio: zoomRatio)
         canvas.isRulerActive = toolbox.isRulerActive
     }
 
