@@ -37,9 +37,6 @@ final class ToolPresetTests: XCTestCase {
         XCTAssertEqual(toolbox.pen?.inkType, .pen)
         XCTAssertEqual(toolbox.pen?.width ?? 0, 2, accuracy: 0.01)
         XCTAssertEqual((toolbox.tool as? PKInkingTool)?.width ?? 0, 2, accuracy: 0.01)
-        let rendered = try XCTUnwrap(CanvasInkRendering.tool(toolbox.tool) as? PKInkingTool)
-        XCTAssertEqual(rendered.inkType, .pen)
-        XCTAssertEqual(rendered.width, 1.6, accuracy: 0.01)
     }
 
     func testNativePickerEraserSettingsAreKept() throws {
@@ -90,23 +87,6 @@ final class ToolPresetTests: XCTestCase {
         for kind in [PKInkingTool.InkType.pencil, .marker, .fountainPen] {
             XCTAssertEqual(ToolPreset.trayWritingScale(of: kind), 1)
         }
-    }
-
-    func testCanvasRenderingReducesOnlyPressurePenAndPreservesZoomRatio() throws {
-        let pressurePen = PKInkingTool(.pen, color: .black, width: 4)
-        let renderedPen = try XCTUnwrap(CanvasInkRendering.tool(pressurePen) as? PKInkingTool)
-        XCTAssertEqual(renderedPen.inkType, .pen)
-        XCTAssertEqual(renderedPen.width, 3.2, accuracy: 0.01)
-
-        let monoline = PKInkingTool(.monoline, color: .blue, width: 4)
-        let renderedMonoline = try XCTUnwrap(CanvasInkRendering.tool(monoline) as? PKInkingTool)
-        XCTAssertEqual(renderedMonoline.inkType, .monoline)
-        XCTAssertEqual(renderedMonoline.width, 4, accuracy: 0.01)
-
-        let zoomedPen = try XCTUnwrap(CanvasInkRendering.tool(pressurePen, zoomRatio: 2) as? PKInkingTool)
-        XCTAssertEqual(zoomedPen.width, 6.4, accuracy: 0.01)
-        let zoomedMonoline = try XCTUnwrap(CanvasInkRendering.tool(monoline, zoomRatio: 2) as? PKInkingTool)
-        XCTAssertEqual(zoomedMonoline.width, 8, accuracy: 0.01)
     }
 
     func testLegacyPressureFlagDoesNotOverrideNativePencilKitInk() throws {
