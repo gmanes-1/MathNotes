@@ -376,7 +376,7 @@ final class ToolPresetTests: XCTestCase {
         toolbox.changePen(marker.id) { $0.ink = PKInkingTool.InkType.pen.rawValue; $0.width = 4 }
         let pressurePen = try XCTUnwrap(canvas.tool as? PKInkingTool)
         XCTAssertEqual(pressurePen.inkType, .pen)
-        XCTAssertEqual(pressurePen.width, 4 * CanvasInkRendering.pressurePenScale, accuracy: 0.01)
+        XCTAssertEqual(pressurePen.width, 4, accuracy: 0.01, "the regular Pen uses its selected native PencilKit width")
         toolbox.changePen(marker.id) { $0.ink = PKInkingTool.InkType.monoline.rawValue; $0.width = 4 }
         let monoline = try XCTUnwrap(canvas.tool as? PKInkingTool)
         XCTAssertEqual(monoline.inkType, .monoline)
