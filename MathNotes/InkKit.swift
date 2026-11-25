@@ -61,16 +61,3 @@ enum InkCalibration {
     }
 }
 
-/// Builds the native PencilKit tool used by a page canvas.
-/// Pressure Pen keeps PencilKit's pressure response; only its base width is reduced for display.
-@MainActor
-enum CanvasInkRendering {
-    static let pressurePenScale: CGFloat = 0.8
-
-    static func tool(_ selected: PKTool, zoomRatio: CGFloat = 1) -> PKTool {
-        guard let ink = selected as? PKInkingTool else { return selected }
-        let inkScale = ink.inkType == .pen ? pressurePenScale : 1
-        return PKInkingTool(ink.inkType, color: ink.color,
-                            width: ink.width * inkScale * max(zoomRatio, 0.001))
-    }
-}
